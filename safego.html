@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeGo | Student Safety and Travel Risk Monitoring</title>
+<link rel="stylesheet" href="css/safego.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brandmark">
+      <div class="glyph">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="word">Safe<span>Go</span></div>
+    </div>
+    <p class="login-tag">Check current travel conditions before heading to school during severe weather.</p>
+
+    <div class="field">
+      <label for="login-email">Email or Student ID</label>
+      <input id="login-email" type="text" placeholder="you@school.edu.ph" value="admin">
+    </div>
+    <div class="field">
+      <label for="login-pass">Password</label>
+      <input id="login-pass" type="password" placeholder="********" value="********">
+    </div>
+    <button class="login-btn" id="login-btn" type="button">Log In</button>
+
+    <div class="login-foot">Forgot password? &nbsp;·&nbsp; Contact your school admin</div>
+    <div class="login-disclaimer">SafeGo provides informational risk guidance only. It does not declare class suspensions. Always follow official school and government announcements.</div>
+  </div>
+</div>
+
+<div id="app-shell">
+
+  <nav class="sidenav">
+    <div class="brandmark">
+      <div class="glyph sm">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="word">Safe<span>Go</span></div>
+    </div>
+    <ul class="nav-list" id="navList"></ul>
+    <div class="sidenav-foot">Informational guidance only.<br>Not an official suspension notice.</div>
+  </nav>
+
+  <div class="main-col">
+    <div class="topbar">
+      <div class="brandmark">
+        <div class="glyph sm">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="word">Safe<span>Go</span></div>
+      </div>
+      <span class="pill mod" id="topbarPill"><span class="dot"></span>Moderate</span>
+    </div>
+
+    <section class="page" data-page="dashboard">
+      <div class="page-head">
+        <div class="page-eyebrow">Dashboard</div>
+        <div class="page-title">Good morning, admin</div>
+        <div class="page-sub">Travel outlook for Mapúa University.</div>
+      </div>
+
+      <div class="risk-hero">
+        <div class="risk-hero-top">
+          <div>
+            <div class="risk-hero-q">Is it safe for me to travel right now?</div>
+            <div class="risk-level-row">
+              <div class="risk-level-name">MODERATE RISK</div>
+              <span class="pill mod"><span class="dot"></span>Level 2 of 4</span>
+            </div>
+            <p class="risk-hero-why">Moderate rainfall and localized street flooding are affecting parts of your usual route. Travel is possible, but expect delays. Allow extra time and monitor advisories before leaving.</p>
+            <div class="risk-hero-updated">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#7a7a7a" stroke-width="1.7"/><path d="M12 7v5l3.5 2" stroke="#7a7a7a" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <span class="mono">Last updated 6:42 AM · auto-refreshes every 15 min</span>
+            </div>
+          </div>
+          <div class="gauge-wrap" id="heroGaugeWrap"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="card stat-card">
+          <div class="label">Weather</div>
+          <div class="value-row">
+            <div class="value">Heavy Rain, 25°C</div>
+            <div class="icon-badge icon-weather">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 16a4.5 4.5 0 010-9 5.5 5.5 0 0110.6 1.7A3.8 3.8 0 0117 16H7Z" stroke="currentColor" stroke-width="1.6"/><path d="M8 19v1M12 19v1.6M16 19v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <div class="sub">Signal No. 1 · Gusts to 45 km/h</div>
+        </div>
+        <div class="card stat-card">
+          <div class="label">School Status</div>
+          <div class="value-row">
+            <div class="value">Classes Ongoing</div>
+            <div class="icon-badge icon-ok">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 10.5 12 5l8 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v8h12v-8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div class="sub">Face-to-face · per admin, 6:00 AM</div>
+        </div>
+        <div class="card stat-card">
+          <div class="label">Route Condition</div>
+          <div class="value-row">
+            <div class="value">Partial Flooding</div>
+            <div class="icon-badge icon-mod">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M3 18c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 13c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/></svg>
+            </div>
+          </div>
+          <div class="sub">España Blvd. · ankle-deep, 2 spots</div>
+        </div>
+        <div class="card stat-card">
+          <div class="label">Latest Advisory</div>
+          <div class="value-row">
+            <div class="value sm">PAGASA Rainfall Advisory</div>
+            <div class="icon-badge icon-alert">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <div class="sub">Issued 6:15 AM · Metro Manila</div>
+        </div>
+      </div>
+
+      <div class="section-title">Latest Advisories and Announcements <span class="view-all" data-goto="announcements">View all</span></div>
+      <div id="dashAdvisories"></div>
+
+      <div class="section-title">Recent Community Reports <span class="view-all" data-goto="reports">View all</span></div>
+      <div id="dashReports"></div>
+    </section>
+
+    <section class="page hidden" data-page="risk">
+      <div class="page-head">
+        <div class="page-eyebrow">Risk Analysis</div>
+        <div class="page-title">Current Travel Risk Breakdown</div>
+        <div class="page-sub">How today's MODERATE risk level was estimated, factor by factor.</div>
+      </div>
+
+      <div class="card mb-22">
+        <div class="gauge-lg-wrap">
+          <div id="riskPageGaugeWrap"></div>
+          <div class="risk-level-name md">MODERATE RISK</div>
+          <p class="gauge-caption">Travel is possible with caution. Localized flooding and continuing rainfall may cause delays on common routes to campus.</p>
+          <div class="risk-hero-updated">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#7a7a7a" stroke-width="1.7"/><path d="M12 7v5l3.5 2" stroke="#7a7a7a" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span class="mono">Last updated 6:42 AM, Aug 20</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Contributing Factors</div>
+
+      <div class="card factor-card">
+        <div class="factor-icon icon-weather">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 16a4.5 4.5 0 010-9 5.5 5.5 0 0110.6 1.7A3.8 3.8 0 0117 16H7Z" stroke="currentColor" stroke-width="1.6"/><path d="M8 19v1M12 19v1.6M16 19v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <div class="factor-body">
+          <div class="factor-top"><div class="factor-name">Weather Condition</div><span class="pill mod"><span class="dot"></span>Moderate</span></div>
+          <p class="factor-desc">Heavy rain sustained since 4:30 AM, 25°C, wind gusts up to 45 km/h. PAGASA Rainfall Advisory in effect for Metro Manila.</p>
+          <div class="meter"><div class="meter-fill w-58"></div></div>
+        </div>
+      </div>
+
+      <div class="card factor-card">
+        <div class="factor-icon icon-mod">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 18c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 13c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/></svg>
+        </div>
+        <div class="factor-body">
+          <div class="factor-top"><div class="factor-name">Flood / Route Condition</div><span class="pill mod"><span class="dot"></span>Moderate</span></div>
+          <p class="factor-desc">Ankle-deep flooding reported at 2 points along España Blvd. Vehicles passable at reduced speed; foot traffic advised to reroute via Lerma St.</p>
+          <div class="meter"><div class="meter-fill w-52"></div></div>
+        </div>
+      </div>
+
+      <div class="card factor-card">
+        <div class="factor-icon icon-alert">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+        <div class="factor-body">
+          <div class="factor-top"><div class="factor-name">Official Advisories</div><span class="pill high"><span class="dot"></span>Elevated</span></div>
+          <p class="factor-desc">1 active PAGASA rainfall advisory and 1 city government flood bulletin for the España / Sampaloc area, issued within the last 2 hours.</p>
+          <div class="meter"><div class="meter-fill w-70"></div></div>
+        </div>
+      </div>
+
+      <div class="card factor-card">
+        <div class="factor-icon icon-ok">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 10.5 12 5l8 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v8h12v-8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="factor-body">
+          <div class="factor-top"><div class="factor-name">School Status</div><span class="pill low"><span class="dot"></span>Normal</span></div>
+          <p class="factor-desc">Mapúa University administration has not announced any class suspension or schedule change as of the latest update.</p>
+          <div class="meter"><div class="meter-fill w-20"></div></div>
+        </div>
+      </div>
+
+      <div class="card factor-card mb-0">
+        <div class="factor-icon icon-neutral">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.1-7-10.7A7 7 0 0112 3a7 7 0 017 7.3C19 15.9 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10.3" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+        </div>
+        <div class="factor-body">
+          <div class="factor-top"><div class="factor-name">Student and Community Reports</div><span class="pill mod"><span class="dot"></span>3 recent</span></div>
+          <p class="factor-desc">3 unread reports of flooding and 1 stalled vehicle along common commute routes in the past hour, pending verification.</p>
+          <div class="meter"><div class="meter-fill w-40"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page hidden" data-page="announcements">
+      <div class="page-head">
+        <div class="page-eyebrow">Announcements</div>
+        <div class="page-title">Announcements and Advisories</div>
+        <div class="page-sub">Official school, government, and weather-bureau updates, newest first.</div>
+      </div>
+      <div id="fullAnnouncements"></div>
+    </section>
+
+    <section class="page hidden" data-page="route">
+      <div class="page-head">
+        <div class="page-eyebrow">Route and Conditions</div>
+        <div class="page-title">Your Route to Campus</div>
+        <div class="page-sub">Home in Sampaloc, Manila to Mapúa University, Intramuros.</div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-head">
+            <h3>Route Overview</h3>
+            <span class="pill mod"><span class="dot"></span>Passable, Delays Likely</span>
+          </div>
+          <div class="route-track">
+            <div class="route-node">
+              <div class="route-dot"><div class="inner"></div></div>
+              <div class="rn-label">Origin</div>
+              <div class="rn-name">Home, Sampaloc, Manila</div>
+              <div class="rn-sub">Dry, no reported issues at departure point</div>
+            </div>
+            <div class="route-node">
+              <div class="route-dot mid"><div class="inner"></div></div>
+              <div class="rn-label">Along Route</div>
+              <div class="rn-name">España Blvd. (Sampaloc segment)</div>
+              <div class="rn-sub">Ankle-deep flooding at 2 points · reduced vehicle speed</div>
+            </div>
+            <div class="route-node">
+              <div class="route-dot mid"><div class="inner"></div></div>
+              <div class="rn-label">Along Route</div>
+              <div class="rn-name">Quezon Blvd. Underpass</div>
+              <div class="rn-sub">Monitored · currently passable, rising slowly</div>
+            </div>
+            <div class="route-node">
+              <div class="route-dot end"><div class="inner"></div></div>
+              <div class="rn-label">Destination</div>
+              <div class="rn-name">Mapúa University, Intramuros</div>
+              <div class="rn-sub">Campus grounds dry, no access issues reported</div>
+            </div>
+          </div>
+          <div class="mock-note">Map view and live routing are not part of this phase. This is a static, mocked representation of the route.</div>
+        </div>
+
+        <div>
+          <div class="card card-pad mb-16">
+            <div class="card-head"><h3>Flood Conditions</h3><span class="tag mono">Updated 6:38 AM</span></div>
+            <div class="hazard-row">
+              <div class="hazard-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M3 18c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+              <div class="hazard-body"><div class="title">España Blvd. near Morayta</div><div class="meta">Ankle-deep (~10cm) · vehicles passable, foot traffic caution</div></div>
+            </div>
+            <div class="hazard-row mb-0">
+              <div class="hazard-icon icon-brand"><svg viewBox="0 0 24 24" fill="none"><path d="M3 18c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+              <div class="hazard-body"><div class="title">Quezon Blvd. Underpass</div><div class="meta">Shin-level, rising slowly · being monitored by MMDA</div></div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="card-head"><h3>Reported Hazards</h3><span class="tag mono">3 active</span></div>
+            <div class="hazard-row">
+              <div class="hazard-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+              <div class="hazard-body"><div class="title">Stalled jeepney, España Blvd.</div><div class="meta">Reported by student · 6:20 AM · Pending Verification</div></div>
+            </div>
+            <div class="hazard-row">
+              <div class="hazard-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+              <div class="hazard-body"><div class="title">Open manhole, Lerma St.</div><div class="meta">Reported by community · 5:55 AM · Verified</div></div>
+            </div>
+            <div class="hazard-row mb-0">
+              <div class="hazard-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+              <div class="hazard-body"><div class="title">Low visibility, Quiapo underpass</div><div class="meta">Reported by student · 6:05 AM · Unverified</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page hidden" data-page="reports">
+      <div class="page-head">
+        <div class="page-eyebrow">Reports</div>
+        <div class="page-title">Submit a Report</div>
+        <div class="page-sub">Help other students by reporting what you see on your route.</div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Report Type</label>
+              <div class="type-chip-row" id="typeChips">
+                <div class="type-chip selected" data-type="Flooding">Flooding</div>
+                <div class="type-chip" data-type="Road Hazard">Road Hazard</div>
+                <div class="type-chip" data-type="Transport Disruption">Transport Disruption</div>
+                <div class="type-chip" data-type="Power / Signal Outage">Power / Signal Outage</div>
+                <div class="type-chip" data-type="Other">Other</div>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="rep-loc">Location</label>
+              <input id="rep-loc" type="text" placeholder="e.g. España Blvd. corner Morayta St.">
+            </div>
+            <div class="form-field">
+              <label for="rep-desc">Description</label>
+              <textarea id="rep-desc" placeholder="Describe what you observed: depth of water, road blockage, estimated severity, etc."></textarea>
+            </div>
+            <button class="submit-btn" id="submit-report" type="button">Submit Report</button>
+            <div class="mock-note">This form is a static mock for Phase 1. Submissions are not saved, verified, or sent anywhere yet.</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-head tight"><h3>Recent Reports</h3><span class="tag mono">Last 24h</span></div>
+          <div id="reportsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page hidden" data-page="profile">
+      <div class="page-head">
+        <div class="page-eyebrow">Profile</div>
+        <div class="page-title">Your Profile</div>
+        <div class="page-sub">Account details and notification preferences.</div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="profile-head">
+          <div class="avatar">AD</div>
+          <div>
+            <div class="profile-name">admin</div>
+            <div class="profile-meta">Student · BS Computer Science, Mapúa University</div>
+            <div class="profile-meta mono">Home base: Sampaloc, Manila</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-head padded"><h3>Notification Preferences</h3></div>
+        <div class="prefs-row">
+          <div><div class="prefs-label">Risk level changes</div><div class="prefs-sub">Alert me when travel risk changes tier</div></div>
+          <div class="toggle on"><div class="knob"></div></div>
+        </div>
+        <div class="prefs-row">
+          <div><div class="prefs-label">New advisories</div><div class="prefs-sub">School, government, and weather bureau updates</div></div>
+          <div class="toggle on"><div class="knob"></div></div>
+        </div>
+        <div class="prefs-row">
+          <div><div class="prefs-label">Route hazard reports</div><div class="prefs-sub">Nearby community reports on your saved route</div></div>
+          <div class="toggle"><div class="knob"></div></div>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="card-head"><h3>Saved Locations</h3></div>
+        <div class="report-row">
+          <div class="rtype"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.1-7-10.7A7 7 0 0112 3a7 7 0 017 7.3C19 15.9 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <div class="report-main"><div class="title">Home</div><div class="meta">Sampaloc, Manila</div></div>
+        </div>
+        <div class="report-row mb-0">
+          <div class="rtype"><svg viewBox="0 0 24 24" fill="none"><path d="M4 10.5 12 5l8 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v8h12v-8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <div class="report-main"><div class="title">School</div><div class="meta">Mapúa University, Intramuros</div></div>
+        </div>
+        <button class="logout-btn" id="logout-btn" type="button">Log Out</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<nav class="bottom-tabs">
+  <ul class="nav-list" id="navListMobile"></ul>
+</nav>
+
+<script src="js/safego.js"></script>
+</body>
+</html>
