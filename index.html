@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SafeGo | Student Safety and Travel Risk Monitoring</title>
-<link rel="stylesheet" href="css/safego.css">
+<link rel="stylesheet" href="/safego.css">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
 
 <div id="app-shell">
 
-  <nav class="sidenav">
+  <nav class="sidenav hidden lg:flex">
     <div class="brandmark">
       <div class="glyph sm">
         <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -139,7 +139,7 @@
         <div class="page-sub">How today's MODERATE risk level was estimated, factor by factor.</div>
       </div>
 
-      <div class="card mb-22">
+      <div class="card mb-[22px]">
         <div class="gauge-lg-wrap">
           <div id="riskPageGaugeWrap"></div>
           <div class="risk-level-name md">MODERATE RISK</div>
@@ -160,7 +160,7 @@
         <div class="factor-body">
           <div class="factor-top"><div class="factor-name">Weather Condition</div><span class="pill mod"><span class="dot"></span>Moderate</span></div>
           <p class="factor-desc">Heavy rain sustained since 4:30 AM, 25°C, wind gusts up to 45 km/h. PAGASA Rainfall Advisory in effect for Metro Manila.</p>
-          <div class="meter"><div class="meter-fill w-58"></div></div>
+          <div class="meter"><div class="meter-fill meter-58"></div></div>
         </div>
       </div>
 
@@ -171,7 +171,7 @@
         <div class="factor-body">
           <div class="factor-top"><div class="factor-name">Flood / Route Condition</div><span class="pill mod"><span class="dot"></span>Moderate</span></div>
           <p class="factor-desc">Ankle-deep flooding reported at 2 points along España Blvd. Vehicles passable at reduced speed; foot traffic advised to reroute via Lerma St.</p>
-          <div class="meter"><div class="meter-fill w-52"></div></div>
+          <div class="meter"><div class="meter-fill meter-52"></div></div>
         </div>
       </div>
 
@@ -182,7 +182,7 @@
         <div class="factor-body">
           <div class="factor-top"><div class="factor-name">Official Advisories</div><span class="pill high"><span class="dot"></span>Elevated</span></div>
           <p class="factor-desc">1 active PAGASA rainfall advisory and 1 city government flood bulletin for the España / Sampaloc area, issued within the last 2 hours.</p>
-          <div class="meter"><div class="meter-fill w-70"></div></div>
+          <div class="meter"><div class="meter-fill meter-70"></div></div>
         </div>
       </div>
 
@@ -193,7 +193,7 @@
         <div class="factor-body">
           <div class="factor-top"><div class="factor-name">School Status</div><span class="pill low"><span class="dot"></span>Normal</span></div>
           <p class="factor-desc">Mapúa University administration has not announced any class suspension or schedule change as of the latest update.</p>
-          <div class="meter"><div class="meter-fill w-20"></div></div>
+          <div class="meter"><div class="meter-fill meter-20"></div></div>
         </div>
       </div>
 
@@ -204,7 +204,7 @@
         <div class="factor-body">
           <div class="factor-top"><div class="factor-name">Student and Community Reports</div><span class="pill mod"><span class="dot"></span>3 recent</span></div>
           <p class="factor-desc">3 unread reports of flooding and 1 stalled vehicle along common commute routes in the past hour, pending verification.</p>
-          <div class="meter"><div class="meter-fill w-40"></div></div>
+          <div class="meter"><div class="meter-fill meter-40"></div></div>
         </div>
       </div>
     </section>
@@ -261,7 +261,7 @@
         </div>
 
         <div>
-          <div class="card card-pad mb-16">
+          <div class="card card-pad mb-4">
             <div class="card-head"><h3>Flood Conditions</h3><span class="tag mono">Updated 6:38 AM</span></div>
             <div class="hazard-row">
               <div class="hazard-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M3 18c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
@@ -339,7 +339,7 @@
         <div class="page-sub">Account details and notification preferences.</div>
       </div>
 
-      <div class="card mb-16">
+      <div class="card mb-4">
         <div class="profile-head">
           <div class="avatar">AD</div>
           <div>
@@ -350,7 +350,7 @@
         </div>
       </div>
 
-      <div class="card mb-16">
+      <div class="card mb-4">
         <div class="card-head padded"><h3>Notification Preferences</h3></div>
         <div class="prefs-row">
           <div><div class="prefs-label">Risk level changes</div><div class="prefs-sub">Alert me when travel risk changes tier</div></div>
@@ -387,6 +387,6 @@
   <ul class="nav-list" id="navListMobile"></ul>
 </nav>
 
-<script src="js/safego.js"></script>
+<script type="module" src="/safego.js"></script>
 </body>
 </html>

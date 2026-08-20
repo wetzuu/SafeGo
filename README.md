@@ -8,22 +8,25 @@ SafeGo is informational only. It does not declare class suspensions. Follow offi
 
 ## Run
 
-Open `safego.html` in a browser. For local files plus scripts, a simple static server is enough:
+```
+npm install
+npm run dev
+```
+
+Vite serves the app and compiles Tailwind. Demo login is prefilled as `admin`. Any password works.
 
 ```
-python -m http.server 8080
+npm run build    production build to dist/
+npm run preview  serve the production build
 ```
-
-Then go to `http://localhost:8080/safego.html`.
-
-Demo login is prefilled as `admin`. Any password works.
 
 ## Layout
 
 ```
-safego.html      pages and structure
-css/safego.css   styles
-js/safego.js     navigation, gauges, mock lists
+index.html       pages and structure
+safego.css       Tailwind theme tokens and component classes (@apply)
+safego.js        navigation, gauges, mock lists
+vite.config.js   Vite + Tailwind plugin
 ```
 
 ## Screens
@@ -38,11 +41,11 @@ js/safego.js     navigation, gauges, mock lists
 | Reports | Report type, location, description. Submit shows an alert. |
 | Profile | Account stub, notification toggles, saved locations |
 
-Sidebar on desktop. Top bar and bottom tabs under 900px.
+Sidebar on desktop. Top bar and bottom tabs below the `lg` breakpoint.
 
 ## Mock data
 
-Advisories and reports live in `js/safego.js`. The risk index is hardcoded at 58% (moderate). Gauge and lists are rendered on load.
+Advisories and reports live in `safego.js`. The risk index is hardcoded at 58% (moderate). Gauge and lists are rendered on load.
 
 ## Out of scope for this phase
 
