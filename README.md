@@ -1,8 +1,8 @@
 # SafeGo
 
-Student safety and travel risk monitoring during severe weather. Phase 1 is a static front-end mock for Mapúa University (Sampaloc to Intramuros commute).
+Public travel risk information for an area during severe weather. Phase 1 is a static front-end mock covering a few Manila locations (España / Sampaloc, Intramuros, Quiapo, Lerma).
 
-The interface shows a current travel risk level, contributing factors, school and government advisories, a mocked route with flood points, and a community report form. Nothing here is live data. Login does not authenticate. Reports are not stored.
+Search or pick a place, then read the risk rating, contributing factors, advisories, flood points, and community reports for that area. There is no login. Reports are not stored. Nothing here is live data.
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Vite serves the app and compiles Tailwind. Demo login is prefilled as `admin`. Any password works.
+Vite serves the app and compiles Tailwind.
 
 ```
 npm run build    production build to dist/
@@ -25,32 +25,40 @@ npm run preview  serve the production build
 ```
 index.html       pages and structure
 safego.css       Tailwind theme tokens and component classes (@apply)
-safego.js        navigation, gauges, mock lists
+safego.js        locations, search, navigation
 vite.config.js   Vite + Tailwind plugin
 ```
+
+## Flow
+
+1. Enter or select a location on the landing search.
+2. Read the overview for that area (risk index, weather, school status, road condition).
+3. Open Risk factors, Alerts, Conditions, or Reports for more detail.
+4. Change location from the header search, sidebar, or by going back to the landing page.
+
+Suggested chips and the search list use the mock location set. Typing filters by name, city, and aliases. Enter selects the first match.
 
 ## Screens
 
 | Screen | Contents |
 | --- | --- |
-| Login | Email/ID and password fields. No validation. |
-| Dashboard | Risk summary, weather, school status, route condition, latest advisory, recent reports |
-| Risk Analysis | Factor scores (weather, flood, advisories, school status, community reports) |
-| Announcements | School, government, weather, and community items |
-| Route | Static origin to campus path and listed hazards |
-| Reports | Report type, location, description. Submit shows an alert. |
-| Profile | Account stub, notification toggles, saved locations |
+| Search | Location field, result list, suggested areas |
+| Overview | Risk summary and latest advisories/reports for the selected place |
+| Risk factors | Factor scores used for the rating |
+| Alerts | School, government, weather, and community notices |
+| Conditions | Watched points, flood notes, reported hazards |
+| Reports | Public report form and recent reports |
 
-Sidebar on desktop. Top bar and bottom tabs below the `lg` breakpoint.
+Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
 ## Mock data
 
-Advisories and reports live in `safego.js`. The risk index is hardcoded at 58% (moderate). Gauge and lists are rendered on load.
+Locations and their advisories, reports, and factor scores live in `safego.js`.
 
 ## Out of scope for this phase
 
 - Backend, database, or APIs (PAGASA, school, maps)
-- Real authentication or role checks
-- Live maps or routing
-- Push notifications
+- Live geocoding or GPS
+- Live maps
 - Report verification workflow
+- Accounts

@@ -36,12 +36,104 @@
 }
 
 @layer components {
-  #login-screen {
-    @apply flex min-h-screen items-center justify-center bg-surface p-6;
+  .sr-only {
+    @apply absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0;
+    clip: rect(0 0 0 0);
   }
 
-  .login-card {
-    @apply w-full max-w-[400px] rounded-box border border-hairline bg-white px-7 pb-7 pt-8;
+  #search-screen {
+    @apply flex min-h-screen items-start justify-center bg-surface px-6 pt-[12vh] pb-10;
+  }
+
+  #search-screen.hidden-screen {
+    @apply hidden;
+  }
+
+  .search-panel {
+    @apply w-full max-w-[520px];
+  }
+
+  .search-brand {
+    @apply mb-6;
+  }
+
+  .search-title {
+    @apply mb-2 text-[26px] font-bold leading-tight;
+  }
+
+  .search-lead {
+    @apply mb-6 text-[14px] leading-normal text-ink-soft;
+  }
+
+  .search-box,
+  .location-bar {
+    @apply relative;
+  }
+
+  .search-box input,
+  .location-bar input {
+    @apply w-full rounded-box border border-hairline bg-white px-3.5 py-3 text-[15px] text-ink outline-none;
+  }
+
+  .search-box input:focus,
+  .location-bar input:focus {
+    @apply outline outline-2 outline-offset-1 outline-brand;
+  }
+
+  .place-results {
+    @apply z-40 mt-1 max-h-64 w-full list-none overflow-auto rounded-box border border-hairline bg-white p-0;
+  }
+
+  .search-box .place-results {
+    @apply relative;
+  }
+
+  .location-bar .place-results {
+    @apply absolute;
+  }
+
+  .place-results li {
+    @apply m-0 border-b border-hairline last:border-b-0;
+  }
+
+  .place-option {
+    @apply flex w-full cursor-pointer flex-col items-start gap-0.5 border-0 bg-transparent px-3.5 py-2.5 text-left;
+  }
+
+  .place-option:hover {
+    @apply bg-surface;
+  }
+
+  .place-option-name {
+    @apply text-[13.5px] font-semibold;
+  }
+
+  .place-option-meta {
+    @apply text-[11.5px] text-ink-soft;
+  }
+
+  .place-empty {
+    @apply px-3.5 py-2.5 text-[13px] text-ink-soft;
+  }
+
+  .suggest-label {
+    @apply mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-ink-soft;
+  }
+
+  .place-chips {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .place-chip {
+    @apply cursor-pointer rounded-box border border-hairline bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink;
+  }
+
+  .place-chip:hover {
+    @apply border-brand text-brand;
+  }
+
+  .search-disclaimer {
+    @apply mt-8 text-[11.5px] leading-relaxed text-neutral-500;
   }
 
   .brandmark {
@@ -72,35 +164,15 @@
     @apply text-brand;
   }
 
-  .login-tag {
-    @apply mb-6 text-[13px] leading-normal text-ink-soft;
-  }
-
-  .field {
-    @apply mb-4;
-  }
-
-  .field label,
   .form-field label {
     @apply mb-1.5 block text-xs font-semibold text-ink-soft;
   }
 
-  .field input,
   .form-field input[type="text"],
   .form-field textarea {
-    @apply w-full rounded-box border border-hairline bg-white px-3 py-2.5 font-sans text-ink outline-none;
+    @apply w-full rounded-box border border-hairline bg-white px-3 py-2.5 font-sans text-[13.5px] text-ink outline-none;
   }
 
-  .field input {
-    @apply text-sm;
-  }
-
-  .form-field input[type="text"],
-  .form-field textarea {
-    @apply text-[13.5px];
-  }
-
-  .field input:focus,
   .form-field input:focus,
   .form-field textarea:focus {
     @apply outline outline-2 outline-offset-1 outline-brand;
@@ -108,22 +180,6 @@
 
   .form-field textarea {
     @apply min-h-[88px] resize-y;
-  }
-
-  .login-btn {
-    @apply mt-1 w-full cursor-pointer rounded-box border-0 bg-brand py-2.5 text-sm font-semibold text-white;
-  }
-
-  .login-btn:hover {
-    @apply bg-brand-hover;
-  }
-
-  .login-foot {
-    @apply mt-[18px] border-t border-hairline pt-4 text-center text-xs leading-relaxed text-ink-soft;
-  }
-
-  .login-disclaimer {
-    @apply mt-[18px] text-center text-[11.5px] leading-relaxed text-neutral-500;
   }
 
   #app-shell {
@@ -139,7 +195,15 @@
   }
 
   .sidenav .brandmark {
-    @apply mb-6 px-2;
+    @apply mb-6 w-full cursor-pointer border-0 bg-transparent px-2 text-left;
+  }
+
+  .change-loc {
+    @apply mt-3 cursor-pointer rounded-box border border-neutral-700 bg-transparent px-2.5 py-2 text-left text-[12.5px] font-semibold text-nav-text;
+  }
+
+  .change-loc:hover {
+    @apply bg-nav-soft text-white;
   }
 
   .sidenav .brandmark .word {
@@ -183,7 +247,11 @@
   }
 
   .topbar .brandmark {
-    @apply mb-0;
+    @apply mb-0 cursor-pointer border-0 bg-transparent p-0;
+  }
+
+  .location-bar {
+    @apply mx-auto w-full max-w-[1120px] px-3.5 pt-3 lg:px-7 lg:pt-5;
   }
 
   .topbar .brandmark .word {
@@ -219,6 +287,10 @@
   }
 
   .bottom-tabs {
+    @apply hidden;
+  }
+
+  .bottom-tabs.visible {
     @apply fixed inset-x-0 bottom-0 z-30 block border-t border-neutral-700 bg-nav px-1 pb-2 pt-1.5 lg:hidden;
   }
 
@@ -296,6 +368,26 @@
 
   .risk-hero {
     @apply mb-[18px] rounded-box border border-hairline border-l-4 border-l-mod bg-white px-[22px] py-5;
+  }
+
+  .risk-hero.risk-low {
+    @apply border-l-low;
+  }
+
+  .risk-hero.risk-mod {
+    @apply border-l-mod;
+  }
+
+  .risk-hero.risk-high {
+    @apply border-l-high;
+  }
+
+  .risk-hero.risk-crit {
+    @apply border-l-crit;
+  }
+
+  .empty-note {
+    @apply mb-2 text-[13px] text-ink-soft;
   }
 
   .risk-hero-top {
@@ -662,58 +754,6 @@
 
   .mock-note {
     @apply mt-3 rounded-box border border-hairline bg-surface px-3 py-2 text-[11.5px] text-neutral-500;
-  }
-
-  .profile-head {
-    @apply flex items-center gap-3.5 p-[18px];
-  }
-
-  .avatar {
-    @apply flex size-[52px] shrink-0 items-center justify-center rounded-box bg-brand text-base font-bold text-white;
-  }
-
-  .profile-name {
-    @apply text-base font-bold;
-  }
-
-  .profile-meta {
-    @apply mt-0.5 text-[12.5px] text-ink-soft;
-  }
-
-  .prefs-row {
-    @apply flex items-center justify-between border-t border-hairline px-5 py-3.5;
-  }
-
-  .prefs-label {
-    @apply text-[13.5px] font-semibold;
-  }
-
-  .prefs-sub {
-    @apply mt-0.5 text-[11.5px] text-ink-soft;
-  }
-
-  .toggle {
-    @apply relative h-[22px] w-10 shrink-0 cursor-pointer rounded-sm bg-hairline;
-  }
-
-  .toggle.on {
-    @apply bg-brand;
-  }
-
-  .toggle .knob {
-    @apply absolute left-0.5 top-0.5 size-[18px] border border-hairline bg-white;
-  }
-
-  .toggle.on .knob {
-    @apply left-5;
-  }
-
-  .logout-btn {
-    @apply mt-4 w-full cursor-pointer rounded-box border border-crit bg-white py-2.5 text-[13.5px] font-semibold text-crit;
-  }
-
-  .logout-btn:hover {
-    @apply bg-crit-soft;
   }
 
   .mono {
