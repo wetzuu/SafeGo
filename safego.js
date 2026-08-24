@@ -30,7 +30,7 @@ const LOCATIONS = [
     id: 'espana',
     name: 'España Blvd., Sampaloc',
     city: 'Manila',
-    aliases: ['espana', 'españa', 'sampaloc', 'morayta', 'mapua intramuros commute'],
+    aliases: ['espana', 'españa', 'sampaloc', 'morayta'],
     updated: '6:42 AM',
     risk: {
       key: 'mod',
@@ -81,17 +81,17 @@ const LOCATIONS = [
     ],
   },
   {
-    id: 'intramuros',
-    name: 'Mapúa University, Intramuros',
-    city: 'Manila',
-    aliases: ['mapua', 'mapúa', 'intramuros', 'campus'],
+    id: 'mapua-makati',
+    name: 'Mapúa University, Makati',
+    city: 'Makati',
+    aliases: ['mapua', 'mapúa', 'makati', 'mapua makati', 'campus'],
     updated: '6:40 AM',
     risk: {
       key: 'low',
       name: 'LOW RISK',
       pct: 22,
       rank: 'Level 1 of 4',
-      summary: 'Campus grounds are dry. Nearby corridors toward España still have localized flooding, but access to Intramuros is currently clear.',
+      summary: 'Campus grounds are dry. Nearby Makati corridors have localized flooding, but access to the campus is currently clear.',
       status: 'Passable',
     },
     stats: [
@@ -101,23 +101,23 @@ const LOCATIONS = [
       {label:'Latest advisory', value:'Classes proceed', sub:'Mapúa admin · 6:00 AM', icon:'alert', tone:'icon-ok'},
     ],
     factors: [
-      {name:'Weather', pill:'low', pillText:'Low', desc:'Rain continuing but lighter over Intramuros than over España / Sampaloc.', meter:'meter-20', icon:'weather', tone:'icon-weather'},
+      {name:'Weather', pill:'low', pillText:'Low', desc:'Rain continuing but lighter over Makati than over España / Sampaloc.', meter:'meter-20', icon:'weather', tone:'icon-weather'},
       {name:'Flood / roads', pill:'low', pillText:'Low', desc:'Campus grounds dry. No access issues reported at the gates.', meter:'meter-20', icon:'flood', tone:'icon-ok'},
-      {name:'Official advisories', pill:'low', pillText:'Normal', desc:'School notice: face-to-face classes proceed. City flood bulletins apply to inland Manila, not campus grounds.', meter:'meter-20', icon:'alert', tone:'icon-ok'},
+      {name:'Official advisories', pill:'low', pillText:'Normal', desc:'School notice: face-to-face classes proceed. City flood bulletins apply to affected roads, not campus grounds.', meter:'meter-20', icon:'alert', tone:'icon-ok'},
       {name:'School status', pill:'low', pillText:'Normal', desc:'No schedule change from Mapúa University administration.', meter:'meter-20', icon:'school', tone:'icon-ok'},
       {name:'Community reports', pill:'low', pillText:'Quiet', desc:'No new campus hazard reports in the last hour.', meter:'meter-20', icon:'reports', tone:'icon-neutral'},
     ],
     advisories: [
       {src:'school', label:'School', title:'Mapúa University: classes proceed as scheduled', desc:'Campus is open. Students coming from España should still check road conditions.', time:'6:00 AM'},
       {src:'gov', label:'Government', title:'PAGASA rainfall advisory: Metro Manila', desc:'Metro-wide rainfall advisory remains in effect.', time:'6:15 AM'},
-      {src:'weather', label:'Weather', title:'Intramuros: no flood watch', desc:'No street-level flooding reported on campus or immediately outside the walls.', time:'5:55 AM'},
+      {src:'weather', label:'Weather', title:'Makati campus: no flood watch', desc:'No street-level flooding reported on campus or immediately outside the gates.', time:'5:55 AM'},
     ],
     reports: [
-      {type:'Road Hazard', title:'Wet tiles at Main Building steps', meta:'Intramuros campus · 6:10 AM', status:'verified', statusLabel:'Verified'},
+      {type:'Road Hazard', title:'Wet tiles at Main Building steps', meta:'Makati campus · 6:10 AM', status:'verified', statusLabel:'Verified'},
     ],
     points: [
-      {kind:'start', label:'Approach', name:'Muralla St.', sub:'Passable, light rain'},
-      {kind:'end', label:'Campus', name:'Mapúa University gates', sub:'Dry grounds, normal access'},
+      {kind:'start', label:'Approach', name:'Gil Puyat Avenue', sub:'Passable, light rain'},
+      {kind:'end', label:'Campus', name:'Mapúa University Makati gates', sub:'Dry grounds, normal access'},
     ],
     floods: [
       {title:'No active flood points on campus', meta:'Last checked 6:38 AM', tone:'icon-brand'},
@@ -223,6 +223,30 @@ const LOCATIONS = [
     ],
   },
 ];
+
+LOCATIONS.push(
+  {
+    ...LOCATIONS[0],
+    id: 'binondo',
+    name: 'Binondo, Manila',
+    city: 'Manila',
+    aliases: ['binondo', 'manila', 'divisoria', 'ongpin'],
+  },
+  {
+    ...LOCATIONS[0],
+    id: 'katipunan',
+    name: 'Katipunan Avenue, Quezon City',
+    city: 'Quezon City',
+    aliases: ['katipunan', 'quezon city', 'qc', 'ateneo', 'up diliman'],
+  },
+  {
+    ...LOCATIONS[0],
+    id: 'ortigas-pasig',
+    name: 'Ortigas Center, Pasig',
+    city: 'Pasig',
+    aliases: ['ortigas', 'pasig', 'ortigas center', 'kapitolyo'],
+  },
+);
 
 let currentLocation = null;
 
