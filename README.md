@@ -1,6 +1,6 @@
 # SafeGo
 
-Public travel risk information for an area during severe weather. Phase 1 is a static front-end mock covering a few Manila locations (España / Sampaloc, Intramuros, Quiapo, Lerma).
+Public travel risk information for an area during severe weather. Phase 1 is a static front-end mock covering Metro Manila.
 
 Search or pick a place, then read the risk rating, contributing factors, advisories, flood points, and community reports for that area. There is no login. Reports are not stored. Nothing here is live data.
 
@@ -40,14 +40,14 @@ Suggested chips and the search list use the mock location set. Typing filters by
 
 ## Screens
 
-| Screen | Contents |
-| --- | --- |
-| Search | Location field, result list, suggested areas |
-| Overview | Risk summary and latest advisories/reports for the selected place |
-| Risk factors | Factor scores used for the rating |
-| Alerts | School, government, weather, and community notices |
-| Conditions | Watched points, flood notes, reported hazards |
-| Reports | Public report form and recent reports |
+| Screen       | Contents                                                          |
+| ------------ | ----------------------------------------------------------------- |
+| Search       | Location field, result list, suggested areas                      |
+| Overview     | Risk summary and latest advisories/reports for the selected place |
+| Risk factors | Factor scores used for the rating                                 |
+| Alerts       | School, government, weather, and community notices                |
+| Conditions   | Watched points, flood notes, reported hazards                     |
+| Reports      | Public report form and recent reports                             |
 
 Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
