@@ -501,7 +501,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bindSearch('place-search', 'place-results', false);
   bindSearch('place-search-bar', 'place-results-bar', true);
-  renderResults('place-results', LOCATIONS);
 
   document.querySelectorAll('[data-go-home]').forEach((el) => {
     el.addEventListener('click', showSearch);
@@ -523,7 +522,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-box') && !e.target.closest('.location-bar')) {
+    if (!e.target.closest('.search-box')) {
+      hideResults('place-results');
+    }
+    if (!e.target.closest('.location-bar')) {
       hideResults('place-results-bar');
     }
   });

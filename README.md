@@ -6,28 +6,24 @@ Search or pick a place, then read the risk rating, contributing factors, advisor
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
-## Run
+## Running
 
+### Prototype
+
+```bash
+npx http-server prototype
 ```
+
+Open `http://localhost:8080` in your browser.
+
+### Next.js App
+
+```bash
 npm install
 npm run dev
 ```
 
-Vite serves the app and compiles Tailwind.
-
-```
-npm run build    production build to dist/
-npm run preview  serve the production build
-```
-
-## Layout
-
-```
-index.html       pages and structure
-safego.css       Tailwind theme tokens and component classes (@apply)
-safego.js        locations, search, navigation
-vite.config.js   Vite + Tailwind plugin
-```
+Open `http://localhost:3000` in your browser.
 
 ## Flow
 

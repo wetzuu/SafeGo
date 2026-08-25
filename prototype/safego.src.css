@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "./index.html";
+@source "./safego.js";
 
 @theme {
   --font-sans: "Segoe UI", system-ui, sans-serif;
