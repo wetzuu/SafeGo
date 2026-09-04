@@ -2,6 +2,7 @@ const NAV_ITEMS = [
   {key:'overview', label:'Overview', icon:'<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="3.5" width="7" height="4.5" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="10.5" width="7" height="10" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>'},
   {key:'risk', label:'Risk factors', icon:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M12 20V4M20 20v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'},
   {key:'alerts', label:'Alerts', icon:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 10v4a1 1 0 001 1h2l4 4V5L7 9H5a1 1 0 00-1 1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15.5 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'},
+  {key:'map', label:'Map', icon:'<svg viewBox="0 0 24 24" fill="none"><path d="m3.5 6.5 5-2.5 7 2.5 5-2.5v13.5l-5 2.5-7-2.5-5 2.5V6.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 4v13.5M15.5 6.5V20" stroke="currentColor" stroke-width="1.6"/></svg>'},
   {key:'conditions', label:'Conditions', icon:'<svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.2" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="18" r="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M7.8 7.5c2 1 3 2.7 3 4.5s1 3.5 3 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.4 2.4"/></svg>'},
   {key:'reports', label:'Reports', icon:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l3 3V20a.8.8 0 01-.8.8H6a.8.8 0 01-.8-.8V4.3a.8.8 0 01.8-.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'},
 ];
@@ -307,6 +308,207 @@ LOCATIONS.forEach((location) => {
   location.risk = {...location.risk, ...analyzeRisk(location.factors)};
 });
 
+// Approximate marker coordinates for the mock locations. These can be
+// replaced with verified geocoding or backend coordinates later.
+const MAP_COORDINATES = {
+  espana: [14.6120, 120.9902],
+  'mapua-makati': [14.5665, 121.0200],
+  quiapo: [14.5995, 120.9842],
+  lerma: [14.6049, 120.9888],
+  binondo: [14.6010, 120.9745],
+  katipunan: [14.6405, 121.0741],
+  'ortigas-pasig': [14.5869, 121.0614],
+};
+
+const MAP_LAYERS = [
+  {key:'overall', label:'Overall risk'},
+  {key:'Weather', label:'Weather'},
+  {key:'Flood / roads', label:'Flood & roads'},
+  {key:'Official advisories', label:'Advisories'},
+  {key:'School status', label:'School status'},
+  {key:'Community reports', label:'Community'},
+];
+
+let currentMapLayer = 'overall';
+let currentMapLocationId = LOCATIONS[0].id;
+let leafletMap = null;
+let leafletHasFitLocations = false;
+const leafletMarkers = new Map();
+
+function getLayerScore(location, layer = currentMapLayer) {
+  if (layer === 'overall') return location.risk.pct;
+  return location.factors.find((factor) => factor.name === layer)?.score || 0;
+}
+
+function interpolateColor(start, end, amount) {
+  const startRgb = start.match(/\w\w/g).map((value) => parseInt(value, 16));
+  const endRgb = end.match(/\w\w/g).map((value) => parseInt(value, 16));
+  const rgb = startRgb.map((value, index) => Math.round(value + (endRgb[index] - value) * amount));
+  return `rgb(${rgb.join(', ')})`;
+}
+
+function riskGradient(score) {
+  const stops = [
+    {score:0, color:'#15803d'},
+    {score:29, color:'#65a30d'},
+    {score:30, color:'#ca8a04'},
+    {score:59, color:'#eab308'},
+    {score:60, color:'#ea580c'},
+    {score:79, color:'#f97316'},
+    {score:80, color:'#dc2626'},
+    {score:100, color:'#991b1b'},
+  ];
+  const bounded = Math.max(0, Math.min(100, score));
+  const upperIndex = stops.findIndex((stop) => bounded <= stop.score);
+  if (upperIndex <= 0) return stops[0].color;
+  const lower = stops[upperIndex - 1];
+  const upper = stops[upperIndex];
+  const amount = (bounded - lower.score) / Math.max(1, upper.score - lower.score);
+  return interpolateColor(lower.color, upper.color, amount);
+}
+
+function mapMarkerStatus(location) {
+  const hasVerified = location.reports.some((report) => report.status === 'verified');
+  const hasUnverified = location.reports.some((report) => report.status === 'unverified' || report.status === 'pending');
+  if (hasVerified && hasUnverified) return 'mixed-evidence';
+  if (hasVerified) return 'verified-evidence';
+  if (hasUnverified) return 'unverified-evidence';
+  return 'no-evidence';
+}
+
+function renderMapDetail(location) {
+  const panel = document.getElementById('mapDetail');
+  const score = getLayerScore(location);
+  const activeLayer = MAP_LAYERS.find((layer) => layer.key === currentMapLayer);
+  const verifiedCount = location.reports.filter((report) => report.status === 'verified').length;
+  const unverifiedCount = location.reports.filter((report) => report.status !== 'verified').length;
+
+  panel.innerHTML = `
+    <div class="map-detail-head">
+      <div>
+        <div class="map-detail-kicker">Approximate location · ${location.city}</div>
+        <h3>${location.name}</h3>
+      </div>
+      <span class="map-score" style="--score-color:${riskGradient(score)}">${score}</span>
+    </div>
+    <div class="map-layer-reading">${activeLayer.label}: <strong>${score}/100</strong></div>
+    <div class="map-overall-row">
+      <span>Overall travel risk</span>
+      <span class="pill ${location.risk.key}"><span class="dot"></span>${location.risk.pct}/100 · ${location.risk.name}</span>
+    </div>
+    <div class="map-factor-list">
+      ${location.factors.map((factor) => `
+        <div><span>${factor.name}</span><strong class="mono">${factor.score}</strong></div>`).join('')}
+    </div>
+    <div class="map-evidence">
+      <span class="evidence-key verified"><span></span>${verifiedCount} verified</span>
+      <span class="evidence-key unverified"><span></span>${unverifiedCount} pending/unverified</span>
+      <span class="mono">Updated ${location.updated}</span>
+    </div>
+    <div class="map-detail-section">
+      <strong>Latest advisory</strong>
+      <p>${location.advisories[0]?.title || 'No advisory in the mock dataset.'}</p>
+    </div>
+    <div class="map-detail-section">
+      <strong>Relevant hazard</strong>
+      <p>${location.hazards[0]?.title || 'No reported hazard in the mock dataset.'}</p>
+    </div>
+    <button class="submit-btn map-dashboard-btn" type="button" data-map-dashboard>View full dashboard</button>`;
+}
+
+function createLeafletMarkerIcon(location, score, selected) {
+  const evidenceClass = mapMarkerStatus(location);
+  return window.L.divIcon({
+    className: 'safego-leaflet-icon',
+    html: `<span class="map-marker leaflet-marker ${evidenceClass} ${selected ? 'selected' : ''}" style="--marker-color:${riskGradient(score)}"><span class="map-marker-score">${score}</span></span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    tooltipAnchor: [0, -24],
+  });
+}
+
+function ensureLiveMap() {
+  const mapElement = document.getElementById('actualMap');
+  if (!mapElement || !window.L) return false;
+
+  if (!leafletMap) {
+    leafletMap = window.L.map(mapElement, {
+      zoomControl: true,
+      minZoom: 10,
+      maxZoom: 19,
+    }).setView([14.5995, 121.0150], 12);
+
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(leafletMap);
+  }
+
+  requestAnimationFrame(() => leafletMap.invalidateSize());
+  return true;
+}
+
+function renderMap() {
+  const layerControls = document.getElementById('mapLayers');
+  const mapElement = document.getElementById('actualMap');
+  if (!layerControls || !mapElement) return;
+
+  layerControls.innerHTML = MAP_LAYERS.map((layer) => `
+    <button type="button" class="map-layer-btn ${layer.key === currentMapLayer ? 'active' : ''}" data-layer="${layer.key}" aria-pressed="${layer.key === currentMapLayer}">${layer.label}</button>`).join('');
+
+  if (ensureLiveMap()) {
+    leafletMarkers.forEach((marker) => marker.remove());
+    leafletMarkers.clear();
+
+    LOCATIONS.forEach((location) => {
+      const coordinates = MAP_COORDINATES[location.id];
+      const score = getLayerScore(location);
+      const selected = location.id === currentMapLocationId;
+      const marker = window.L.marker(coordinates, {
+        icon: createLeafletMarkerIcon(location, score, selected),
+        keyboard: true,
+        title: `${location.name}, ${score} out of 100`,
+        alt: `${location.name}, ${score} out of 100`,
+        riseOnHover: true,
+      });
+
+      marker.bindTooltip(`<strong>${location.name}</strong><br>${score}/100 · ${MAP_LAYERS.find((layer) => layer.key === currentMapLayer).label}`, {
+        direction: 'top',
+        opacity: 0.96,
+      });
+      marker.on('click', () => selectMapLocation(location.id));
+      marker.addTo(leafletMap);
+      leafletMarkers.set(location.id, marker);
+    });
+
+    if (!leafletHasFitLocations) {
+      const bounds = window.L.latLngBounds(Object.values(MAP_COORDINATES));
+      leafletMap.fitBounds(bounds, {padding: [28, 28], maxZoom: 12});
+      leafletHasFitLocations = true;
+    }
+  } else {
+    mapElement.innerHTML = '<div class="map-load-error">The live map library could not load. Check your internet connection and reload the page.</div>';
+  }
+
+  /* Markers use the same calculated scores as the dashboard; only their
+     geographic placement and basemap are provided by the map engine. */
+  LOCATIONS.forEach((location) => {
+    const score = getLayerScore(location);
+    const marker = leafletMarkers.get(location.id);
+    if (marker) marker.getElement()?.setAttribute('aria-label', `${location.name}, ${score} out of 100`);
+  });
+
+  const selectedLocation = LOCATIONS.find((location) => location.id === currentMapLocationId) || LOCATIONS[0];
+  renderMapDetail(selectedLocation);
+}
+
+function selectMapLocation(id) {
+  currentMapLocationId = id;
+  selectLocation(id);
+  navigate('map');
+  renderMap();
+}
+
 function searchLocations(query) {
   const q = query.trim().toLowerCase();
   if (!q) return LOCATIONS;
@@ -335,6 +537,7 @@ function navigate(key) {
   document.querySelectorAll('.nav-item').forEach((n) => {
     n.classList.toggle('active', n.dataset.key === key);
   });
+  if (key === 'map') renderMap();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -500,6 +703,8 @@ function selectLocation(id) {
 
   document.getElementById('rep-loc').value = loc.name;
   document.getElementById('place-search-bar').value = loc.name;
+  currentMapLocationId = loc.id;
+  renderMap();
   hideResults('place-results');
   hideResults('place-results-bar');
   showApp();
@@ -595,6 +800,27 @@ function bindSearch(inputId, listId, hideWhenEmpty) {
     document.querySelectorAll('.type-chip').forEach((c) => c.classList.remove('selected'));
     chip.classList.add('selected');
   });
+
+  document.getElementById('mapPage').addEventListener('click', (e) => {
+    const layerButton = e.target.closest('[data-layer]');
+    if (layerButton) {
+      currentMapLayer = layerButton.dataset.layer;
+      renderMap();
+      return;
+    }
+
+    const marker = e.target.closest('[data-map-location]');
+    if (marker) {
+      selectMapLocation(marker.dataset.mapLocation);
+      return;
+    }
+
+    if (e.target.closest('[data-map-dashboard]')) {
+      navigate('overview');
+    }
+  });
+
+  renderMap();
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-box')) {

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SafeGo | Area travel risk information</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="./safego.css">
 </head>
 <body>
@@ -128,6 +129,47 @@
       <div id="fullAnnouncements"></div>
     </section>
 
+    <section class="page hidden" data-page="map" id="mapPage">
+      <div class="page-head">
+        <div class="page-eyebrow">Risk map</div>
+        <div class="page-title">Metro Manila travel-risk map</div>
+        <div class="page-sub">Compare the current mock risk signals across approximate locations.</div>
+      </div>
+
+      <div class="map-layer-wrap" aria-label="Map data layer">
+        <div class="map-control-label">Display layer</div>
+        <div class="map-layers" id="mapLayers"></div>
+      </div>
+
+      <div class="map-layout">
+        <div class="map-card card">
+          <div class="map-canvas" role="group" aria-label="Interactive map of SafeGo locations">
+            <div class="live-map" id="actualMap"></div>
+            <div class="map-approx-badge">Live OpenStreetMap · approximate SafeGo markers</div>
+          </div>
+
+          <div class="map-legend" aria-label="Risk color legend">
+            <div class="map-legend-title">Score and risk level</div>
+            <div class="map-gradient"></div>
+            <div class="map-legend-labels">
+              <span><strong>0</strong> Low</span>
+              <span><strong>30</strong> Moderate</span>
+              <span><strong>60</strong> High</span>
+              <span><strong>80–100</strong> Critical</span>
+            </div>
+            <div class="map-evidence-legend">
+              <span class="evidence-key verified"><span></span>Verified hazard</span>
+              <span class="evidence-key unverified"><span></span>Pending/unverified report</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="map-detail card card-pad" id="mapDetail" aria-live="polite"></aside>
+      </div>
+
+      <p class="map-disclaimer">Locations are approximate and the data is a static informational mock. SafeGo does not replace official government, school, weather, or emergency announcements.</p>
+    </section>
+
     <section class="page hidden" data-page="conditions">
       <div class="page-head">
         <div class="page-eyebrow">Conditions</div>
@@ -142,7 +184,7 @@
             <span class="pill mod" id="conditionsPill"><span class="dot"></span></span>
           </div>
           <div class="route-track" id="conditionTrack"></div>
-          <div class="mock-note">Map view is not part of this phase. This list is a static mock of points in the selected area.</div>
+          <div class="mock-note">These watched points are part of the selected area’s static mock data. Use the Map view to compare locations.</div>
         </div>
         <div>
           <div class="card card-pad mb-4">
@@ -202,6 +244,7 @@
   <ul class="nav-list" id="navListMobile"></ul>
 </nav>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script type="module" src="./safego.js"></script>
 </body>
 </html>
