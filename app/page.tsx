@@ -20,7 +20,7 @@ export default async function Home() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: markup }} />
-      <Script src="/prototype-script" strategy="afterInteractive" />
+      <Script src="/safego.js" strategy="afterInteractive" />
     </>
   );
 }
