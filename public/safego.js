@@ -25,6 +25,61 @@ const srcClass = {gov:'src-gov', school:'src-school', weather:'src-weather', com
 const stripClass = {gov:'strip-gov', school:'strip-school', weather:'strip-weather', community:'strip-community'};
 const RISK_COLOR = { low:'#166534', mod:'#a16207', high:'#c2410c', crit:'#b91c1c' };
 
+// Travel-safety model. Direct physical hazards carry the most weight, while
+// school status is contextual and cannot cancel dangerous road conditions.
+const RISK_MODEL = {
+  'Weather': 0.25,
+  'Flood / roads': 0.40,
+  'Official advisories': 0.20,
+  'School status': 0.05,
+  'Community reports': 0.10,
+};
+
+const RISK_BANDS = [
+  {max: 29, key:'low', name:'LOW RISK', rank:'Level 1 of 4'},
+  {max: 59, key:'mod', name:'MODERATE RISK', rank:'Level 2 of 4'},
+  {max: 79, key:'high', name:'HIGH RISK', rank:'Level 3 of 4'},
+  {max: 100, key:'crit', name:'CRITICAL RISK', rank:'Level 4 of 4'},
+];
+
+function analyzeRisk(factors) {
+  const contributions = factors.map((factor) => {
+    const weight = RISK_MODEL[factor.name] || 0;
+    return {
+      name: factor.name,
+      score: factor.score,
+      weight,
+      points: factor.score * weight,
+    };
+  });
+
+  const rawScore = Math.round(contributions.reduce((sum, item) => sum + item.points, 0));
+  let score = rawScore;
+  let safetyRule = '';
+  const floodScore = factors.find((factor) => factor.name === 'Flood / roads')?.score || 0;
+  const weatherScore = factors.find((factor) => factor.name === 'Weather')?.score || 0;
+  const advisoryScore = factors.find((factor) => factor.name === 'Official advisories')?.score || 0;
+
+  // Conservative safety floors prevent severe observed hazards from being
+  // diluted by low scores in less important categories.
+  if (floodScore >= 85 && score < 80) {
+    score = 80;
+    safetyRule = 'Critical floor applied because the flood / road score is 85 or higher.';
+  } else if (floodScore >= 70 && score < 60) {
+    score = 60;
+    safetyRule = 'High-risk floor applied because the flood / road score is 70 or higher.';
+  }
+  if (weatherScore >= 85 && advisoryScore >= 70 && score < 60) {
+    score = 60;
+    safetyRule = 'High-risk floor applied because severe weather is supported by an elevated official advisory.';
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  const band = RISK_BANDS.find((item) => score <= item.max) || RISK_BANDS[3];
+
+  return {...band, pct: score, rawScore, safetyRule, contributions};
+}
+
 const LOCATIONS = [
   {
     id: 'espana',
@@ -47,11 +102,11 @@ const LOCATIONS = [
       {label:'Latest advisory', value:'PAGASA rainfall advisory', sub:'Issued 6:15 AM · Metro Manila', icon:'alert', tone:'icon-alert'},
     ],
     factors: [
-      {name:'Weather', pill:'mod', pillText:'Moderate', desc:'Heavy rain since 4:30 AM, 25°C, gusts up to 45 km/h. PAGASA rainfall advisory in effect.', meter:'meter-58', icon:'weather', tone:'icon-weather'},
-      {name:'Flood / roads', pill:'mod', pillText:'Moderate', desc:'Ankle-deep flooding at 2 points along España Blvd. Vehicles passable at reduced speed.', meter:'meter-52', icon:'flood', tone:'icon-mod'},
-      {name:'Official advisories', pill:'high', pillText:'Elevated', desc:'1 PAGASA rainfall advisory and 1 city flood bulletin for España / Sampaloc, issued in the last 2 hours.', meter:'meter-70', icon:'alert', tone:'icon-alert'},
-      {name:'School status', pill:'low', pillText:'Normal', desc:'Mapúa University has not announced a class suspension as of the latest update.', meter:'meter-20', icon:'school', tone:'icon-ok'},
-      {name:'Community reports', pill:'mod', pillText:'3 recent', desc:'3 flood reports and 1 stalled vehicle in the past hour, pending verification.', meter:'meter-40', icon:'reports', tone:'icon-neutral'},
+      {name:'Weather', score:58, pill:'mod', pillText:'Moderate', desc:'Heavy rain since 4:30 AM, 25°C, gusts up to 45 km/h. PAGASA rainfall advisory in effect.', meter:'meter-58', icon:'weather', tone:'icon-weather'},
+      {name:'Flood / roads', score:52, pill:'mod', pillText:'Moderate', desc:'Ankle-deep flooding at 2 points along España Blvd. Vehicles passable at reduced speed.', meter:'meter-52', icon:'flood', tone:'icon-mod'},
+      {name:'Official advisories', score:70, pill:'high', pillText:'Elevated', desc:'1 PAGASA rainfall advisory and 1 city flood bulletin for España / Sampaloc, issued in the last 2 hours.', meter:'meter-70', icon:'alert', tone:'icon-alert'},
+      {name:'School status', score:20, pill:'low', pillText:'Normal', desc:'Mapúa University has not announced a class suspension as of the latest update.', meter:'meter-20', icon:'school', tone:'icon-ok'},
+      {name:'Community reports', score:40, pill:'mod', pillText:'3 recent', desc:'3 flood reports and 1 stalled vehicle in the past hour, pending verification.', meter:'meter-40', icon:'reports', tone:'icon-neutral'},
     ],
     advisories: [
       {src:'gov', label:'Government', title:'PAGASA rainfall advisory: Metro Manila', desc:'Moderate to heavy rainfall expected over Metro Manila within the next 3 hours.', time:'6:15 AM'},
@@ -101,11 +156,11 @@ const LOCATIONS = [
       {label:'Latest advisory', value:'Classes proceed', sub:'Mapúa admin · 6:00 AM', icon:'alert', tone:'icon-ok'},
     ],
     factors: [
-      {name:'Weather', pill:'low', pillText:'Low', desc:'Rain continuing but lighter over Makati than over España / Sampaloc.', meter:'meter-20', icon:'weather', tone:'icon-weather'},
-      {name:'Flood / roads', pill:'low', pillText:'Low', desc:'Campus grounds dry. No access issues reported at the gates.', meter:'meter-20', icon:'flood', tone:'icon-ok'},
-      {name:'Official advisories', pill:'low', pillText:'Normal', desc:'School notice: face-to-face classes proceed. City flood bulletins apply to affected roads, not campus grounds.', meter:'meter-20', icon:'alert', tone:'icon-ok'},
-      {name:'School status', pill:'low', pillText:'Normal', desc:'No schedule change from Mapúa University administration.', meter:'meter-20', icon:'school', tone:'icon-ok'},
-      {name:'Community reports', pill:'low', pillText:'Quiet', desc:'No new campus hazard reports in the last hour.', meter:'meter-20', icon:'reports', tone:'icon-neutral'},
+      {name:'Weather', score:20, pill:'low', pillText:'Low', desc:'Rain continuing but lighter over Makati than over España / Sampaloc.', meter:'meter-20', icon:'weather', tone:'icon-weather'},
+      {name:'Flood / roads', score:20, pill:'low', pillText:'Low', desc:'Campus grounds dry. No access issues reported at the gates.', meter:'meter-20', icon:'flood', tone:'icon-ok'},
+      {name:'Official advisories', score:20, pill:'low', pillText:'Normal', desc:'School notice: face-to-face classes proceed. City flood bulletins apply to affected roads, not campus grounds.', meter:'meter-20', icon:'alert', tone:'icon-ok'},
+      {name:'School status', score:20, pill:'low', pillText:'Normal', desc:'No schedule change from Mapúa University administration.', meter:'meter-20', icon:'school', tone:'icon-ok'},
+      {name:'Community reports', score:20, pill:'low', pillText:'Quiet', desc:'No new campus hazard reports in the last hour.', meter:'meter-20', icon:'reports', tone:'icon-neutral'},
     ],
     advisories: [
       {src:'school', label:'School', title:'Mapúa University: classes proceed as scheduled', desc:'Campus is open. Students coming from España should still check road conditions.', time:'6:00 AM'},
@@ -147,11 +202,11 @@ const LOCATIONS = [
       {label:'Latest advisory', value:'Flood bulletin', sub:'City government · 5:50 AM', icon:'alert', tone:'icon-alert'},
     ],
     factors: [
-      {name:'Weather', pill:'high', pillText:'Elevated', desc:'Heavy rain and spray reducing visibility inside the underpass.', meter:'meter-70', icon:'weather', tone:'icon-weather'},
-      {name:'Flood / roads', pill:'high', pillText:'High', desc:'Shin-level water. Stalled vehicles reported. Foot traffic not advised.', meter:'meter-70', icon:'flood', tone:'icon-alert'},
-      {name:'Official advisories', pill:'high', pillText:'Elevated', desc:'City flood bulletin covers this underpass. MMDA monitoring.', meter:'meter-70', icon:'alert', tone:'icon-alert'},
-      {name:'School status', pill:'low', pillText:'Normal', desc:'Nearby campuses have not suspended classes. This rating is for the roadway, not class status.', meter:'meter-20', icon:'school', tone:'icon-ok'},
-      {name:'Community reports', pill:'high', pillText:'Several', desc:'Multiple stalled-vehicle and flooding reports in the last hour.', meter:'meter-70', icon:'reports', tone:'icon-alert'},
+      {name:'Weather', score:70, pill:'high', pillText:'Elevated', desc:'Heavy rain and spray reducing visibility inside the underpass.', meter:'meter-70', icon:'weather', tone:'icon-weather'},
+      {name:'Flood / roads', score:70, pill:'high', pillText:'High', desc:'Shin-level water. Stalled vehicles reported. Foot traffic not advised.', meter:'meter-70', icon:'flood', tone:'icon-alert'},
+      {name:'Official advisories', score:70, pill:'high', pillText:'Elevated', desc:'City flood bulletin covers this underpass. MMDA monitoring.', meter:'meter-70', icon:'alert', tone:'icon-alert'},
+      {name:'School status', score:20, pill:'low', pillText:'Normal', desc:'Nearby campuses have not suspended classes. This rating is for the roadway, not class status.', meter:'meter-20', icon:'school', tone:'icon-ok'},
+      {name:'Community reports', score:70, pill:'high', pillText:'Several', desc:'Multiple stalled-vehicle and flooding reports in the last hour.', meter:'meter-70', icon:'reports', tone:'icon-alert'},
     ],
     advisories: [
       {src:'gov', label:'Government', title:'Flood bulletin: Quiapo underpass', desc:'Shin-level flooding. Motorists advised to use alternate routes.', time:'5:50 AM'},
@@ -197,11 +252,11 @@ const LOCATIONS = [
       {label:'Latest advisory', value:'PAGASA rainfall advisory', sub:'Metro Manila · 6:15 AM', icon:'alert', tone:'icon-alert'},
     ],
     factors: [
-      {name:'Weather', pill:'mod', pillText:'Moderate', desc:'Heavy rain continuing over Sampaloc.', meter:'meter-52', icon:'weather', tone:'icon-weather'},
-      {name:'Flood / roads', pill:'mod', pillText:'Moderate', desc:'Standing water plus a verified open manhole.', meter:'meter-52', icon:'flood', tone:'icon-mod'},
-      {name:'Official advisories', pill:'mod', pillText:'Moderate', desc:'Covered by the metro rainfall advisory. No street-specific bulletin.', meter:'meter-40', icon:'alert', tone:'icon-mod'},
-      {name:'School status', pill:'low', pillText:'Normal', desc:'No campus closure affecting this street.', meter:'meter-20', icon:'school', tone:'icon-ok'},
-      {name:'Community reports', pill:'mod', pillText:'Active', desc:'Open manhole verified. Additional flood notes nearby.', meter:'meter-40', icon:'reports', tone:'icon-neutral'},
+      {name:'Weather', score:52, pill:'mod', pillText:'Moderate', desc:'Heavy rain continuing over Sampaloc.', meter:'meter-52', icon:'weather', tone:'icon-weather'},
+      {name:'Flood / roads', score:52, pill:'mod', pillText:'Moderate', desc:'Standing water plus a verified open manhole.', meter:'meter-52', icon:'flood', tone:'icon-mod'},
+      {name:'Official advisories', score:40, pill:'mod', pillText:'Moderate', desc:'Covered by the metro rainfall advisory. No street-specific bulletin.', meter:'meter-40', icon:'alert', tone:'icon-mod'},
+      {name:'School status', score:20, pill:'low', pillText:'Normal', desc:'No campus closure affecting this street.', meter:'meter-20', icon:'school', tone:'icon-ok'},
+      {name:'Community reports', score:40, pill:'mod', pillText:'Active', desc:'Open manhole verified. Additional flood notes nearby.', meter:'meter-40', icon:'reports', tone:'icon-neutral'},
     ],
     advisories: [
       {src:'community', label:'Community', title:'Open manhole on Lerma St.', desc:'Verified report. Marked and being monitored.', time:'5:55 AM'},
@@ -248,7 +303,9 @@ LOCATIONS.push(
   },
 );
 
-let currentLocation = null;
+LOCATIONS.forEach((location) => {
+  location.risk = {...location.risk, ...analyzeRisk(location.factors)};
+});
 
 function searchLocations(query) {
   const q = query.trim().toLowerCase();
@@ -352,7 +409,6 @@ function setPill(el, key, text) {
 function selectLocation(id) {
   const loc = LOCATIONS.find((l) => l.id === id);
   if (!loc) return;
-  currentLocation = loc;
   const color = RISK_COLOR[loc.risk.key];
 
   document.getElementById('overviewTitle').textContent = loc.name;
@@ -387,11 +443,30 @@ function selectLocation(id) {
     <div class="card factor-card ${i === loc.factors.length - 1 ? 'mb-0' : ''}">
       <div class="factor-icon ${f.tone}">${ICONS[f.icon]}</div>
       <div class="factor-body">
-        <div class="factor-top"><div class="factor-name">${f.name}</div><span class="pill ${f.pill}"><span class="dot"></span>${f.pillText}</span></div>
+        <div class="factor-top"><div class="factor-name">${f.name}</div><span class="pill ${f.pill}"><span class="dot"></span>${f.pillText} · ${f.score}/100</span></div>
         <p class="factor-desc">${f.desc}</p>
         <div class="meter"><div class="meter-fill ${f.meter}"></div></div>
       </div>
     </div>`).join('');
+
+  document.getElementById('riskCalculation').innerHTML = `
+    <div class="calculation-intro">The overall score is a weighted sum of five travel-safety signals.</div>
+    <div class="calculation-list">
+      ${loc.risk.contributions.map((item) => `
+        <div class="calculation-row">
+          <span>${item.name}</span>
+          <span class="mono">${item.score} × ${Math.round(item.weight * 100)}% = ${item.points.toFixed(1)}</span>
+        </div>`).join('')}
+    </div>
+    <div class="calculation-total">
+      <span>Calculated risk</span>
+      <strong class="mono">${loc.risk.rawScore}/100</strong>
+    </div>
+    ${loc.risk.safetyRule ? `<div class="calculation-rule">${loc.risk.safetyRule}</div>` : ''}
+    <div class="calculation-final">
+      <span>Final travel risk</span>
+      <strong class="mono">${loc.risk.pct}/100 · ${loc.risk.name}</strong>
+    </div>`;
 
   renderAdvisories('dashAdvisories', loc.advisories.slice(0, 3));
   renderAdvisories('fullAnnouncements', loc.advisories);

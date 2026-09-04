@@ -51,6 +51,22 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
 Locations and their advisories, reports, and factor scores live in `safego.js`.
 
+## Risk model
+
+The travel-risk score is calculated from five normalized inputs:
+
+- Flood and road conditions: 40%
+- Weather severity: 25%
+- Official advisories: 20%
+- Community reports: 10%
+- School status: 5%
+
+Scores of 0–29 are Low, 30–59 Moderate, 60–79 High, and 80–100 Critical.
+As a safety guardrail, a flood/road score of 70 or higher cannot produce an
+overall rating below High, and a score of 85 or higher cannot produce a rating
+below Critical. Severe weather (85+) supported by an elevated official advisory
+(70+) also cannot produce a rating below High.
+
 ## Out of scope for this phase
 
 - Backend, database, or APIs (PAGASA, school, maps)

@@ -666,6 +666,40 @@
     @apply mt-2 max-w-[280px] text-center text-xs leading-normal text-ink-soft;
   }
 
+  .calculation-intro {
+    @apply mb-3 text-[12.5px] leading-normal text-ink-soft;
+  }
+
+  .calculation-list {
+    @apply border-y border-hairline;
+  }
+
+  .calculation-row,
+  .calculation-total,
+  .calculation-final {
+    @apply flex items-center justify-between gap-4 py-2.5 text-[12.5px];
+  }
+
+  .calculation-row {
+    @apply border-b border-hairline last:border-b-0;
+  }
+
+  .calculation-row .mono {
+    @apply shrink-0 text-[11.5px] text-ink-soft;
+  }
+
+  .calculation-total {
+    @apply font-semibold;
+  }
+
+  .calculation-rule {
+    @apply mb-2 rounded-box border border-high bg-high-soft px-3 py-2 text-[11.5px] leading-normal text-high;
+  }
+
+  .calculation-final {
+    @apply border-t-2 border-ink font-bold;
+  }
+
   .route-track {
     @apply relative my-4 py-1.5 pl-[26px];
   }
