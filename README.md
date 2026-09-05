@@ -48,9 +48,15 @@ Suggested chips and the search list use the mock location set. Typing filters by
 
 Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
-## Mock data
+## Application structure
 
-Locations and their advisories, reports, and factor scores live in `safego.js`.
+The Next.js app is independent from the original static prototype:
+
+- `components/safego/` contains the React interface and interactive map.
+- `lib/safego/locations.ts` is the current mock-data source.
+- `lib/safego/risk-model.ts` contains the versioned risk calculation.
+- `lib/safego/types.ts` defines the shared domain contracts for future APIs.
+- `prototype/` remains available as the original design reference only.
 
 ## Risk model
 
