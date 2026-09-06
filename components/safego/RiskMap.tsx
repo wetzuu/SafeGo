@@ -144,7 +144,7 @@ export function RiskMap({
       <div className="page-head">
         <div className="page-eyebrow">Risk map</div>
         <h1 className="page-title" id="map-page-title">Metro Manila travel-risk map</h1>
-        <p className="page-sub">Compare the current mock risk signals across approximate locations.</p>
+        <p className="page-sub">Compare the latest available risk signals across approximate locations.</p>
       </div>
 
       <div className="map-layer-wrap" aria-label="Map data layer">
@@ -187,7 +187,7 @@ export function RiskMap({
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside>
       </div>
-      <p className="map-disclaimer">Locations are approximate and the data is a static informational mock. SafeGo does not replace official government, school, weather, or emergency announcements.</p>
+      <p className="map-disclaimer">Locations are approximate. Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official government, school, weather, or emergency announcements.</p>
     </section>
   );
 }

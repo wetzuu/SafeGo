@@ -139,6 +139,54 @@
     @apply mt-8 text-[11.5px] leading-relaxed text-neutral-500;
   }
 
+  .data-status {
+    @apply mb-4 flex items-center gap-2.5 rounded-box border border-hairline bg-white px-3 py-2.5 text-left;
+  }
+
+  .data-status.live {
+    @apply border-low bg-low-soft;
+  }
+
+  .data-status.degraded {
+    @apply border-mod bg-mod-soft;
+  }
+
+  .data-status-dot {
+    @apply size-2.5 shrink-0 rounded-full bg-neutral-400;
+  }
+
+  .data-status.live .data-status-dot {
+    @apply bg-low;
+  }
+
+  .data-status.degraded .data-status-dot {
+    @apply bg-mod;
+  }
+
+  .data-status-copy {
+    @apply flex min-w-0 flex-1 flex-col;
+  }
+
+  .data-status-copy strong {
+    @apply text-[11.5px];
+  }
+
+  .data-status-copy span {
+    @apply text-[10.5px] leading-normal text-ink-soft;
+  }
+
+  .data-status button {
+    @apply cursor-pointer rounded-box border border-hairline bg-white px-2.5 py-1.5 text-[10.5px] font-semibold text-brand disabled:cursor-wait disabled:text-neutral-400;
+  }
+
+  .dashboard-data-status {
+    @apply mx-auto w-full max-w-[1120px] px-3.5 pt-3 lg:px-7 lg:pt-5;
+  }
+
+  .dashboard-data-status .data-status {
+    @apply mb-0;
+  }
+
   .brandmark {
     @apply mb-[22px] flex items-center gap-2.5;
   }
@@ -254,7 +302,7 @@
   }
 
   .location-bar {
-    @apply mx-auto w-full max-w-[1120px] px-3.5 pt-3 lg:px-7 lg:pt-5;
+    @apply mx-auto w-full max-w-[1120px] px-3.5 pt-3 lg:px-7;
   }
 
   .topbar .brandmark .word {

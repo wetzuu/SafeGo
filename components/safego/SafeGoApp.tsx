@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { LOCATIONS, searchLocations } from "@/lib/safego/locations";
+import { useCallback, useEffect, useState } from "react";
+import type {
+  DashboardSnapshot,
+  DataBackend,
+  SourceStatus,
+} from "@/lib/data/contracts";
 import { riskGradient } from "@/lib/safego/risk-model";
 import type {
   Advisory,
@@ -35,6 +39,23 @@ const REPORT_TYPES = [
   "Other",
 ];
 
+interface DashboardEnvelope {
+  data: DashboardSnapshot;
+  meta: { backend: DataBackend; generatedAt: string };
+}
+
+function searchLocations(locations: SafeGoLocation[], query: string) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return locations;
+
+  return locations.filter((location) =>
+    [location.name, location.city, ...location.aliases]
+      .join(" ")
+      .toLocaleLowerCase()
+      .includes(normalizedQuery),
+  );
+}
+
 function Pill({ location, text }: { location: SafeGoLocation; text: string }) {
   return <span className={`pill ${location.risk.key}`}><span className="dot" />{text}</span>;
 }
@@ -53,10 +74,10 @@ function Navigation({ activeScreen, onNavigate }: { activeScreen: ScreenKey; onN
   );
 }
 
-function LocationSearch({ value, onSelect, compact = false }: { value: string; onSelect: (location: SafeGoLocation) => void; compact?: boolean }) {
+function LocationSearch({ locations, value, onSelect, compact = false }: { locations: SafeGoLocation[]; value: string; onSelect: (location: SafeGoLocation) => void; compact?: boolean }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
-  const results = searchLocations(query);
+  const results = searchLocations(locations, query);
 
   function choose(location: SafeGoLocation) {
     setQuery(location.name);
@@ -72,20 +93,36 @@ function LocationSearch({ value, onSelect, compact = false }: { value: string; o
         <ul className="place-results">
           {results.length ? results.map((location) => (
             <li key={location.id}><button type="button" className="place-option" onMouseDown={(event) => event.preventDefault()} onClick={() => choose(location)}><span className="place-option-name">{location.name}</span><span className="place-option-meta">{location.city}</span></button></li>
-          )) : <li className="place-empty">No matching area in this mock dataset.</li>}
+          )) : <li className="place-empty">No matching area in the current dataset.</li>}
         </ul>
       )}
     </div>
   );
 }
 
+function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; onRefresh: () => void }) {
+  const weather = sources.find((source) => source.key === "open-meteo");
+  const live = weather?.status === "active";
+  const degraded = weather?.status === "degraded";
+  const detail = live
+    ? `Live modeled weather · ${backend === "mock" ? "other signals are mock" : "other signals from database"}`
+    : degraded
+      ? "Weather feed unavailable · stored signals shown"
+      : "Stored SafeGo signals · live weather disabled";
+  const updated = weatherUpdatedAt
+    ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
+    : null;
+
+  return <div className={`data-status${live ? " live" : degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{live ? "Live weather connected" : degraded ? "Using stored weather" : "Offline data mode"}</strong><span>{detail}{updated ? ` · refreshed ${updated}` : ""}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
+}
+
 function Advisories({ items }: { items: Advisory[] }) {
-  if (!items.length) return <p className="empty-note">No advisories for this area in the mock set.</p>;
+  if (!items.length) return <p className="empty-note">No advisories for this area in the current dataset.</p>;
   return <>{items.map((item) => <article className="adv-item" key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-top"><span className={`src-tag src-${item.source}`}>{item.label}</span><span className="adv-title inline">{item.title}</span></div><div className="adv-desc">{item.description}</div></div><time className="adv-time mono">{item.time}</time></article>)}</>;
 }
 
 function Reports({ items }: { items: CommunityReport[] }) {
-  if (!items.length) return <p className="empty-note">No community reports in the mock set.</p>;
+  if (!items.length) return <p className="empty-note">No community reports in the current dataset.</p>;
   return <>{items.map((item) => <article className="report-row" key={`${item.type}-${item.title}`}><div className="rtype"><Icon name={item.type === "Flooding" ? "flood" : "alert"} /></div><div className="report-main"><div className="title">{item.title}</div><div className="meta">{item.meta}</div></div><span className={`status-chip status-${item.status}`}>{item.statusLabel}</span></article>)}</>;
 }
 
@@ -108,7 +145,7 @@ function RiskFactors({ location }: { location: SafeGoLocation }) {
     <div className="section-title">Contributing factors</div>
     <div>{location.factors.map((factor) => <article className="card factor-card" key={factor.name}><div className={`factor-icon ${factor.tone}`}><Icon name={factor.icon} /></div><div className="factor-body"><div className="factor-top"><div className="factor-name">{factor.name}</div><span className={`pill ${factor.pill}`}><span className="dot" />{factor.pillText} · {factor.score}/100</span></div><p className="factor-desc">{factor.description}</p><div className="meter"><div className="meter-fill" style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div></div></article>)}</div>
     <div className="section-title">How the score is calculated</div>
-    <div className="card card-pad mb-[22px]"><div className="calculation-intro">The overall score is a weighted sum of five travel-safety signals. Model version {location.risk.modelVersion}.</div><div className="calculation-list">{location.risk.contributions.map((item) => <div className="calculation-row" key={item.name}><span>{item.name}</span><span className="mono">{item.score} × {Math.round(item.weight * 100)}% = {item.points.toFixed(1)}</span></div>)}</div><div className="calculation-total"><span>Calculated risk</span><strong className="mono">{location.risk.rawScore}/100</strong></div>{location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}<div className="calculation-final"><span>Final travel risk</span><strong className="mono">{location.risk.percentage}/100 · {location.risk.name}</strong></div></div>
+    <div className="card card-pad mb-[22px]"><div className="calculation-intro">The overall score is a weighted sum of five travel-safety signals. When connected, live modeled weather replaces only the Weather input. Model version {location.risk.modelVersion}.</div><div className="calculation-list">{location.risk.contributions.map((item) => <div className="calculation-row" key={item.name}><span>{item.name}</span><span className="mono">{item.score} × {Math.round(item.weight * 100)}% = {item.points.toFixed(1)}</span></div>)}</div><div className="calculation-total"><span>Calculated risk</span><strong className="mono">{location.risk.rawScore}/100</strong></div>{location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}<div className="calculation-final"><span>Final travel risk</span><strong className="mono">{location.risk.percentage}/100 · {location.risk.name}</strong></div></div>
   </section>;
 }
 
@@ -118,12 +155,49 @@ function Conditions({ location }: { location: SafeGoLocation }) {
 
 function ReportPage({ location }: { location: SafeGoLocation }) {
   const [selectedType, setSelectedType] = useState(REPORT_TYPES[0]);
-  return <section className="page"><PageHeader eyebrow="Reports" title="Community reports" subtitle="Anyone can submit what they see. Submissions in this mock are not saved." /><div className="grid grid-2"><div className="card card-pad"><div className="form-grid"><div className="form-field"><label>Report type</label><div className="type-chip-row">{REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></div><div className="form-field"><label htmlFor="report-location">Location</label><input id="report-location" type="text" defaultValue={location.name} placeholder="Street or landmark" /></div><div className="form-field"><label htmlFor="report-description">Description</label><textarea id="report-description" placeholder="Depth of water, blockage, estimated severity, etc." /></div><button className="submit-btn" type="button" onClick={() => window.alert("This is a Phase 1 UI mock. Report submission is not connected to a backend.")}>Submit report</button><div className="mock-note">No account is required. This form is not connected to a backend.</div></div></div><div><div className="card-head tight"><h3>Recent reports</h3><span className="tag mono">Last 24h</span></div><Reports items={location.reports} /></div></div></section>;
+  return <section className="page"><PageHeader eyebrow="Reports" title="Community reports" subtitle="Anyone can submit what they see. Submissions are not saved yet." /><div className="grid grid-2"><div className="card card-pad"><div className="form-grid"><div className="form-field"><label>Report type</label><div className="type-chip-row">{REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></div><div className="form-field"><label htmlFor="report-location">Location</label><input id="report-location" type="text" defaultValue={location.name} placeholder="Street or landmark" /></div><div className="form-field"><label htmlFor="report-description">Description</label><textarea id="report-description" placeholder="Depth of water, blockage, estimated severity, etc." /></div><button className="submit-btn" type="button" onClick={() => window.alert("Report submission is not connected yet. Phase 3 currently integrates read-only live weather.")}>Submit report</button><div className="mock-note">No account is required. This form is not connected to a backend.</div></div></div><div><div className="card-head tight"><h3>Recent reports</h3><span className="tag mono">Last 24h</span></div><Reports items={location.reports} /></div></div></section>;
 }
 
-export function SafeGoApp() {
+export function SafeGoApp({ initialLocations, initialBackend, initialSources }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[] }) {
+  const [locations, setLocations] = useState(initialLocations);
+  const [dataBackend, setDataBackend] = useState(initialBackend);
+  const [sources, setSources] = useState(initialSources);
+  const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
+
+  const refreshDashboard = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
+      const envelope = (await response.json()) as DashboardEnvelope;
+      setLocations(envelope.data.locations);
+      setDataBackend(envelope.meta.backend);
+      setSources(envelope.data.sources);
+      setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
+      setSelectedLocation((current) => current
+        ? envelope.data.locations.find((location) => location.id === current.id) ?? current
+        : current);
+    } catch {
+      setSources((current) => [
+        ...current.filter((source) => source.key !== "open-meteo"),
+        { key: "open-meteo", name: "Open-Meteo forecast models", kind: "weather", status: "degraded", lastSuccessAt: null, lastFailureAt: new Date().toISOString(), errorMessage: "Dashboard refresh failed." },
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initialRefresh = window.setTimeout(() => void refreshDashboard(), 0);
+    const refreshTimer = window.setInterval(() => void refreshDashboard(), 5 * 60 * 1000);
+    return () => {
+      window.clearTimeout(initialRefresh);
+      window.clearInterval(refreshTimer);
+    };
+  }, [refreshDashboard]);
 
   const selectLocation = useCallback((location: SafeGoLocation) => {
     setSelectedLocation(location);
@@ -139,14 +213,14 @@ export function SafeGoApp() {
   }, []);
 
   if (!selectedLocation) {
-    return <main id="search-screen"><div className="search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check travel risk in an area</h1><p className="search-lead">Enter a place in Metro Manila to see weather, flood conditions, advisories, and community reports for that location.</p><LocationSearch value="" onSelect={selectLocation} /><div className="suggest-label">Suggested areas</div><div className="place-chips">{LOCATIONS.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is a public information mock. It does not declare class suspensions. Follow official school and government announcements.</p></div></main>;
+    return <main id="search-screen"><div className="search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check travel risk in an area</h1><p className="search-lead">Enter a place in Metro Manila to see weather, flood conditions, advisories, and community reports for that location.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><LocationSearch locations={locations} value="" onSelect={selectLocation} /><div className="suggest-label">Suggested areas</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is informational. Live weather is modeled data; other signals may be stored mocks. It does not declare class suspensions. Follow official school and government announcements.</p></div></main>;
   }
 
-  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={() => setSelectedLocation(null)}><Brand compact /></button><Navigation activeScreen={activeScreen} onNavigate={navigate} /><button type="button" className="change-loc" onClick={() => setSelectedLocation(null)}>Change location</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={() => setSelectedLocation(null)}><Brand compact /></button><Pill location={selectedLocation} text={selectedLocation.risk.name.replace(" RISK", "")} /></div><LocationSearch key={selectedLocation.id} value={selectedLocation.name} compact onSelect={selectLocation} />
+  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={() => setSelectedLocation(null)}><Brand compact /></button><Navigation activeScreen={activeScreen} onNavigate={navigate} /><button type="button" className="change-loc" onClick={() => setSelectedLocation(null)}>Change location</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={() => setSelectedLocation(null)}><Brand compact /></button><Pill location={selectedLocation} text={selectedLocation.risk.name.replace(" RISK", "")} /></div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /></div><LocationSearch locations={locations} key={selectedLocation.id} value={selectedLocation.name} compact onSelect={selectLocation} />
     {activeScreen === "overview" && <Overview location={selectedLocation} navigate={navigate} />}
     {activeScreen === "risk" && <RiskFactors location={selectedLocation} />}
     {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow="Alerts" title="Advisories for this area" subtitle="School, government, weather, and community notices, newest first." /><Advisories items={selectedLocation.advisories} /></section>}
-    {activeScreen === "map" && <RiskMap locations={LOCATIONS} selectedLocation={selectedLocation} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
+    {activeScreen === "map" && <RiskMap locations={locations} selectedLocation={selectedLocation} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && <Conditions location={selectedLocation} />}
     {activeScreen === "reports" && <ReportPage key={selectedLocation.id} location={selectedLocation} />}
   </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} onNavigate={navigate} /></nav></div>;

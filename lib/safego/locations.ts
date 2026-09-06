@@ -1,4 +1,4 @@
-import { analyzeRisk } from "./risk-model";
+import { analyzeRisk } from "./risk-model.ts";
 import type { LocationInput, SafeGoLocation } from "./types";
 
 function createLocation(input: LocationInput): SafeGoLocation {

@@ -7,6 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "build:prototype": "npx @tailwindcss/cli -i prototype/safego.src.css -o prototype/safego.css",
+    "db:migrate": "node scripts/db-migrate.ts",
+    "db:seed": "node scripts/db-seed.ts",
+    "db:setup": "npm run db:migrate && npm run db:seed",
     "start": "next start",
     "lint": "eslint",
     "test": "node --test tests/**/*.test.ts"
@@ -14,6 +17,7 @@
   "dependencies": {
     "leaflet": "^1.9.4",
     "next": "16.3.2",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
