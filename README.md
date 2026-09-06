@@ -1,8 +1,8 @@
 # SafeGo
 
-Public travel risk information for an area during severe weather. The current build covers Metro Manila with a real interactive map, a versioned risk model, a PostgreSQL/PostGIS-ready data layer, and live modeled weather from Open-Meteo.
+Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo generates a driving route, estimates the risk along it, and displays color-coded route sections on a real interactive map.
 
-Search or pick a place, then read the risk rating, contributing factors, advisories, flood points, and community reports for that area. There is no login. Reports submitted through the current UI are not stored. Nothing here is live data.
+The current build combines OSRM road geometry, OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. Flood, school, advisory, and community data are still mocks. There is no login, and reports submitted through the UI are not stored.
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
@@ -44,24 +44,22 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 
 ## Flow
 
-1. Enter or select a location on the landing search.
-2. Read the overview for that area (risk index, weather, school status, road condition).
-3. Open Risk factors, Alerts, Map, Conditions, or Reports for more detail.
-4. Change location from the header search, sidebar, or by going back to the landing page.
-
-Suggested chips and the search list use the mock location set. Typing filters by name, city, and aliases. Enter selects the first match.
+1. Enter a starting point and destination, or load the Buting-to-Mapúa example.
+2. SafeGo resolves both places, requests a drivable route, and checks route sections against nearby calculated SafeGo risk points.
+3. Review the route score, hotspots, colored map, corridor alerts, conditions, and reports.
+4. Select **Plan another trip** to start again.
 
 ## Screens
 
 | Screen       | Contents                                                          |
 | ------------ | ----------------------------------------------------------------- |
 | Search       | Location field, result list, suggested areas                      |
-| Overview     | Risk summary and latest advisories/reports for the selected place |
-| Risk factors | Factor scores used for the rating                                 |
-| Alerts       | School, government, weather, and community notices                |
-| Map          | Live OpenStreetMap with color-coded risk and factor overlays      |
-| Conditions   | Watched points, flood notes, reported hazards                     |
-| Reports      | Public report form and recent reports                             |
+| Overview     | Route score, distance, duration, hotspots, and major roads         |
+| Risk factors | SafeGo risk points and factors covering the route                  |
+| Alerts       | Notices aggregated from coverage points near the route             |
+| Map          | Real road route with green/yellow/orange/red risk sections         |
+| Conditions   | Hazards and community observations near the route                  |
+| Reports      | Public report form and corridor reports                            |
 
 Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
@@ -78,6 +76,8 @@ The Next.js app is independent from the original static prototype:
 - `scripts/db-migrate.ts` and `scripts/db-seed.ts` set up local or hosted databases.
 - `prototype/` remains available as the original design reference only.
 
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, future Java migration boundary, and pre-push checklist.
+
 ## Data APIs
 
 | Endpoint | Purpose |
@@ -86,6 +86,7 @@ The Next.js app is independent from the original static prototype:
 | `GET /api/locations/:id/risk` | Returns the assessment, factors, advisories, and reports for one location |
 | `GET /api/sources/status` | Shows whether feeds are mock, active, degraded, or disabled |
 | `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
+| `POST /api/trips/analyze` | Resolves A and B, generates a driving route, and calculates route risk |
 
 Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. They are intentionally not cached so a refresh requests current provider data. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
 
@@ -94,6 +95,18 @@ Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. 
 Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result. Weather observations expire after ten minutes; provider failure leaves the stored location data in place and marks the feed as degraded.
 
 This is modeled weather, not a PAGASA warning. It never creates or modifies an official advisory, flood report, school notice, or community verification status.
+
+## Route-risk model
+
+OSRM supplies road geometry, distance, and estimated driving time. SafeGo samples that geometry and assigns each section the already-calculated overall score of its nearest SafeGo location. The trip’s raw score is the distance-weighted average of those sections. If any section is High or Critical, the final trip score cannot fall below that same safety band.
+
+Route colors are therefore an approximate coverage model—not live traffic measurements or proof that a road is safe. The UI displays how far the weakest-covered route section is from its assigned risk point.
+
+## Public geocoding and routing services
+
+The development defaults use the public Nominatim and OSRM services. Nominatim is queried only after form submission, never for autocomplete; requests are serialized to at most one per second and successful results are cached for 24 hours. The app sends an identifying User-Agent and displays OpenStreetMap attribution.
+
+Before production traffic, set `SAFEGO_CONTACT_EMAIL`, review the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/), and replace `SAFEGO_GEOCODING_BASE_URL` and `SAFEGO_ROUTING_BASE_URL` with suitable hosted or self-hosted services.
 
 ## Risk model
 
@@ -114,7 +127,8 @@ below Critical. Severe weather (85+) supported by an elevated official advisory
 ## Still out of scope
 
 - Live PAGASA advisories and LGU, school, traffic, or flood-provider adapters
-- Live geocoding or GPS
-- Live routing or precise geographic boundaries
+- GPS/device-location access
+- Live traffic-aware travel times or road-level risk sensors
+- Precise hazard boundaries
 - Report verification workflow
 - Accounts

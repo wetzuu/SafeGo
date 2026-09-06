@@ -3,9 +3,9 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SafeGo | Area travel risk information",
+  title: "SafeGo | Point-to-point travel risk",
   description:
-    "Public travel risk information for areas affected by severe weather.",
+    "Plan a route and review weather, flood, advisory, and community risks along the trip.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

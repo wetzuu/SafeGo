@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
+import type { TripAnalysis } from "@/lib/trips/types";
 
 const MAP_LAYERS: MapLayer[] = [
   { key: "overall", label: "Overall risk" },
@@ -31,6 +32,7 @@ function evidenceClass(location: SafeGoLocation) {
 interface RiskMapProps {
   locations: SafeGoLocation[];
   selectedLocation: SafeGoLocation;
+  trip: TripAnalysis;
   onSelectLocation: (location: SafeGoLocation) => void;
   onViewDashboard: () => void;
 }
@@ -38,6 +40,7 @@ interface RiskMapProps {
 export function RiskMap({
   locations,
   selectedLocation,
+  trip,
   onSelectLocation,
   onViewDashboard,
 }: RiskMapProps) {
@@ -55,8 +58,8 @@ export function RiskMap({
   ).length;
   const unverifiedCount = selectedLocation.reports.length - verifiedCount;
   const bounds = useMemo(
-    () => locations.map((location) => location.coordinates),
-    [locations],
+    () => trip.routeCoordinates.length ? trip.routeCoordinates : locations.map((location) => location.coordinates),
+    [locations, trip.routeCoordinates],
   );
 
   useEffect(() => {
@@ -139,13 +142,56 @@ export function RiskMap({
     };
   }, [activeLayer, activeLayerLabel, locations, mapReady, onSelectLocation, selectedLocation.id]);
 
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+    let cancelled = false;
+    let routeLayer: LayerGroup | null = null;
+
+    async function renderRoute() {
+      const L = await import("leaflet");
+      if (cancelled || !mapRef.current) return;
+      routeLayer = L.layerGroup().addTo(mapRef.current);
+
+      trip.segments.forEach((segment) => {
+        L.polyline(segment.coordinates, {
+          color: riskGradient(segment.riskScore),
+          weight: 8,
+          opacity: 0.9,
+          lineCap: "round",
+        })
+          .bindTooltip(`${segment.riskScore}/100 · based on ${segment.basisLocationName}`)
+          .addTo(routeLayer!);
+      });
+      ([
+        { place: trip.origin, label: "A" },
+        { place: trip.destination, label: "B" },
+      ] as const).forEach(({ place, label }) => {
+        L.circleMarker(place.coordinates, {
+          radius: 10,
+          color: "#ffffff",
+          weight: 3,
+          fillColor: "#1a1a1a",
+          fillOpacity: 1,
+        }).bindTooltip(`${label}: ${place.label}`, { direction: "top" }).addTo(routeLayer!);
+      });
+    }
+
+    void renderRoute();
+    return () => {
+      cancelled = true;
+      if (routeLayer && mapRef.current) mapRef.current.removeLayer(routeLayer);
+    };
+  }, [mapReady, trip]);
+
   return (
     <section className="page" aria-labelledby="map-page-title">
       <div className="page-head">
-        <div className="page-eyebrow">Risk map</div>
-        <h1 className="page-title" id="map-page-title">Metro Manila travel-risk map</h1>
-        <p className="page-sub">Compare the latest available risk signals across approximate locations.</p>
+        <div className="page-eyebrow">Route risk map</div>
+        <h1 className="page-title" id="map-page-title">A → B, colored by travel risk</h1>
+        <p className="page-sub">{trip.origin.label} → {trip.destination.label}</p>
       </div>
+
+      <div className="route-map-meta card"><div><span>Route estimate</span><strong>{(trip.distanceMeters / 1000).toFixed(1)} km · {Math.round(trip.durationSeconds / 60)} min</strong></div><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><p>{trip.coverageNote}</p></div>
 
       <div className="map-layer-wrap" aria-label="Map data layer">
         <div className="map-control-label">Display layer</div>
@@ -187,7 +233,7 @@ export function RiskMap({
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside>
       </div>
-      <p className="map-disclaimer">Locations are approximate. Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official government, school, weather, or emergency announcements.</p>
+      <p className="map-disclaimer">The road geometry comes from OSRM/OpenStreetMap. Segment colors are approximate SafeGo coverage—not live traffic or road-level sensors. Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

@@ -12,7 +12,9 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/**/*.test.ts"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/**/*.test.ts",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -33,5 +35,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@11.23.0"
+  "packageManager": "npm@11.12.1"
 }

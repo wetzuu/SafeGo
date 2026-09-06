@@ -56,6 +56,10 @@
     @apply w-full max-w-[520px];
   }
 
+  .trip-search-panel {
+    @apply max-w-[620px];
+  }
+
   .search-brand {
     @apply mb-6;
   }
@@ -185,6 +189,171 @@
 
   .dashboard-data-status .data-status {
     @apply mb-0;
+  }
+
+  .trip-planner {
+    @apply rounded-box border border-hairline bg-white p-4 shadow-sm;
+  }
+
+  .trip-input-row {
+    @apply flex items-center gap-3;
+  }
+
+  .trip-point {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold text-white;
+  }
+
+  .trip-point-a {
+    @apply bg-brand;
+  }
+
+  .trip-point-b {
+    @apply bg-ink;
+  }
+
+  .trip-field {
+    @apply min-w-0 flex-1;
+  }
+
+  .trip-field label {
+    @apply mb-1 block text-[10.5px] font-bold uppercase tracking-wide text-ink-soft;
+  }
+
+  .trip-field input {
+    @apply w-full rounded-box border border-hairline bg-white px-3 py-2.5 text-sm outline-none focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
+  }
+
+  .trip-connector {
+    @apply ml-[15px] h-5 w-0.5 bg-hairline;
+  }
+
+  .trip-actions {
+    @apply mt-4 flex flex-col gap-2 sm:flex-row;
+  }
+
+  .trip-actions .submit-btn {
+    @apply flex-1 disabled:cursor-wait disabled:bg-neutral-400;
+  }
+
+  .example-trip {
+    @apply cursor-pointer rounded-box border border-hairline bg-white px-4 py-2.5 text-[12px] font-semibold text-brand;
+  }
+
+  .trip-error {
+    @apply mt-3 rounded-box border border-crit bg-crit-soft px-3 py-2 text-[12px] text-crit;
+  }
+
+  .trip-attribution {
+    @apply mt-3 text-[9.5px] leading-normal text-neutral-500;
+  }
+
+  .trip-bar {
+    @apply mx-auto mt-3 flex w-[calc(100%-28px)] max-w-[1064px] flex-wrap items-center gap-2 rounded-box border border-hairline bg-white px-3 py-2 text-[11.5px] lg:mt-4;
+  }
+
+  .trip-bar > span:not(.trip-bar-arrow) {
+    @apply min-w-0 truncate;
+  }
+
+  .trip-bar span strong {
+    @apply mr-1 inline-flex size-5 items-center justify-center rounded-full bg-ink font-mono text-[9px] text-white;
+  }
+
+  .trip-bar-arrow {
+    @apply text-ink-soft;
+  }
+
+  .trip-bar button {
+    @apply ml-auto cursor-pointer border-0 bg-transparent text-[11px] font-semibold text-brand;
+  }
+
+  .trip-stat-grid {
+    @apply mb-[18px] grid grid-cols-2 gap-3 lg:grid-cols-4;
+  }
+
+  .trip-stat {
+    @apply flex flex-col px-4 py-3.5;
+  }
+
+  .trip-stat span {
+    @apply text-[10.5px] font-semibold uppercase tracking-wide text-ink-soft;
+  }
+
+  .trip-stat strong {
+    @apply mt-1 text-lg;
+  }
+
+  .route-hotspots {
+    @apply grid gap-2 lg:grid-cols-3;
+  }
+
+  .route-hotspot {
+    @apply flex overflow-hidden;
+  }
+
+  .route-hotspot-color {
+    @apply w-1.5 shrink-0;
+  }
+
+  .route-hotspot > div {
+    @apply p-3;
+  }
+
+  .route-hotspot strong {
+    @apply text-[12.5px];
+  }
+
+  .route-hotspot p,
+  .route-roads p {
+    @apply mt-1 text-[11px] leading-normal text-ink-soft;
+  }
+
+  .route-roads {
+    @apply mt-4 p-4 text-[12.5px];
+  }
+
+  .route-coverage-note {
+    @apply mt-4 rounded-box border border-hairline bg-surface px-3 py-2.5 text-[11px] leading-normal text-ink-soft;
+  }
+
+  .route-rule {
+    @apply mt-3;
+  }
+
+  .route-location-score {
+    @apply flex size-[42px] shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold text-white;
+  }
+
+  .route-factor-pills {
+    @apply mt-2 flex flex-wrap gap-1.5;
+  }
+
+  .route-weather-detail {
+    @apply mt-2 text-[11px] leading-normal text-weather;
+  }
+
+  .route-factor-pills span {
+    @apply rounded-sm bg-surface px-2 py-1 text-[10px] text-ink-soft;
+  }
+
+  .route-map-meta {
+    @apply mb-3 grid grid-cols-1 gap-3 p-3 sm:grid-cols-2;
+  }
+
+  .route-map-meta > div {
+    @apply flex flex-col;
+  }
+
+  .route-map-meta span {
+    @apply text-[10px] font-bold uppercase tracking-wide text-ink-soft;
+  }
+
+  .route-map-meta strong {
+    @apply mt-0.5 text-sm;
+  }
+
+  .route-map-meta p {
+    @apply text-[10.5px] leading-normal text-ink-soft sm:col-span-2;
   }
 
   .brandmark {
