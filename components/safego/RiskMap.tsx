@@ -32,7 +32,7 @@ function evidenceClass(location: SafeGoLocation) {
 interface RiskMapProps {
   locations: SafeGoLocation[];
   selectedLocation: SafeGoLocation;
-  trip: TripAnalysis;
+  trip?: TripAnalysis | null;
   onSelectLocation: (location: SafeGoLocation) => void;
   onViewDashboard: () => void;
 }
@@ -58,8 +58,8 @@ export function RiskMap({
   ).length;
   const unverifiedCount = selectedLocation.reports.length - verifiedCount;
   const bounds = useMemo(
-    () => trip.routeCoordinates.length ? trip.routeCoordinates : locations.map((location) => location.coordinates),
-    [locations, trip.routeCoordinates],
+    () => trip?.routeCoordinates.length ? trip.routeCoordinates : locations.map((location) => location.coordinates),
+    [locations, trip],
   );
 
   useEffect(() => {
@@ -148,6 +148,7 @@ export function RiskMap({
     let routeLayer: LayerGroup | null = null;
 
     async function renderRoute() {
+      if (!trip) return;
       const L = await import("leaflet");
       if (cancelled || !mapRef.current) return;
       routeLayer = L.layerGroup().addTo(mapRef.current);
@@ -186,12 +187,12 @@ export function RiskMap({
   return (
     <section className="page" aria-labelledby="map-page-title">
       <div className="page-head">
-        <div className="page-eyebrow">Route risk map</div>
-        <h1 className="page-title" id="map-page-title">A → B, colored by travel risk</h1>
-        <p className="page-sub">{trip.origin.label} → {trip.destination.label}</p>
+        <div className="page-eyebrow">{trip ? "Route risk map" : "Area risk map"}</div>
+        <h1 className="page-title" id="map-page-title">{trip ? "A → B, colored by travel risk" : "Compare SafeGo coverage areas"}</h1>
+        <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a marker to compare its available risk signals."}</p>
       </div>
 
-      <div className="route-map-meta card"><div><span>Route estimate</span><strong>{(trip.distanceMeters / 1000).toFixed(1)} km · {Math.round(trip.durationSeconds / 60)} min</strong></div><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><p>{trip.coverageNote}</p></div>
+      {trip && <div className="route-map-meta card"><div><span>Route estimate</span><strong>{(trip.distanceMeters / 1000).toFixed(1)} km · {Math.round(trip.durationSeconds / 60)} min</strong></div><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><p>{trip.coverageNote}</p></div>}
 
       <div className="map-layer-wrap" aria-label="Map data layer">
         <div className="map-control-label">Display layer</div>
@@ -233,7 +234,7 @@ export function RiskMap({
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside>
       </div>
-      <p className="map-disclaimer">The road geometry comes from OSRM/OpenStreetMap. Segment colors are approximate SafeGo coverage—not live traffic or road-level sensors. Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip ? "The road geometry comes from OSRM/OpenStreetMap. Segment colors are approximate SafeGo coverage—not live traffic or road-level sensors. " : "Markers represent approximate SafeGo coverage locations. "}Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

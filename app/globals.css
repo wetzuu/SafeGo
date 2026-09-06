@@ -227,6 +227,18 @@
     @apply ml-[15px] h-5 w-0.5 bg-hairline;
   }
 
+  .remove-trip-stop {
+    @apply flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-hairline bg-white text-xl leading-none text-ink-soft hover:border-crit hover:bg-crit-soft hover:text-crit focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
+  }
+
+  .add-trip-stop {
+    @apply ml-11 mt-3 flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[12px] font-semibold text-brand hover:text-brand-hover focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand;
+  }
+
+  .add-trip-stop span {
+    @apply flex size-6 items-center justify-center rounded-full border border-brand text-base leading-none;
+  }
+
   .trip-actions {
     @apply mt-4 flex flex-col gap-2 sm:flex-row;
   }
@@ -241,6 +253,10 @@
 
   .trip-error {
     @apply mt-3 rounded-box border border-crit bg-crit-soft px-3 py-2 text-[12px] text-crit;
+  }
+
+  .trip-mode-help {
+    @apply mt-3 text-[11px] leading-normal text-ink-soft;
   }
 
   .trip-attribution {

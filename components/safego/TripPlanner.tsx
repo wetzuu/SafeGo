@@ -9,27 +9,59 @@ interface TripEnvelope {
   error?: { message?: string };
 }
 
+function normalized(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function findLocation(locations: SafeGoLocation[], query: string) {
+  const value = normalized(query);
+  return locations.find((location) =>
+    [location.name, location.city, ...location.aliases]
+      .some((candidate) => normalized(candidate) === value),
+  );
+}
+
 export function TripPlanner({
   locations,
+  onLocation,
   onTrip,
 }: {
   locations: SafeGoLocation[];
+  onLocation: (location: SafeGoLocation) => void;
   onTrip: (trip: TripAnalysis) => void;
 }) {
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
+  const [stops, setStops] = useState([""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const hasDestination = stops.length === 2;
+
+  function updateStop(index: number, value: string) {
+    setStops((current) => current.map((stop, stopIndex) =>
+      stopIndex === index ? value : stop,
+    ));
+    setError("");
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+
+    if (!hasDestination) {
+      const location = findLocation(locations, stops[0]);
+      if (!location) {
+        setError("Choose one of the available SafeGo locations to view its risk dashboard.");
+        return;
+      }
+      onLocation(location);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch("/api/trips/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin, destination }),
+        body: JSON.stringify({ origin: stops[0], destination: stops[1] }),
       });
       const envelope = (await response.json()) as TripEnvelope;
       if (!response.ok || !envelope.data) {
@@ -43,9 +75,18 @@ export function TripPlanner({
     }
   }
 
+  function addDestination() {
+    setStops((current) => current.length === 1 ? [...current, ""] : current);
+    setError("");
+  }
+
+  function removeDestination() {
+    setStops((current) => [current[0]]);
+    setError("");
+  }
+
   function useExample() {
-    setOrigin("Buting, Pasig City");
-    setDestination("Mapua Makati Campus");
+    setStops(["Buting, Pasig City", "Mapua Makati Campus"]);
     setError("");
   }
 
@@ -54,26 +95,50 @@ export function TripPlanner({
       <datalist id="safego-locations">
         {locations.map((location) => <option key={location.id} value={location.name} />)}
       </datalist>
-      <div className="trip-input-row">
-        <span className="trip-point trip-point-a">A</span>
-        <div className="trip-field">
-          <label htmlFor="trip-origin">Starting point</label>
-          <input id="trip-origin" value={origin} onChange={(event) => setOrigin(event.target.value)} list="safego-locations" placeholder="e.g. Buting, Pasig City" autoComplete="off" required maxLength={160} />
+      {stops.map((stop, index) => (
+        <div className="trip-stop" key={index}>
+          {index > 0 && <div className="trip-connector" aria-hidden="true" />}
+          <div className="trip-input-row">
+            <span className={`trip-point trip-point-${index === 0 ? "a" : "b"}`}>{String.fromCharCode(65 + index)}</span>
+            <div className="trip-field">
+              <label htmlFor={`trip-stop-${index}`}>
+                {hasDestination ? (index === 0 ? "Starting point" : "Destination") : "Location"}
+              </label>
+              <input
+                id={`trip-stop-${index}`}
+                value={stop}
+                onChange={(event) => updateStop(index, event.target.value)}
+                list="safego-locations"
+                placeholder={index === 0 ? "Search a SafeGo location" : "Where are you going?"}
+                autoComplete="off"
+                required
+                maxLength={160}
+                autoFocus={index === 1}
+              />
+            </div>
+            {index > 0 && (
+              <button className="remove-trip-stop" type="button" onClick={removeDestination} aria-label="Remove destination">×</button>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="trip-connector" />
-      <div className="trip-input-row">
-        <span className="trip-point trip-point-b">B</span>
-        <div className="trip-field">
-          <label htmlFor="trip-destination">Destination</label>
-          <input id="trip-destination" value={destination} onChange={(event) => setDestination(event.target.value)} list="safego-locations" placeholder="e.g. Mapúa University, Makati" autoComplete="off" required maxLength={160} />
-        </div>
-      </div>
+      ))}
+      {!hasDestination && (
+        <button className="add-trip-stop" type="button" onClick={addDestination}>
+          <span aria-hidden="true">+</span> Add destination
+        </button>
+      )}
       <div className="trip-actions">
-        <button className="submit-btn" type="submit" disabled={loading}>{loading ? "Finding and analyzing route…" : "Analyze my trip"}</button>
+        <button className="submit-btn" type="submit" disabled={loading}>
+          {loading ? "Finding and analyzing route…" : hasDestination ? "Analyze my trip" : "Check this location"}
+        </button>
         <button className="example-trip" type="button" onClick={useExample}>Use example trip</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
+      <p className="trip-mode-help">
+        {hasDestination
+          ? "SafeGo will analyze the road route between A and B."
+          : "Check one covered area, or add a destination to analyze a route."}
+      </p>
       <p className="trip-attribution">Location lookup © OpenStreetMap contributors. Search runs only when you submit—not while typing.</p>
     </form>
   );
