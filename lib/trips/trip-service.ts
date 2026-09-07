@@ -51,8 +51,6 @@ export async function analyzeTrip(
     analysis: {
       origin,
       destination,
-      distanceMeters: route.distanceMeters,
-      durationSeconds: route.durationSeconds,
       routeCoordinates: route.routeCoordinates,
       roadNames: route.roadNames,
       segments: routeRisk.segments,
@@ -74,7 +72,7 @@ export async function analyzeTrip(
         coveredLocations.flatMap((location) => location.hazards),
         (hazard) => `${hazard.title}-${hazard.meta}`,
       ),
-      coverageNote: `Route colors use the nearest of ${snapshot.locations.length} SafeGo risk points. The farthest sampled segment is ${routeRisk.maximumCoverageDistance.toFixed(1)} km from its assigned point.`,
+      coverageNote: `Route colors use the nearest of ${snapshot.locations.length} SafeGo risk points. Coverage is approximate and may be less precise between monitored areas.`,
       generatedAt: new Date().toISOString(),
       routingSource: "osrm",
     },

@@ -53,7 +53,6 @@ export function analyzeRouteSegments(
   let weightedRisk = 0;
   let totalDistance = 0;
   let maximumRisk = 0;
-  let maximumCoverageDistance = 0;
 
   for (let index = 0; index < sampled.length - 1; index += 1) {
     const start = sampled[index];
@@ -71,15 +70,12 @@ export function analyzeRouteSegments(
     totalDistance += segmentDistanceMeters;
     weightedRisk += score * segmentDistanceMeters;
     maximumRisk = Math.max(maximumRisk, score);
-    maximumCoverageDistance = Math.max(maximumCoverageDistance, nearest.distance);
     segments.push({
       coordinates: [start, end],
-      distanceMeters: segmentDistanceMeters,
       riskScore: score,
       riskKey: routeRiskBand(score).key,
       basisLocationId: nearest.location.id,
       basisLocationName: nearest.location.name,
-      distanceFromRiskPointKm: nearest.distance,
     });
   }
 
@@ -99,7 +95,5 @@ export function analyzeRouteSegments(
     rawRiskScore,
     overallRiskScore,
     safetyRule,
-    maximumCoverageDistance,
-    totalDistanceMeters: totalDistance,
   };
 }

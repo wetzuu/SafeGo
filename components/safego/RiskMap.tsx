@@ -192,7 +192,7 @@ export function RiskMap({
         <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a marker to compare its available risk signals."}</p>
       </div>
 
-      {trip && <div className="route-map-meta card"><div><span>Route estimate</span><strong>{(trip.distanceMeters / 1000).toFixed(1)} km · {Math.round(trip.durationSeconds / 60)} min</strong></div><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><p>{trip.coverageNote}</p></div>}
+      {trip && <div className="route-map-meta card"><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><div><span>Risk coverage</span><strong>{trip.corridorLocations.length} signals · {trip.segments.length} colored sections</strong></div><p>{trip.coverageNote}</p></div>}
 
       <div className="map-layer-wrap" aria-label="Map data layer">
         <div className="map-control-label">Display layer</div>

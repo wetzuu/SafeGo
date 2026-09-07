@@ -10,7 +10,7 @@ Browser
       -> Open-Meteo -> modeled current weather
       -> approved normalized feeds -> official advisories and flood/road observations
       -> Nominatim -> submitted place lookup
-      -> OSRM -> driving route geometry and estimated travel time
+      -> OSRM -> road geometry and road names
 ```
 
 The browser never receives database credentials or provider configuration. External requests are made by server-only provider modules.
@@ -34,7 +34,7 @@ The browser never receives database credentials or provider configuration. Exter
 
 - Open-Meteo changes only the Weather factor. It does not create official advisories.
 - Nominatim is called only after a trip is submitted; local preset suggestions do not make network requests.
-- OSRM provides road geometry and estimated travel time, not live traffic or road safety.
+- OSRM provides road geometry and road names. SafeGo does not expose trip distance or arrival-time estimates.
 - Route colors are derived from the nearest existing SafeGo risk point and are labeled approximate.
 - Provider failures retain stored data and surface a degraded source status.
 - Public report submissions are stored as unverified evidence and do not directly change a risk score.

@@ -6,8 +6,6 @@ interface OsrmRouteResponse {
   code: string;
   message?: string;
   routes?: Array<{
-    distance: number;
-    duration: number;
     geometry: {
       type: "LineString";
       coordinates: Array<[number, number]>;
@@ -54,8 +52,6 @@ export async function fetchDrivingRoute(
   ).slice(0, 8);
 
   return {
-    distanceMeters: route.distance,
-    durationSeconds: route.duration,
     routeCoordinates,
     roadNames,
   };

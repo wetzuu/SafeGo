@@ -287,6 +287,140 @@
     @apply mb-[18px] grid grid-cols-2 gap-3 lg:grid-cols-4;
   }
 
+  .overview-context-grid {
+    @apply mb-[18px] grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(270px,0.85fr)];
+  }
+
+  .overview-map-card {
+    @apply min-w-0 overflow-hidden;
+  }
+
+  .overview-panel-head {
+    @apply flex min-h-[62px] items-center justify-between gap-3 border-b border-hairline px-4 py-3;
+  }
+
+  .overview-panel-head > div {
+    @apply min-w-0;
+  }
+
+  .overview-panel-head span {
+    @apply block text-[9.5px] font-bold uppercase tracking-wider text-ink-soft;
+  }
+
+  .overview-panel-head h2 {
+    @apply mt-0.5 text-[15px] font-bold leading-tight;
+  }
+
+  .overview-panel-head button,
+  .overview-conditions-link {
+    @apply shrink-0 cursor-pointer rounded-box border border-brand bg-white px-3 py-2 text-[10.5px] font-semibold text-brand;
+  }
+
+  .overview-panel-head button:hover,
+  .overview-conditions-link:hover {
+    @apply bg-brand-soft;
+  }
+
+  .overview-map-frame {
+    @apply relative h-[235px] w-full overflow-hidden bg-[#e8e5dc] sm:h-[260px];
+  }
+
+  .overview-live-map {
+    @apply absolute inset-0 z-0 size-full;
+  }
+
+  .overview-map-frame .leaflet-control-attribution {
+    @apply text-[8px];
+  }
+
+  .overview-map-frame .leaflet-control-zoom a {
+    @apply text-ink;
+  }
+
+  .overview-map-badge {
+    @apply pointer-events-none absolute bottom-2 left-2 z-[500] rounded-sm bg-white/90 px-2 py-1 font-mono text-[8.5px] normal-case tracking-normal text-ink-soft shadow-sm;
+  }
+
+  .overview-map-error {
+    @apply absolute inset-0 z-[600] flex items-center justify-center bg-surface px-8 text-center text-[12px] leading-normal text-ink-soft;
+  }
+
+  .overview-risk-legend {
+    @apply grid grid-cols-2 gap-x-3 gap-y-2 border-t border-hairline bg-white px-4 py-3 sm:grid-cols-4;
+  }
+
+  .overview-legend-item {
+    @apply flex items-center gap-1.5 text-[9.5px] text-ink-soft;
+  }
+
+  .overview-legend-item i {
+    @apply size-2.5 shrink-0 rounded-full;
+  }
+
+  .overview-legend-item strong {
+    @apply text-ink;
+  }
+
+  .overview-conditions-card {
+    @apply flex min-w-0 flex-col overflow-hidden;
+  }
+
+  .conditions-head {
+    @apply border-b-0 pb-2;
+  }
+
+  .overview-total-score {
+    @apply flex size-11 shrink-0 items-center justify-center rounded-full border-[3px] border-white font-mono text-[12px] text-white shadow-md;
+  }
+
+  .overview-condition-location {
+    @apply mx-4 border-b border-hairline pb-3;
+  }
+
+  .overview-condition-location strong {
+    @apply block truncate text-[12px];
+  }
+
+  .overview-condition-location span {
+    @apply mt-0.5 block text-[10px] text-ink-soft;
+  }
+
+  .overview-factor-list {
+    @apply grid gap-3 px-4 py-3.5;
+  }
+
+  .overview-factor > div:first-child {
+    @apply mb-1.5 flex items-center justify-between gap-3 text-[10.5px] text-ink-soft;
+  }
+
+  .overview-factor > div:first-child strong {
+    @apply shrink-0 font-mono text-[10.5px];
+  }
+
+  .overview-factor-track {
+    @apply h-1.5 overflow-hidden rounded-full bg-neutral-200;
+  }
+
+  .overview-factor-track span {
+    @apply block h-full rounded-full;
+  }
+
+  .overview-signal-counts {
+    @apply mx-4 flex gap-4 border-t border-hairline pt-3 text-[10px] text-ink-soft;
+  }
+
+  .overview-signal-counts strong {
+    @apply font-mono text-ink;
+  }
+
+  .overview-context-note {
+    @apply px-4 pt-3 text-[9.5px] leading-normal text-ink-soft;
+  }
+
+  .overview-conditions-link {
+    @apply mx-4 mt-auto mb-4 self-start;
+  }
+
   .trip-stat {
     @apply flex flex-col px-4 py-3.5;
   }

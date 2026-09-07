@@ -1,6 +1,6 @@
 # SafeGo
 
-Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo generates a driving route, estimates the risk along it, and displays color-coded route sections on a real interactive map.
+Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo identifies the connecting roads, estimates the risks along them, and displays color-coded route sections on a real interactive map.
 
 The current build combines OSRM road geometry, submit-only OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. It can ingest approved normalized official-advisory and flood/road feeds when configured; otherwise those signals keep their stored fallbacks. Community submission remains disabled until moderation exists.
 
@@ -45,7 +45,7 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 ## Flow
 
 1. Enter a starting point and destination, or load the Buting-to-Mapúa example.
-2. SafeGo resolves both places, requests a drivable route, and checks route sections against nearby calculated SafeGo risk points.
+2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against nearby calculated SafeGo risk points.
 3. Review the route score, hotspots, colored map, corridor alerts, conditions, and reports.
 4. Select **Plan another trip** to start again.
 
@@ -54,7 +54,7 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 | Screen       | Contents                                                          |
 | ------------ | ----------------------------------------------------------------- |
 | Search       | Location field, result list, suggested areas                      |
-| Overview     | Route score, distance, duration, hotspots, and major roads         |
+| Overview     | Route score, risk coverage, hotspots, advisories, and major roads  |
 | Risk factors | SafeGo risk points and factors covering the route                  |
 | Alerts       | Notices aggregated from coverage points near the route             |
 | Map          | Real road route with green/yellow/orange/red risk sections         |
@@ -86,7 +86,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trus
 | `GET /api/locations/:id/risk` | Returns the assessment, factors, advisories, and reports for one location |
 | `GET /api/sources/status` | Shows whether feeds are mock, active, degraded, or disabled |
 | `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
-| `POST /api/trips/analyze` | Resolves A and B, generates a driving route, and calculates route risk |
+| `POST /api/trips/analyze` | Resolves A and B, identifies connecting roads, and calculates route risk |
 | `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
 
 Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. They are intentionally not cached so a refresh requests current provider data. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
@@ -105,7 +105,7 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 
 ## Route-risk model
 
-OSRM supplies road geometry, distance, and estimated driving time. SafeGo samples that geometry and assigns each section the already-calculated overall score of its nearest SafeGo location. The trip’s raw score is the distance-weighted average of those sections. If any section is High or Critical, the final trip score cannot fall below that same safety band.
+OSRM supplies road geometry and road names. SafeGo samples that geometry and assigns each section the already-calculated overall score of its nearest SafeGo location. Segment length is used internally only to weight the safety score; SafeGo does not present trip distance or arrival-time estimates. If any section is High or Critical, the final trip score cannot fall below that same safety band.
 
 Route colors are therefore an approximate coverage model—not live traffic measurements or proof that a road is safe. The UI displays how far the weakest-covered route section is from its assigned risk point.
 
@@ -143,7 +143,7 @@ Before production use, replace the in-memory rate limit with a shared durable li
 
 - Approved direct PAGASA, LGU, school, traffic, or flood-provider contracts
 - GPS/device-location access
-- Live traffic-aware travel times or road-level risk sensors
+- Turn-by-turn navigation, arrival-time estimates, or road-level risk sensors
 - Precise hazard boundaries
 - Report verification and moderation workflow
 - Accounts
