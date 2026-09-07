@@ -56,13 +56,16 @@ function Navigation({ activeScreen, onNavigate }: { activeScreen: ScreenKey; onN
 
 function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; onRefresh: () => void }) {
   const weather = sources.find((source) => source.key === "open-meteo");
+  const operational = sources.filter((source) => source.key === "official-advisories" || source.key === "flood-road");
+  const activeOperational = operational.filter((source) => source.status === "active").length;
+  const operationalDetail = operational.length ? ` · ${activeOperational}/${operational.length} approved operational feeds active` : "";
   const live = weather?.status === "active";
   const degraded = weather?.status === "degraded";
   const detail = live
-    ? `Live modeled weather · ${backend === "mock" ? "other signals are mock" : "other signals from database"}`
+    ? `Live modeled weather · ${backend === "mock" ? "other signals use stored fallbacks" : "other signals from database"}${operationalDetail}`
     : degraded
-      ? "Weather feed unavailable · stored signals shown"
-      : "Stored SafeGo signals · live weather disabled";
+      ? `Weather feed unavailable · stored signals shown${operationalDetail}`
+      : `Stored SafeGo signals · live weather disabled${operationalDetail}`;
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
@@ -72,7 +75,7 @@ function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh 
 
 function Advisories({ items }: { items: Advisory[] }) {
   if (!items.length) return <p className="empty-note">No advisories for this area in the current dataset.</p>;
-  return <>{items.map((item) => <article className="adv-item" key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-top"><span className={`src-tag src-${item.source}`}>{item.label}</span><span className="adv-title inline">{item.title}</span></div><div className="adv-desc">{item.description}</div></div><time className="adv-time mono">{item.time}</time></article>)}</>;
+  return <>{items.map((item) => <article className="adv-item" key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-top"><span className={`src-tag src-${item.source}`}>{item.label}</span>{item.sourceUrl ? <a className="adv-title inline source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">{item.title}</a> : <span className="adv-title inline">{item.title}</span>}</div><div className="adv-desc">{item.description}</div></div><time className="adv-time mono">{item.time}</time></article>)}</>;
 }
 
 function Reports({ items }: { items: CommunityReport[] }) {
@@ -129,7 +132,7 @@ interface ReportEnvelope {
   error?: { message?: string };
 }
 
-function ReportPage({ location, items, tripMode, onSubmitted }: { location: SafeGoLocation; items: CommunityReport[]; tripMode: boolean; onSubmitted: (locationId: string, report: CommunityReport) => void }) {
+function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }: { location: SafeGoLocation; items: CommunityReport[]; tripMode: boolean; reportingEnabled: boolean; onSubmitted: (locationId: string, report: CommunityReport) => void }) {
   const [selectedType, setSelectedType] = useState<string>(COMMUNITY_REPORT_TYPES[0]);
   const [locationText, setLocationText] = useState(location.name);
   const [description, setDescription] = useState("");
@@ -165,10 +168,10 @@ function ReportPage({ location, items, tripMode, onSubmitted }: { location: Safe
     }
   }
 
-  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle="Share a current observation. New reports remain unverified until reviewed." /><div className="grid grid-2"><div className="card card-pad"><form className="form-grid" onSubmit={submitReport}><fieldset className="form-field report-type-field"><legend>Report type</legend><div className="type-chip-row">{COMMUNITY_REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} aria-pressed={type === selectedType} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Depth of water, blockage, estimated severity, direction of travel, etc." minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Submit unverified report"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form></div><div><div className="card-head tight"><h3>{tripMode ? "Recent corridor reports" : "Recent area reports"}</h3><span className="tag mono">Available data</span></div><Reports items={items} /></div></div></section>;
+  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle={reportingEnabled ? "Share a current observation. New reports remain unverified until reviewed." : "Read-only until SafeGo has a moderation workflow."} /><div className="grid grid-2"><div className="card card-pad">{reportingEnabled ? <form className="form-grid" onSubmit={submitReport}><fieldset className="form-field report-type-field"><legend>Report type</legend><div className="type-chip-row">{COMMUNITY_REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} aria-pressed={type === selectedType} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Depth of water, blockage, estimated severity, direction of travel, etc." minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Submit unverified report"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form> : <div className="reporting-disabled"><Icon name="reports" /><h3>Submissions are not open yet</h3><p>SafeGo will accept public reports only after moderation, abuse handling, and verification controls are available. Existing dataset reports remain visible and clearly labeled by status.</p></div>}</div><div><div className="card-head tight"><h3>{tripMode ? "Recent corridor reports" : "Recent area reports"}</h3><span className="tag mono">Available data</span></div><Reports items={items} /></div></div></section>;
 }
 
-export function SafeGoApp({ initialLocations, initialBackend, initialSources }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[] }) {
+export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean }) {
   const [locations, setLocations] = useState(initialLocations);
   const [dataBackend, setDataBackend] = useState(initialBackend);
   const [sources, setSources] = useState(initialSources);
@@ -265,6 +268,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources }: 
     {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route alerts" : "Area alerts"} title={trip ? "Advisories near this trip" : "Advisories for this area"} subtitle={trip ? "Notices from SafeGo coverage points near the generated route." : `${selectedLocation.name} · newest available notices first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
     {activeScreen === "map" && <RiskMap locations={locations} selectedLocation={selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
-    {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} onSubmitted={addSubmittedReport} />}
+    {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} reportingEnabled={communityReportingEnabled} onSubmitted={addSubmittedReport} />}
   </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} onNavigate={navigate} /></nav></div>;
 }

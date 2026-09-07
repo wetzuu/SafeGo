@@ -56,6 +56,7 @@ export interface Advisory {
   title: string;
   description: string;
   time: string;
+  sourceUrl?: string;
 }
 
 export interface CommunityReport {
@@ -77,6 +78,7 @@ export interface Hazard {
   title: string;
   meta: string;
   tone?: IconTone;
+  sourceUrl?: string;
 }
 
 export interface LocationInput {

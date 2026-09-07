@@ -8,6 +8,7 @@ Browser
   -> Next.js route handlers
       -> SafeGo repository -> mock fixtures or PostgreSQL/PostGIS
       -> Open-Meteo -> modeled current weather
+      -> approved normalized feeds -> official advisories and flood/road observations
       -> Nominatim -> submitted place lookup
       -> OSRM -> driving route geometry and estimated travel time
 ```
@@ -37,6 +38,8 @@ The browser never receives database credentials or provider configuration. Exter
 - Route colors are derived from the nearest existing SafeGo risk point and are labeled approximate.
 - Provider failures retain stored data and surface a degraded source status.
 - Public report submissions are stored as unverified evidence and do not directly change a risk score.
+- Official-advisory and flood/road feeds must use the normalized contracts in `docs/SOURCE_FEEDS.md`; unknown location IDs and expired items are ignored.
+- Public community intake remains disabled until moderation is explicitly enabled.
 
 ## Future Java backend
 

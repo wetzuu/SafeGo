@@ -2,7 +2,7 @@
 
 Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo generates a driving route, estimates the risk along it, and displays color-coded route sections on a real interactive map.
 
-The current build combines OSRM road geometry, OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. Flood, school, and advisory data are still mocks. Community reports can now be submitted as unverified observations. There is no login or moderation dashboard yet.
+The current build combines OSRM road geometry, submit-only OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. It can ingest approved normalized official-advisory and flood/road feeds when configured; otherwise those signals keep their stored fallbacks. Community submission remains disabled until moderation exists.
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
@@ -87,15 +87,21 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trus
 | `GET /api/sources/status` | Shows whether feeds are mock, active, degraded, or disabled |
 | `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
 | `POST /api/trips/analyze` | Resolves A and B, generates a driving route, and calculates route risk |
-| `POST /api/reports` | Validates and stores an unverified community report for a covered location |
+| `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
 
 Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. They are intentionally not cached so a refresh requests current provider data. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
 
 ## Live weather normalization
 
-Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result. Weather observations expire after ten minutes; provider failure leaves the stored location data in place and marks the feed as degraded.
+Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result alongside any configured official and flood/road feeds. Weather observations expire after ten minutes; provider failure leaves the stored location data in place and marks the feed as degraded.
 
 This is modeled weather, not a PAGASA warning. It never creates or modifies an official advisory, flood report, school notice, or community verification status.
+
+## Operational source ingestion
+
+SafeGo now has provider-swappable adapters for normalized official-advisory and flood/road feeds. Both are disabled by default. When configured, active non-expired entries are matched only to canonical SafeGo location IDs, displayed with source links, and used to replace the corresponding stored factor before the existing risk model recalculates. Invalid or unavailable feeds are marked degraded and leave stored fallback signals intact.
+
+See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and source-approval checklist. The app does not scrape PAGASA pages or assume Geoportal hazard layers are live operational observations.
 
 ## Route-risk model
 
@@ -127,7 +133,7 @@ below Critical. Severe weather (85+) supported by an elevated official advisory
 
 ## Community report intake
 
-The Reports screen submits observations to `POST /api/reports`. Inputs are length-checked, restricted to known report types and locations, and limited to five submissions per client every ten minutes as a lightweight development safeguard. New reports are always labeled **Unverified** and do not alter the calculated risk score until a future verification workflow reviews them.
+The Reports screen is read-only by default. `POST /api/reports` rejects submissions unless both `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`. This prevents the unfinished intake code from collecting public reports before verification and abuse handling exist.
 
 PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Next.js server process. Database seeds now replace fixture reports without deleting community submissions.
 
@@ -135,7 +141,7 @@ Before production use, replace the in-memory rate limit with a shared durable li
 
 ## Still out of scope
 
-- Live PAGASA advisories and LGU, school, traffic, or flood-provider adapters
+- Approved direct PAGASA, LGU, school, traffic, or flood-provider contracts
 - GPS/device-location access
 - Live traffic-aware travel times or road-level risk sensors
 - Precise hazard boundaries

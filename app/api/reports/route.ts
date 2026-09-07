@@ -23,6 +23,16 @@ function acceptsSubmission(key: string, now = Date.now()) {
 }
 
 export async function POST(request: Request) {
+  const reportingEnabled =
+    process.env.SAFEGO_COMMUNITY_REPORTS_ENABLED === "true"
+    && process.env.SAFEGO_MODERATION_ENABLED === "true";
+  if (!reportingEnabled) {
+    return NextResponse.json(
+      { error: { code: "REPORTING_DISABLED", message: "Community submissions are disabled until moderation is available." } },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

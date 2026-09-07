@@ -1336,6 +1336,22 @@
     @apply border-crit bg-crit-soft text-crit;
   }
 
+  .reporting-disabled {
+    @apply flex min-h-56 flex-col items-start justify-center;
+  }
+
+  .reporting-disabled > svg {
+    @apply mb-4 size-8 text-brand;
+  }
+
+  .reporting-disabled h3 {
+    @apply mb-2 text-lg font-bold;
+  }
+
+  .reporting-disabled p {
+    @apply text-[13px] leading-relaxed text-ink-soft;
+  }
+
   .mock-note {
     @apply mt-3 rounded-box border border-hairline bg-surface px-3 py-2 text-[11.5px] text-neutral-500;
   }

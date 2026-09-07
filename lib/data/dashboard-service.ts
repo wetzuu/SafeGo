@@ -6,7 +6,12 @@ import {
   fetchOpenMeteoWeather,
   type LiveWeatherObservation,
 } from "../providers/open-meteo.ts";
+import {
+  fetchFloodRoadFeed,
+  fetchOfficialAdvisoryFeed,
+} from "../providers/operational-feeds.ts";
 import type { DashboardSnapshot, SourceStatus } from "./contracts.ts";
+import { applyFloodRoadObservations, applyOfficialAdvisories } from "./operational-overlay.ts";
 import { getRepository } from "./repository.ts";
 
 function scoreBand(score: number): { key: RiskKey; label: string } {
@@ -42,7 +47,7 @@ function applyWeather(
     factor.name === "Weather" ? weatherFactor : factor,
   );
   const summary =
-    "Live modeled weather is included in this score. Flood, road, advisory, school, and community signals retain their latest stored SafeGo values.";
+    "Live modeled weather is included in this score. Other factors use the latest available configured or stored SafeGo signals.";
   const risk = analyzeRisk(factors, summary, location.riskStatus);
   const stats = location.stats.map((stat) =>
     stat.label === "Weather"
@@ -92,14 +97,27 @@ export async function getDashboardSnapshot(): Promise<{
   const provider = (
     process.env.SAFEGO_WEATHER_PROVIDER || "open-meteo"
   ).toLowerCase();
+  const [officialFeed, floodRoadFeed] = await Promise.all([
+    fetchOfficialAdvisoryFeed(),
+    fetchFloodRoadFeed(),
+  ]);
+  let sourceLocations = locations;
+  if (officialFeed.status.status === "active") {
+    sourceLocations = sourceLocations.map((location) => applyOfficialAdvisories(location, officialFeed.items));
+  }
+  if (floodRoadFeed.status.status === "active") {
+    sourceLocations = sourceLocations.map((location) => applyFloodRoadObservations(location, floodRoadFeed.items));
+  }
+  const sourceStatuses = [officialFeed.status, floodRoadFeed.status];
 
   if (provider === "disabled") {
     return {
       backend,
       snapshot: {
-        locations,
+        locations: sourceLocations,
         sources: [
-          ...storedSources,
+          ...storedSources.filter((source) => !sourceStatuses.some((current) => current.key === source.key)),
+          ...sourceStatuses,
           weatherSource("disabled", null, null),
         ],
         weatherUpdatedAt: null,
@@ -114,11 +132,11 @@ export async function getDashboardSnapshot(): Promise<{
   }
 
   try {
-    const observations = await fetchOpenMeteoWeather(locations);
+    const observations = await fetchOpenMeteoWeather(sourceLocations);
     const byLocation = new Map(
       observations.map((observation) => [observation.locationId, observation]),
     );
-    const liveLocations = locations.map((location) => {
+    const liveLocations = sourceLocations.map((location) => {
       const observation = byLocation.get(location.id);
       return observation ? applyWeather(location, observation) : location;
     });
@@ -129,7 +147,8 @@ export async function getDashboardSnapshot(): Promise<{
       snapshot: {
         locations: liveLocations,
         sources: [
-          ...storedSources.filter((source) => source.key !== "open-meteo"),
+          ...storedSources.filter((source) => source.key !== "open-meteo" && !sourceStatuses.some((current) => current.key === source.key)),
+          ...sourceStatuses,
           weatherSource("active", successAt, null),
         ],
         weatherUpdatedAt: successAt,
@@ -141,9 +160,10 @@ export async function getDashboardSnapshot(): Promise<{
     return {
       backend,
       snapshot: {
-        locations,
+        locations: sourceLocations,
         sources: [
-          ...storedSources.filter((source) => source.key !== "open-meteo"),
+          ...storedSources.filter((source) => source.key !== "open-meteo" && !sourceStatuses.some((current) => current.key === source.key)),
+          ...sourceStatuses,
           weatherSource("degraded", null, message),
         ],
         weatherUpdatedAt: null,
