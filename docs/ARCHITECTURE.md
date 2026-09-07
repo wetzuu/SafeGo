@@ -36,6 +36,7 @@ The browser never receives database credentials or provider configuration. Exter
 - OSRM provides road geometry and estimated travel time, not live traffic or road safety.
 - Route colors are derived from the nearest existing SafeGo risk point and are labeled approximate.
 - Provider failures retain stored data and surface a degraded source status.
+- Public report submissions are stored as unverified evidence and do not directly change a risk score.
 
 ## Future Java backend
 

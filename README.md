@@ -2,7 +2,7 @@
 
 Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo generates a driving route, estimates the risk along it, and displays color-coded route sections on a real interactive map.
 
-The current build combines OSRM road geometry, OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. Flood, school, advisory, and community data are still mocks. There is no login, and reports submitted through the UI are not stored.
+The current build combines OSRM road geometry, OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. Flood, school, and advisory data are still mocks. Community reports can now be submitted as unverified observations. There is no login or moderation dashboard yet.
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
@@ -87,6 +87,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trus
 | `GET /api/sources/status` | Shows whether feeds are mock, active, degraded, or disabled |
 | `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
 | `POST /api/trips/analyze` | Resolves A and B, generates a driving route, and calculates route risk |
+| `POST /api/reports` | Validates and stores an unverified community report for a covered location |
 
 Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. They are intentionally not cached so a refresh requests current provider data. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
 
@@ -124,11 +125,19 @@ overall rating below High, and a score of 85 or higher cannot produce a rating
 below Critical. Severe weather (85+) supported by an elevated official advisory
 (70+) also cannot produce a rating below High.
 
+## Community report intake
+
+The Reports screen submits observations to `POST /api/reports`. Inputs are length-checked, restricted to known report types and locations, and limited to five submissions per client every ten minutes as a lightweight development safeguard. New reports are always labeled **Unverified** and do not alter the calculated risk score until a future verification workflow reviews them.
+
+PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Next.js server process. Database seeds now replace fixture reports without deleting community submissions.
+
+Before production use, replace the in-memory rate limit with a shared durable limiter, add moderation and abuse handling, and publish retention/privacy rules.
+
 ## Still out of scope
 
 - Live PAGASA advisories and LGU, school, traffic, or flood-provider adapters
 - GPS/device-location access
 - Live traffic-aware travel times or road-level risk sensors
 - Precise hazard boundaries
-- Report verification workflow
+- Report verification and moderation workflow
 - Accounts

@@ -7,6 +7,7 @@ import type {
   SafeGoLocation,
 } from "../safego/types.ts";
 import type {
+  CommunityReportInput,
   LocationRiskDetails,
   LocationSummary,
   SafeGoRepository,
@@ -203,5 +204,45 @@ export class PostgresSafeGoRepository implements SafeGoRepository {
       lastFailureAt: row.last_failure_at?.toISOString() ?? null,
       errorMessage: row.error_message,
     }));
+  }
+
+  async submitCommunityReport(input: CommunityReportInput) {
+    const sql = getDatabase();
+    const locationRows = await sql<Array<{ exists: boolean }>>`
+      SELECT true AS exists FROM locations WHERE id = ${input.locationId} LIMIT 1
+    `;
+    if (!locationRows.length) return null;
+
+    const reportedAt = new Date();
+    const report: CommunityReport = {
+      type: input.reportType,
+      title: input.description,
+      meta: `${input.locationText} · ${new Intl.DateTimeFormat("en-PH", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Manila",
+      }).format(reportedAt)}`,
+      status: "unverified",
+      statusLabel: "UNVERIFIED",
+    };
+
+    await sql`
+      INSERT INTO community_reports (
+        location_id, report_type, title, verification_status, payload,
+        position, reported_at, submission_source
+      )
+      SELECT
+        ${input.locationId},
+        ${input.reportType},
+        ${input.description},
+        'unverified',
+        ${sql.json(JSON.parse(JSON.stringify(report)))},
+        position,
+        ${reportedAt},
+        'community'
+      FROM locations
+      WHERE id = ${input.locationId}
+    `;
+    return report;
   }
 }

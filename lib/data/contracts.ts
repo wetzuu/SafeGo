@@ -29,6 +29,13 @@ export interface LocationRiskDetails {
   communityReports: CommunityReport[];
 }
 
+export interface CommunityReportInput {
+  locationId: string;
+  reportType: string;
+  locationText: string;
+  description: string;
+}
+
 export type SourceHealth = "mock" | "active" | "degraded" | "disabled";
 
 export interface SourceStatus {
@@ -46,6 +53,7 @@ export interface SafeGoRepository {
   listDashboardLocations(): Promise<SafeGoLocation[]>;
   getLocationRisk(id: string): Promise<LocationRiskDetails | null>;
   listSourceStatuses(): Promise<SourceStatus[]>;
+  submitCommunityReport(input: CommunityReportInput): Promise<CommunityReport | null>;
 }
 
 export interface DashboardSnapshot {

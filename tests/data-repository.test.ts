@@ -26,3 +26,19 @@ test("mock repository returns null for an unknown location", async () => {
   const repository = new MockSafeGoRepository();
   assert.equal(await repository.getLocationRisk("not-a-location"), null);
 });
+
+test("mock repository stores new reports as unverified", async () => {
+  const repository = new MockSafeGoRepository();
+  const report = await repository.submitCommunityReport({
+    locationId: "mapua-makati",
+    reportType: "Road Hazard",
+    locationText: "Mapúa Makati gate",
+    description: "A fallen branch is blocking one lane.",
+  });
+
+  assert.ok(report);
+  assert.equal(report.status, "unverified");
+  const location = (await repository.listDashboardLocations())
+    .find((candidate) => candidate.id === "mapua-makati");
+  assert.equal(location?.reports[0].title, "A fallen branch is blocking one lane.");
+});

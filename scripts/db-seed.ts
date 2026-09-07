@@ -59,7 +59,10 @@ try {
 
       await transaction`DELETE FROM observations WHERE location_id = ${location.id}`;
       await transaction`DELETE FROM advisories WHERE location_id = ${location.id}`;
-      await transaction`DELETE FROM community_reports WHERE location_id = ${location.id}`;
+      await transaction`
+        DELETE FROM community_reports
+        WHERE location_id = ${location.id} AND submission_source = 'seed'
+      `;
       await transaction`DELETE FROM risk_assessments WHERE location_id = ${location.id}`;
 
       for (const factor of location.factors) {
@@ -99,7 +102,7 @@ try {
         await transaction`
           INSERT INTO community_reports (
             location_id, report_type, title, verification_status, payload,
-            position, reported_at
+            position, reported_at, submission_source
           ) VALUES (
             ${location.id},
             ${report.type},
@@ -107,7 +110,8 @@ try {
             ${report.status},
             ${transaction.json(JSON.parse(JSON.stringify(report)))},
             ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
-            now()
+            now(),
+            'seed'
           )
         `;
       }

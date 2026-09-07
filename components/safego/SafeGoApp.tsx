@@ -13,6 +13,7 @@ import type {
   SafeGoLocation,
   ScreenKey,
 } from "@/lib/safego/types";
+import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
@@ -32,14 +33,6 @@ const NAV_ITEMS: Array<{
   { key: "map", label: "Map", icon: "map" },
   { key: "conditions", label: "Conditions", icon: "reports" },
   { key: "reports", label: "Reports", icon: "reports" },
-];
-
-const REPORT_TYPES = [
-  "Flooding",
-  "Road Hazard",
-  "Transport Disruption",
-  "Power / Signal Outage",
-  "Other",
 ];
 
 interface DashboardEnvelope {
@@ -84,7 +77,7 @@ function Advisories({ items }: { items: Advisory[] }) {
 
 function Reports({ items }: { items: CommunityReport[] }) {
   if (!items.length) return <p className="empty-note">No community reports in the current dataset.</p>;
-  return <>{items.map((item) => <article className="report-row" key={`${item.type}-${item.title}`}><div className="rtype"><Icon name={item.type === "Flooding" ? "flood" : "alert"} /></div><div className="report-main"><div className="title">{item.title}</div><div className="meta">{item.meta}</div></div><span className={`status-chip status-${item.status}`}>{item.statusLabel}</span></article>)}</>;
+  return <>{items.map((item, index) => <article className="report-row" key={`${item.type}-${item.title}-${item.meta}-${index}`}><div className="rtype"><Icon name={item.type === "Flooding" ? "flood" : "alert"} /></div><div className="report-main"><div className="title">{item.title}</div><div className="meta">{item.meta}</div></div><span className={`status-chip status-${item.status}`}>{item.statusLabel}</span></article>)}</>;
 }
 
 function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -131,9 +124,48 @@ function TripConditions({ trip }: { trip: TripAnalysis }) {
   return <section className="page"><PageHeader eyebrow="Route conditions" title="Hazards and reports near your trip" subtitle="Aggregated from SafeGo locations within approximately 3 km of the route." /><div className="grid grid-2"><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div><div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Route corridor</span></div><Reports items={trip.reports} /></div></div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
 }
 
-function ReportPage({ location, items, tripMode }: { location: SafeGoLocation; items: CommunityReport[]; tripMode: boolean }) {
-  const [selectedType, setSelectedType] = useState(REPORT_TYPES[0]);
-  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle="Anyone can submit what they see. Submissions are not saved yet." /><div className="grid grid-2"><div className="card card-pad"><div className="form-grid"><div className="form-field"><label>Report type</label><div className="type-chip-row">{REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></div><div className="form-field"><label htmlFor="report-location">Location</label><input id="report-location" type="text" defaultValue={location.name} placeholder="Street or landmark" /></div><div className="form-field"><label htmlFor="report-description">Description</label><textarea id="report-description" placeholder="Depth of water, blockage, estimated severity, etc." /></div><button className="submit-btn" type="button" onClick={() => window.alert("Report submission is not connected yet. Phase 3 currently integrates read-only live weather and route analysis.")}>Submit report</button><div className="mock-note">No account is required. This form is not connected to a backend.</div></div></div><div><div className="card-head tight"><h3>{tripMode ? "Recent corridor reports" : "Recent area reports"}</h3><span className="tag mono">Available data</span></div><Reports items={items} /></div></div></section>;
+interface ReportEnvelope {
+  data?: CommunityReport;
+  error?: { message?: string };
+}
+
+function ReportPage({ location, items, tripMode, onSubmitted }: { location: SafeGoLocation; items: CommunityReport[]; tripMode: boolean; onSubmitted: (locationId: string, report: CommunityReport) => void }) {
+  const [selectedType, setSelectedType] = useState<string>(COMMUNITY_REPORT_TYPES[0]);
+  const [locationText, setLocationText] = useState(location.name);
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+
+  async function submitReport(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId: location.id,
+          reportType: selectedType,
+          locationText,
+          description,
+        }),
+      });
+      const envelope = (await response.json()) as ReportEnvelope;
+      if (!response.ok || !envelope.data) {
+        throw new Error(envelope.error?.message || "The report could not be saved.");
+      }
+      onSubmitted(location.id, envelope.data);
+      setDescription("");
+      setMessage({ tone: "success", text: "Report received as unverified. It is visible now but does not change the risk score until reviewed." });
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "The report could not be saved." });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle="Share a current observation. New reports remain unverified until reviewed." /><div className="grid grid-2"><div className="card card-pad"><form className="form-grid" onSubmit={submitReport}><fieldset className="form-field report-type-field"><legend>Report type</legend><div className="type-chip-row">{COMMUNITY_REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} aria-pressed={type === selectedType} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Depth of water, blockage, estimated severity, direction of travel, etc." minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Submit unverified report"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form></div><div><div className="card-head tight"><h3>{tripMode ? "Recent corridor reports" : "Recent area reports"}</h3><span className="tag mono">Available data</span></div><Reports items={items} /></div></div></section>;
 }
 
 export function SafeGoApp({ initialLocations, initialBackend, initialSources }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[] }) {
@@ -200,6 +232,19 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources }: 
   const selectMapLocation = useCallback((location: SafeGoLocation) => {
     setSelectedLocation(location);
   }, []);
+  const addSubmittedReport = useCallback((locationId: string, report: CommunityReport) => {
+    setLocations((current) => current.map((location) =>
+      location.id === locationId
+        ? { ...location, reports: [report, ...location.reports] }
+        : location,
+    ));
+    setSelectedLocation((current) => current?.id === locationId
+      ? { ...current, reports: [report, ...current.reports] }
+      : current);
+    setTrip((current) => current
+      ? { ...current, reports: [report, ...current.reports] }
+      : current);
+  }, []);
   const navigate = useCallback((screen: ScreenKey) => {
     setActiveScreen(screen);
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -220,6 +265,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources }: 
     {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route alerts" : "Area alerts"} title={trip ? "Advisories near this trip" : "Advisories for this area"} subtitle={trip ? "Notices from SafeGo coverage points near the generated route." : `${selectedLocation.name} · newest available notices first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
     {activeScreen === "map" && <RiskMap locations={locations} selectedLocation={selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
-    {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} />}
+    {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} onSubmitted={addSubmittedReport} />}
   </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} onNavigate={navigate} /></nav></div>;
 }

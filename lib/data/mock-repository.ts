@@ -1,11 +1,19 @@
 import { LOCATIONS } from "../safego/locations.ts";
 import type { SafeGoLocation } from "../safego/types.ts";
 import type {
+  CommunityReportInput,
   LocationRiskDetails,
   LocationSummary,
   SafeGoRepository,
   SourceStatus,
 } from "./contracts.ts";
+
+const submittedReports = new Map<string, SafeGoLocation["reports"]>();
+const MAX_SESSION_REPORTS_PER_LOCATION = 100;
+
+function reportsFor(location: SafeGoLocation) {
+  return [...(submittedReports.get(location.id) ?? []), ...location.reports];
+}
 
 function summarize(location: SafeGoLocation): LocationSummary {
   const { key, name, rank, percentage, modelVersion } = location.risk;
@@ -27,7 +35,10 @@ export class MockSafeGoRepository implements SafeGoRepository {
   }
 
   async listDashboardLocations() {
-    return LOCATIONS;
+    return LOCATIONS.map((location) => ({
+      ...location,
+      reports: reportsFor(location),
+    }));
   }
 
   async getLocationRisk(id: string): Promise<LocationRiskDetails | null> {
@@ -39,7 +50,7 @@ export class MockSafeGoRepository implements SafeGoRepository {
       assessment: location.risk,
       factors: location.factors,
       advisories: location.advisories,
-      communityReports: location.reports,
+      communityReports: reportsFor(location),
     };
   }
 
@@ -55,5 +66,27 @@ export class MockSafeGoRepository implements SafeGoRepository {
         errorMessage: null,
       },
     ];
+  }
+
+  async submitCommunityReport(input: CommunityReportInput) {
+    const location = LOCATIONS.find((candidate) => candidate.id === input.locationId);
+    if (!location) return null;
+
+    const report = {
+      type: input.reportType,
+      title: input.description,
+      meta: `${input.locationText} · ${new Intl.DateTimeFormat("en-PH", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Manila",
+      }).format(new Date())}`,
+      status: "unverified" as const,
+      statusLabel: "UNVERIFIED",
+    };
+    submittedReports.set(location.id, [
+      report,
+      ...(submittedReports.get(location.id) ?? []),
+    ].slice(0, MAX_SESSION_REPORTS_PER_LOCATION));
+    return report;
   }
 }

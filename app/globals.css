@@ -1280,6 +1280,26 @@
     @apply grid gap-4;
   }
 
+  .report-type-field {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+
+  .report-type-field legend {
+    @apply mb-1.5 text-xs font-semibold text-ink-soft;
+  }
+
+  .report-label-row {
+    @apply mb-1.5 flex items-center justify-between gap-3;
+  }
+
+  .report-label-row label {
+    @apply mb-0;
+  }
+
+  .report-label-row span {
+    @apply text-[10px] text-ink-soft;
+  }
+
   .type-chip-row {
     @apply flex flex-wrap gap-2;
   }
@@ -1298,6 +1318,22 @@
 
   .submit-btn:hover {
     @apply bg-brand-hover;
+  }
+
+  .submit-btn:disabled {
+    @apply cursor-wait bg-neutral-400;
+  }
+
+  .report-submit-message {
+    @apply rounded-box border px-3 py-2 text-[12px] leading-normal;
+  }
+
+  .report-submit-message.success {
+    @apply border-low bg-low-soft text-low;
+  }
+
+  .report-submit-message.error {
+    @apply border-crit bg-crit-soft text-crit;
   }
 
   .mock-note {
