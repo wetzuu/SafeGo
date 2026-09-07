@@ -15,6 +15,17 @@ const MAP_LAYERS: MapLayer[] = [
   { key: "Community reports", label: "Community" },
 ];
 
+const APPROXIMATE_COVERAGE_RADIUS_METERS = 850;
+
+function makeTooltip(title: string, detail: string) {
+  const wrapper = document.createElement("span");
+  const heading = document.createElement("strong");
+  const lineBreak = document.createElement("br");
+  heading.textContent = title;
+  wrapper.append(heading, lineBreak, document.createTextNode(detail));
+  return wrapper;
+}
+
 function layerScore(location: SafeGoLocation, layer: MapLayerKey) {
   if (layer === "overall") return location.risk.percentage;
   return location.factors.find((factor) => factor.name === layer)?.score ?? 0;
@@ -75,6 +86,7 @@ export function RiskMap({
           zoomControl: true,
           minZoom: 10,
           maxZoom: 19,
+          scrollWheelZoom: true,
         });
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
@@ -112,9 +124,29 @@ export function RiskMap({
       locations.forEach((location) => {
         const score = layerScore(location, activeLayer);
         const selected = location.id === selectedLocation.id;
+        const color = riskGradient(score);
+        const coverageArea = L.circle(location.coordinates, {
+          radius: APPROXIMATE_COVERAGE_RADIUS_METERS,
+          color,
+          weight: selected ? 3 : 2,
+          opacity: selected ? 0.95 : 0.72,
+          dashArray: "7 5",
+          fillColor: color,
+          fillOpacity: selected ? 0.24 : 0.14,
+        });
+        coverageArea.bindTooltip(
+          makeTooltip(
+            location.name,
+            `${score}/100 · ${activeLayerLabel} · approximate coverage area`,
+          ),
+          { direction: "top", opacity: 0.96 },
+        );
+        coverageArea.on("click", () => onSelectLocation(location));
+        coverageArea.addTo(markerLayerRef.current!);
+
         const icon = L.divIcon({
           className: "safego-leaflet-icon",
-          html: `<span class="map-marker leaflet-marker ${evidenceClass(location)}${selected ? " selected" : ""}" style="--marker-color:${riskGradient(score)}"><span class="map-marker-score">${score}</span></span>`,
+          html: `<span class="map-marker leaflet-marker ${evidenceClass(location)}${selected ? " selected" : ""}" style="--marker-color:${color}"><span class="map-marker-score">${score}</span></span>`,
           iconSize: [44, 44],
           iconAnchor: [22, 22],
           tooltipAnchor: [0, -24],
@@ -128,7 +160,7 @@ export function RiskMap({
         });
 
         marker.bindTooltip(
-          `<strong>${location.name}</strong><br>${score}/100 · ${activeLayerLabel}`,
+          makeTooltip(location.name, `${score}/100 · ${activeLayerLabel}`),
           { direction: "top", opacity: 0.96 },
         );
         marker.on("click", () => onSelectLocation(location));
@@ -160,7 +192,7 @@ export function RiskMap({
           opacity: 0.9,
           lineCap: "round",
         })
-          .bindTooltip(`${segment.riskScore}/100 · based on ${segment.basisLocationName}`)
+          .bindTooltip(makeTooltip(segment.basisLocationName, `${segment.riskScore}/100 · approximate route section`))
           .addTo(routeLayer!);
       });
       ([
@@ -173,7 +205,7 @@ export function RiskMap({
           weight: 3,
           fillColor: "#1a1a1a",
           fillOpacity: 1,
-        }).bindTooltip(`${label}: ${place.label}`, { direction: "top" }).addTo(routeLayer!);
+        }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route endpoint"), { direction: "top" }).addTo(routeLayer!);
       });
     }
 
@@ -210,13 +242,13 @@ export function RiskMap({
           <div className="map-canvas" role="group" aria-label="Interactive map of SafeGo locations">
             <div className="live-map" ref={mapElementRef} />
             {mapError && <div className="map-load-error">The live map could not load. Check your internet connection and reload the page.</div>}
-            <div className="map-approx-badge">Live OpenStreetMap · approximate SafeGo markers</div>
+            <div className="map-approx-badge">Live OpenStreetMap · approximate SafeGo coverage areas</div>
           </div>
           <div className="map-legend" aria-label="Risk color legend">
             <div className="map-legend-title">Score and risk level</div>
             <div className="map-gradient" />
             <div className="map-legend-labels"><span><strong>0</strong> Low</span><span><strong>30</strong> Moderate</span><span><strong>60</strong> High</span><span><strong>80–100</strong> Critical</span></div>
-            <div className="map-evidence-legend"><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending/unverified report</span></div>
+            <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Approximate coverage area</span><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending/unverified report</span></div>
           </div>
         </div>
 
@@ -234,7 +266,7 @@ export function RiskMap({
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside>
       </div>
-      <p className="map-disclaimer">{trip ? "The road geometry comes from OSRM/OpenStreetMap. Segment colors are approximate SafeGo coverage—not live traffic or road-level sensors. " : "Markers represent approximate SafeGo coverage locations. "}Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip ? "The road geometry comes from OSRM/OpenStreetMap. Segment colors and shaded areas are approximate SafeGo coverage—not live traffic, official boundaries, or road-level sensors. " : "Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. "}Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

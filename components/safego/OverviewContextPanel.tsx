@@ -19,6 +19,8 @@ const RISK_LEGEND = [
   { label: "Critical", range: "80–100", color: "#dc2626" },
 ];
 
+const APPROXIMATE_COVERAGE_RADIUS_METERS = 850;
+
 function makeTooltip(title: string, detail: string) {
   const wrapper = document.createElement("span");
   const heading = document.createElement("strong");
@@ -53,13 +55,38 @@ function CompactRiskMap({
           zoomControl: true,
           minZoom: 10,
           maxZoom: 19,
-          scrollWheelZoom: false,
+          scrollWheelZoom: true,
         });
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(map);
+
+        const coverageLocations = trip?.corridorLocations.length
+          ? trip.corridorLocations
+          : [location];
+
+        coverageLocations.forEach((coverageLocation) => {
+          const color = riskGradient(coverageLocation.risk.percentage);
+          L.circle(coverageLocation.coordinates, {
+            radius: APPROXIMATE_COVERAGE_RADIUS_METERS,
+            color,
+            weight: 2,
+            opacity: 0.8,
+            dashArray: "6 5",
+            fillColor: color,
+            fillOpacity: 0.17,
+          })
+            .bindTooltip(
+              makeTooltip(
+                coverageLocation.name,
+                `${coverageLocation.risk.percentage}/100 · approximate coverage area`,
+              ),
+              { direction: "top" },
+            )
+            .addTo(map);
+        });
 
         if (trip) {
           trip.segments.forEach((segment) => {
@@ -173,6 +200,7 @@ export function OverviewContextPanel({
               <span><strong>{item.label}</strong> {item.range}</span>
             </span>
           ))}
+          <span className="overview-area-legend"><i />Shaded circles show approximate SafeGo coverage areas</span>
         </div>
       </article>
 

@@ -361,6 +361,14 @@
     @apply text-ink;
   }
 
+  .overview-area-legend {
+    @apply col-span-2 flex items-center gap-1.5 border-t border-hairline pt-2 text-[9.5px] text-ink-soft sm:col-span-4;
+  }
+
+  .overview-area-legend i {
+    @apply size-3 shrink-0 rounded-full border-2 border-dashed border-brand bg-brand-soft;
+  }
+
   .overview-conditions-card {
     @apply flex min-w-0 flex-col overflow-hidden;
   }
@@ -1279,6 +1287,10 @@
 
   .evidence-key.unverified > span {
     @apply border-dashed border-neutral-500 bg-white;
+  }
+
+  .evidence-key.area-evidence > span {
+    @apply border-dashed border-brand bg-brand-soft;
   }
 
   .map-detail {
