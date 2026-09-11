@@ -5,6 +5,8 @@ import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
+import { isPilotLocation, PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
+import { TripCoverage } from "./TripCoverage";
 
 const MAP_LAYERS: MapLayer[] = [
   { key: "overall", label: "Overall risk" },
@@ -15,7 +17,7 @@ const MAP_LAYERS: MapLayer[] = [
   { key: "Community reports", label: "Community" },
 ];
 
-const APPROXIMATE_COVERAGE_RADIUS_METERS = 850;
+const APPROXIMATE_COVERAGE_RADIUS_METERS = PILOT.radiusMeters;
 
 function makeTooltip(title: string, detail: string) {
   const wrapper = document.createElement("span");
@@ -84,7 +86,7 @@ export function RiskMap({
 
         const map = L.map(mapElementRef.current, {
           zoomControl: true,
-          minZoom: 10,
+          minZoom: 5,
           maxZoom: 19,
           scrollWheelZoom: true,
         });
@@ -121,7 +123,7 @@ export function RiskMap({
       if (cancelled || !markerLayerRef.current) return;
       markerLayerRef.current.clearLayers();
 
-      locations.forEach((location) => {
+      locations.filter(isPilotLocation).forEach((location) => {
         const score = layerScore(location, activeLayer);
         const selected = location.id === selectedLocation.id;
         const color = riskGradient(score);
@@ -187,12 +189,13 @@ export function RiskMap({
 
       trip.segments.forEach((segment) => {
         L.polyline(segment.coordinates, {
-          color: riskGradient(segment.riskScore),
+          color: segment.riskScore === null ? UNKNOWN_ROUTE_COLOR : riskGradient(segment.riskScore),
+          dashArray: segment.riskScore === null ? "8 6" : undefined,
           weight: 8,
           opacity: 0.9,
-          lineCap: "round",
+          lineCap: segment.riskScore === null ? "butt" : "round",
         })
-          .bindTooltip(makeTooltip(segment.basisLocationName, `${segment.riskScore}/100 · approximate route section`))
+          .bindTooltip(makeTooltip(segment.basisLocationName ?? "Insufficient information", segment.riskScore === null ? "Outside pilot coverage · no score" : `${segment.riskScore}/100 · approximate route section`))
           .addTo(routeLayer!);
       });
       ([
@@ -224,7 +227,8 @@ export function RiskMap({
         <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a marker to compare its available risk signals."}</p>
       </div>
 
-      {trip && <div className="route-map-meta card"><div><span>Overall route risk</span><strong style={{ color: riskGradient(trip.overallRiskScore) }}>{trip.overallRiskScore}/100 · {trip.riskName}</strong></div><div><span>Risk coverage</span><strong>{trip.corridorLocations.length} signals · {trip.segments.length} colored sections</strong></div><p>{trip.coverageNote}</p></div>}
+      {trip && <TripCoverage trip={trip} />}
+      {trip && <p className="route-coverage-note">Route lines always show overall risk. Layer buttons change the pilot point markers and circles.</p>}
 
       <div className="map-layer-wrap" aria-label="Map data layer">
         <div className="map-control-label">Display layer</div>
@@ -246,13 +250,14 @@ export function RiskMap({
           </div>
           <div className="map-legend" aria-label="Risk color legend">
             <div className="map-legend-title">Score and risk level</div>
+            {trip && <p className="unknown-legend">Gray dashed route: insufficient information · no score</p>}
             <div className="map-gradient" />
             <div className="map-legend-labels"><span><strong>0</strong> Low</span><span><strong>30</strong> Moderate</span><span><strong>60</strong> High</span><span><strong>80–100</strong> Critical</span></div>
             <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Approximate coverage area</span><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending/unverified report</span></div>
           </div>
         </div>
 
-        <aside className="map-detail card card-pad" aria-live="polite">
+        {locations.length > 0 ? <aside className="map-detail card card-pad" aria-live="polite">
           <div className="map-detail-head">
             <div><div className="map-detail-kicker">Approximate location · {selectedLocation.city}</div><h3>{selectedLocation.name}</h3></div>
             <span className="map-score" style={{ "--score-color": riskGradient(selectedScore) } as React.CSSProperties}>{selectedScore}</span>
@@ -264,9 +269,9 @@ export function RiskMap({
           <div className="map-detail-section"><strong>Latest advisory</strong><p>{selectedLocation.advisories[0]?.title ?? "No advisory in the mock dataset."}</p></div>
           <div className="map-detail-section"><strong>Relevant hazard</strong><p>{selectedLocation.hazards[0]?.title ?? "No reported hazard in the mock dataset."}</p></div>
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
-        </aside>
+        </aside> : <aside className="map-detail card card-pad"><h3>No supporting pilot points</h3><p>This route has insufficient information. No local risk score or advisory has been assigned.</p></aside>}
       </div>
-      <p className="map-disclaimer">{trip ? "The road geometry comes from OSRM/OpenStreetMap. Segment colors and shaded areas are approximate SafeGo coverage—not live traffic, official boundaries, or road-level sensors. " : "Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. "}Weather may be live modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated route and risk inputs for product review. " : trip ? "The road geometry comes from OSRM/OpenStreetMap. " : ""}Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. Weather may be modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

@@ -3,7 +3,8 @@ import "server-only";
 import { getDashboardSnapshot } from "../data/dashboard-service.ts";
 import { resolvePlace } from "../providers/nominatim.ts";
 import { fetchDrivingRoute } from "../providers/osrm.ts";
-import { analyzeRouteSegments, distanceKm, routeRiskBand } from "./route-risk.ts";
+import { analyzeRouteSegments, routeRiskBand } from "./route-risk.ts";
+import { PILOT } from "./pilot.ts";
 import type { TripAnalysis } from "./types.ts";
 
 function uniqueBy<T>(items: T[], key: (item: T) => string) {
@@ -22,29 +23,12 @@ export async function analyzeTrip(
     route.routeCoordinates,
     snapshot.locations,
   );
-  const corridorLocations = snapshot.locations
-    .map((location) => ({
-      location,
-      distance: Math.min(
-        ...route.routeCoordinates.map((coordinate) =>
-          distanceKm(coordinate, location.coordinates),
-        ),
-      ),
-    }))
-    .filter((item) => item.distance <= 3)
-    .sort((first, second) => second.location.risk.percentage - first.location.risk.percentage)
-    .map((item) => item.location);
-  const coveredLocations = corridorLocations.length
-    ? corridorLocations
-    : uniqueBy(
-        routeRisk.segments.map((segment) =>
-          snapshot.locations.find(
-            (location) => location.id === segment.basisLocationId,
-          )!,
-        ),
-        (location) => location.id,
-      );
-  const band = routeRiskBand(routeRisk.overallRiskScore);
+  const basisIds = new Set(routeRisk.segments.map((segment) => segment.basisLocationId));
+  const coveredLocations = snapshot.locations.filter((location) => basisIds.has(location.id))
+    .sort((first, second) => second.risk.percentage - first.risk.percentage);
+  const band = routeRisk.overallRiskScore === null
+    ? { key: "unknown" as const, name: "INSUFFICIENT COVERAGE" }
+    : routeRiskBand(routeRisk.overallRiskScore);
 
   return {
     backend,
@@ -72,9 +56,11 @@ export async function analyzeTrip(
         coveredLocations.flatMap((location) => location.hazards),
         (hazard) => `${hazard.title}-${hazard.meta}`,
       ),
-      coverageNote: `Route colors use the nearest of ${snapshot.locations.length} SafeGo risk points. Coverage is approximate and may be less precise between monitored areas.`,
+      coverageNote: `${routeRisk.coverage.coveredPercent}% of this route is within the ${PILOT.name} coverage estimate. A rating requires at least ${PILOT.minimumCoveragePercent}% coverage within ${PILOT.radiusMeters} meters of a pilot point. Gray sections have insufficient information; coverage does not establish that the underlying data is current or verified.`,
       generatedAt: new Date().toISOString(),
       routingSource: "osrm",
+      coverage: routeRisk.coverage,
+      sources: snapshot.sources,
     },
   };
 }

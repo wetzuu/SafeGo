@@ -35,7 +35,7 @@ The browser never receives database credentials or provider configuration. Exter
 - Open-Meteo changes only the Weather factor. It does not create official advisories.
 - Nominatim is called only after a trip is submitted; local preset suggestions do not make network requests.
 - OSRM provides road geometry and road names. SafeGo does not expose trip distance or arrival-time estimates.
-- Route colors are derived from the nearest existing SafeGo risk point and are labeled approximate.
+- Route colors are derived only from nearby approved pilot points within the provisional 850-meter radius. Below 90% geographic coverage, the overall rating is null; unknown sections are gray and dashed. Pilot eligibility is distinct from verified operational evidence. See `docs/PILOT_VALIDATION.md`.
 - Provider failures retain stored data and surface a degraded source status.
 - Public report submissions are stored as unverified evidence and do not directly change a risk score.
 - Official-advisory and flood/road feeds must use the normalized contracts in `docs/SOURCE_FEEDS.md`; unknown location IDs and expired items are ignored.

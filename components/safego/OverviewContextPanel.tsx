@@ -5,6 +5,7 @@ import type { Map as LeafletMap } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import type { FactorName, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
+import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 
 const FEATURED_FACTORS: FactorName[] = [
   "Weather",
@@ -19,7 +20,7 @@ const RISK_LEGEND = [
   { label: "Critical", range: "80–100", color: "#dc2626" },
 ];
 
-const APPROXIMATE_COVERAGE_RADIUS_METERS = 850;
+const APPROXIMATE_COVERAGE_RADIUS_METERS = PILOT.radiusMeters;
 
 function makeTooltip(title: string, detail: string) {
   const wrapper = document.createElement("span");
@@ -91,15 +92,16 @@ function CompactRiskMap({
         if (trip) {
           trip.segments.forEach((segment) => {
             L.polyline(segment.coordinates, {
-              color: riskGradient(segment.riskScore),
+              color: segment.riskScore === null ? UNKNOWN_ROUTE_COLOR : riskGradient(segment.riskScore),
+              dashArray: segment.riskScore === null ? "8 6" : undefined,
               weight: 7,
               opacity: 0.92,
-              lineCap: "round",
+              lineCap: segment.riskScore === null ? "butt" : "round",
             })
               .bindTooltip(
                 makeTooltip(
-                  segment.basisLocationName,
-                  `${segment.riskScore}/100 · approximate risk section`,
+                  segment.basisLocationName ?? "Insufficient information",
+                  segment.riskScore === null ? "Outside pilot coverage · no score" : `${segment.riskScore}/100 · approximate risk section`,
                 ),
               )
               .addTo(map);
@@ -200,6 +202,7 @@ export function OverviewContextPanel({
               <span><strong>{item.label}</strong> {item.range}</span>
             </span>
           ))}
+          {trip && <span className="overview-legend-item"><i style={{ background: UNKNOWN_ROUTE_COLOR }} /><span>Gray dashed: insufficient information</span></span>}
           <span className="overview-area-legend"><i />Shaded circles show approximate SafeGo coverage areas</span>
         </div>
       </article>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
+import { isPilotLocation, PILOT } from "@/lib/trips/pilot";
 
 interface TripEnvelope {
   data?: TripAnalysis;
@@ -47,7 +48,7 @@ export function TripPlanner({
     setError("");
 
     if (!hasDestination) {
-      const location = findLocation(locations, stops[0]);
+      const location = findLocation(locations.filter(isPilotLocation), stops[0]);
       if (!location) {
         setError("Choose one of the available SafeGo locations to view its risk dashboard.");
         return;
@@ -86,14 +87,15 @@ export function TripPlanner({
   }
 
   function useExample() {
-    setStops(["Buting, Pasig City", "Mapua Makati Campus"]);
+    setStops(["España Blvd., Sampaloc", "Lerma St., Sampaloc"]);
     setError("");
   }
 
   return (
     <form className="trip-planner" onSubmit={submit}>
+      <p className="pilot-notice"><strong>{PILOT.name}</strong> · España, Lerma, Quiapo and Mapúa Makati. Coverage extends up to {PILOT.radiusMeters} meters around each point, with gaps between areas. Other routes may have insufficient coverage.</p>
       <datalist id="safego-locations">
-        {locations.map((location) => <option key={location.id} value={location.name} />)}
+        {locations.filter(isPilotLocation).map((location) => <option key={location.id} value={location.name} />)}
       </datalist>
       {stops.map((stop, index) => (
         <div className="trip-stop" key={index}>

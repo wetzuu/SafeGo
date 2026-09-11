@@ -44,8 +44,8 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 
 ## Flow
 
-1. Enter a starting point and destination, or load the Buting-to-Mapúa example.
-2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against nearby calculated SafeGo risk points.
+1. Enter a starting point and destination, or load the España-to-Lerma pilot example.
+2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
 3. Review the route score, hotspots, colored map, corridor alerts, conditions, and reports.
 4. Select **Plan another trip** to start again.
 
@@ -105,9 +105,9 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 
 ## Route-risk model
 
-OSRM supplies road geometry and road names. SafeGo samples that geometry and assigns each section the already-calculated overall score of its nearest SafeGo location. Segment length is used internally only to weight the safety score; SafeGo does not present trip distance or arrival-time estimates. If any section is High or Critical, the final trip score cannot fall below that same safety band.
+OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by pilot points in España, Lerma, Quiapo and Mapúa Makati. Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are gray and dashed. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
 
-Route colors are therefore an approximate coverage model—not live traffic measurements or proof that a road is safe. The UI displays how far the weakest-covered route section is from its assigned risk point.
+Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. No real user or historical validation has been completed yet.
 
 ## Public geocoding and routing services
 
