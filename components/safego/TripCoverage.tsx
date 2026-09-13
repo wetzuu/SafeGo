@@ -38,7 +38,7 @@ export function TripCoverage({ trip }: { trip: TripAnalysis }) {
       <p>Trip snapshot: {new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(trip.generatedAt))}. Analyze the trip again for a new snapshot.</p>
       {trip.routingSource === "simulation" ? <p>All inputs in this review are simulated. No live feeds or fallback observations were used.</p> : <>{trip.routingSource === "saved-demo" && <p><strong>Routing fallback:</strong> Live routing was unavailable, so this example uses saved OSRM road geometry captured on September 14, 2026. Re-analyze when the provider is available for a current route.</p>}<ul>{["open-meteo", "official-advisories", "flood-road"].map((key) => {
         const source = trip.sources.find((item) => item.key === key);
-        const label = key === "open-meteo" ? "Modeled weather" : key === "flood-road" ? "Flood and road observations" : "Official advisories";
+        const label = key === "open-meteo" ? "Modeled weather" : key === "flood-road" ? "Flood and road observations" : "Official announcements";
         return <li key={key}><strong>{label}:</strong> {source?.status === "active" ? "connected in this snapshot" : source?.status === "degraded" ? "unavailable; stored fallback used" : "not connected; stored fallback used"}.</li>;
       })}</ul></>}
       <p>Stored signals can include demo fixtures, including school and community information. Geographic coverage and a connected feed do not verify every underlying signal. Follow current official announcements.</p>

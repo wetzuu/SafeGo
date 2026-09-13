@@ -45,29 +45,17 @@ export function TripPlanner({
     setError("");
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setError("");
-
-    if (!hasDestination) {
-      const location = findLocation(locations.filter(isPilotLocation), stops[0]);
-      if (!location) {
-        setError("Choose one of the available SafeGo locations to view its risk dashboard.");
-        return;
-      }
-      onLocation(location);
-      return;
-    }
-
+  async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean) {
     setLoading(true);
+    setError("");
     try {
       const response = await fetch("/api/trips/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          origin: stops[0],
-          destination: stops[1],
-          preferSavedDemo,
+          origin,
+          destination,
+          preferSavedDemo: useSavedDemo,
         }),
         signal: AbortSignal.timeout(25_000),
       });
@@ -88,6 +76,23 @@ export function TripPlanner({
     }
   }
 
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+
+    if (!hasDestination) {
+      const location = findLocation(locations.filter(isPilotLocation), stops[0]);
+      if (!location) {
+        setError("Choose one of the available SafeGo locations to view its risk dashboard.");
+        return;
+      }
+      onLocation(location);
+      return;
+    }
+
+    await analyzeRoute(stops[0], stops[1], preferSavedDemo);
+  }
+
   function addDestination() {
     setStops((current) => current.length === 1 ? [...current, ""] : current);
     setPreferSavedDemo(false);
@@ -100,10 +105,12 @@ export function TripPlanner({
     setError("");
   }
 
-  function useExample() {
-    setStops(["España Blvd., Sampaloc", "Lerma St., Sampaloc"]);
+  async function runExample() {
+    const origin = "España Blvd., Sampaloc";
+    const destination = "Lerma St., Sampaloc";
+    setStops([origin, destination]);
     setPreferSavedDemo(true);
-    setError("");
+    await analyzeRoute(origin, destination, true);
   }
 
   return (
@@ -148,7 +155,7 @@ export function TripPlanner({
         <button className="submit-btn" type="submit" disabled={loading}>
           {loading ? "Finding and analyzing route…" : hasDestination ? "Analyze my trip" : "Check this location"}
         </button>
-        <button className="example-trip" type="button" onClick={useExample} disabled={loading}>Load stable demo trip</button>
+        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>{loading ? "Opening demo…" : "Run demo route"}</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-mode-help">

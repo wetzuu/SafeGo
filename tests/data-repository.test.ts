@@ -20,6 +20,9 @@ test("mock repository returns calculated risk details", async () => {
   assert.equal(result.factors.length, 5);
   assert.equal(result.assessment.modelVersion, "1.0.0");
   assert.equal(result.assessment.percentage, 54);
+  assert.ok(result.advisories.every((advisory) =>
+    advisory.isMock && advisory.date === "Sep 14, 2026",
+  ));
   assert.ok(result.advisories.some((advisory) =>
     advisory.label === "PAGASA" && advisory.isMock,
   ));

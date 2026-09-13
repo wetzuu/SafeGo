@@ -17,6 +17,13 @@ function displayTime(isoTime: string) {
   }).format(new Date(isoTime));
 }
 
+function displayDate(isoTime: string) {
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeZone: "Asia/Manila",
+  }).format(new Date(isoTime));
+}
+
 function replaceFactor(location: SafeGoLocation, factor: RiskFactor) {
   const factors = location.factors.map((current) => current.name === factor.name ? factor : current);
   return {
@@ -49,6 +56,7 @@ export function applyOfficialAdvisories(location: SafeGoLocation, allItems: Offi
       title: item.title,
       description: item.description,
       time: displayTime(item.issuedAt),
+      date: displayDate(item.issuedAt),
       sourceUrl: item.sourceUrl,
     })),
   };

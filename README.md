@@ -55,7 +55,7 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 
 1. Enter a starting point and destination, or load the stable España-to-Lerma pilot example.
 2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
-3. Review the route score, hotspots, colored map, corridor alerts, conditions, and reports.
+3. Review the route score, compact map, road conditions, announcements, and major roads.
 4. Select **Plan another trip** to start again.
 
 ## Screens
@@ -63,12 +63,12 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 | Screen       | Contents                                                          |
 | ------------ | ----------------------------------------------------------------- |
 | Search       | Location field, result list, suggested areas                      |
-| Overview     | Route score, risk coverage, hotspots, advisories, and major roads  |
+| Overview     | Route score, compact risk map, current conditions, announcements, and major roads |
 | Risk factors | SafeGo risk points and factors covering the route                  |
-| Alerts       | Notices aggregated from coverage points near the route             |
+| Announcements | Official, school, and local updates near the area or route         |
 | Map          | Real road route with green/yellow/orange/red risk sections         |
 | Conditions   | Hazards and community observations near the route                  |
-| Reports      | Public report form and corridor reports                            |
+| Reports      | Optional moderated community-report workflow; hidden when disabled |
 
 Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
@@ -98,7 +98,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trus
 | `POST /api/trips/analyze` | Resolves A and B, identifies connecting roads, and calculates route risk |
 | `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
 
-Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. They are intentionally not cached so a refresh requests current provider data. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
+Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. The dashboard service keeps an assembled snapshot in memory for one minute, while successful OSRM routes are cached for ten minutes. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
 
 ## Live weather normalization
 
@@ -132,9 +132,9 @@ The travel-risk score is calculated from five normalized inputs:
 
 - Flood and road conditions: 40%
 - Weather severity: 25%
-- Official advisories: 20%
+- Official announcements and advisories: 20%
 - Community reports: 10%
-- School status: 5%
+- Nearby university or school status: 5%
 
 Scores of 0–29 are Low, 30–59 Moderate, 60–79 High, and 80–100 Critical.
 As a safety guardrail, a flood/road score of 70 or higher cannot produce an
@@ -144,7 +144,7 @@ below Critical. Severe weather (85+) supported by an elevated official advisory
 
 ## Community report intake
 
-The Reports screen is read-only by default. `POST /api/reports` rejects submissions unless both `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`. This prevents the unfinished intake code from collecting public reports before verification and abuse handling exist.
+Reports navigation is hidden by default. It appears only when both `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`; `POST /api/reports` rejects submissions otherwise. This prevents the unfinished intake code from collecting public reports before verification and abuse handling exist.
 
 PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Next.js server process. Database seeds now replace fixture reports without deleting community submissions.
 

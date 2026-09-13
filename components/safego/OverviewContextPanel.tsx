@@ -246,7 +246,7 @@ export function OverviewContextPanel({
         {announcement && <div className="overview-announcement-preview">
           <span>Latest announcement</span>
           <strong>{announcement.title}</strong>
-          <p>{announcement.isMock ? "Demo notice" : announcement.label}. {announcement.time}</p>
+          <p>{announcement.isMock ? "Demo notice" : announcement.label}. {announcement.date ? `${announcement.date} at ` : ""}{announcement.time}</p>
         </div>}
         <p className="overview-context-note">Updated {location.updated}. Open Conditions for hazards and road details.</p>
         <button className="overview-conditions-link" type="button" onClick={onViewConditions}>View condition details</button>

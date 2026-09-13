@@ -12,7 +12,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
     <div className={`risk-hero risk-${trip.riskKey}`}><div className="risk-hero-top"><div>
       <div className="risk-hero-q">Estimated risk along this route</div>
       <div className="risk-level-row"><div className="risk-level-name">{trip.riskName}</div>{trip.overallRiskScore !== null && <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.overallRiskScore}/100</span>}</div>
-      <p className="risk-hero-why">{trip.overallRiskScore === null ? "There is not enough information to rate the whole route." : "Check current official notices before deciding to travel."}</p>
+      <p className="risk-hero-why">{trip.overallRiskScore === null ? "There is not enough information to rate the whole route." : "Check current official announcements before deciding to travel."}</p>
       {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
     </div>{trip.overallRiskScore !== null && <div className="gauge-wrap"><RiskGauge score={trip.overallRiskScore} /></div>}</div></div>
     <TripDataNotice trip={trip} />

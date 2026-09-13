@@ -1,9 +1,16 @@
 import { analyzeRisk } from "./risk-model.ts";
 import type { LocationInput, SafeGoLocation } from "./types";
 
+const DEMO_SNAPSHOT_DATE = "Sep 14, 2026";
+
 function createLocation(input: LocationInput): SafeGoLocation {
   return {
     ...input,
+    advisories: input.advisories.map((advisory) => ({
+      ...advisory,
+      date: advisory.date ?? DEMO_SNAPSHOT_DATE,
+      isMock: true,
+    })),
     risk: analyzeRisk(input.factors, input.riskSummary, input.riskStatus),
   };
 }

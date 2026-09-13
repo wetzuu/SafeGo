@@ -28,13 +28,13 @@ import { isPilotLocation } from "@/lib/trips/pilot";
 const NAV_ITEMS: Array<{
   key: ScreenKey;
   label: string;
-  icon: "overview" | "risk" | "alert" | "map" | "reports";
+  icon: "overview" | "risk" | "alert" | "map" | "flood" | "reports";
 }> = [
   { key: "overview", label: "Overview", icon: "overview" },
   { key: "risk", label: "Risk factors", icon: "risk" },
-  { key: "alerts", label: "Alerts", icon: "alert" },
+  { key: "alerts", label: "Announcements", icon: "alert" },
   { key: "map", label: "Map", icon: "map" },
-  { key: "conditions", label: "Conditions", icon: "reports" },
+  { key: "conditions", label: "Conditions", icon: "flood" },
   { key: "reports", label: "Reports", icon: "reports" },
 ];
 
@@ -44,13 +44,15 @@ interface DashboardEnvelope {
 }
 
 function displayFactorName(name: string) {
-  return name === "School status" ? "Nearby university status" : name;
+  if (name === "School status") return "Nearby university status";
+  if (name === "Official advisories") return "Official announcements";
+  return name;
 }
 
-function Navigation({ activeScreen, onNavigate }: { activeScreen: ScreenKey; onNavigate: (screen: ScreenKey) => void }) {
+function Navigation({ activeScreen, reportsEnabled, onNavigate }: { activeScreen: ScreenKey; reportsEnabled: boolean; onNavigate: (screen: ScreenKey) => void }) {
   return (
     <ul className="nav-list">
-      {NAV_ITEMS.map((item) => (
+      {NAV_ITEMS.filter((item) => item.key !== "reports" || reportsEnabled).map((item) => (
         <li key={item.key}>
           <button type="button" className={`nav-item${activeScreen === item.key ? " active" : ""}`} onClick={() => onNavigate(item.key)} aria-current={activeScreen === item.key ? "page" : undefined}>
             <Icon name={item.icon} /><span>{item.label}</span>
@@ -68,15 +70,15 @@ function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh 
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
-  const label = live ? "Weather updated" : degraded ? "Using stored conditions" : backend === "mock" ? "Demo data" : "Saved data";
-  const detail = updated ? `Updated ${updated}` : live ? "Current modeled conditions" : degraded ? "Live weather unavailable" : "Live weather is off";
+  const label = live ? "Weather updated" : degraded ? "Using stored conditions" : backend === "mock" ? "Demo snapshot" : "Saved data";
+  const detail = updated ? `Updated ${updated}` : live ? "Current modeled conditions" : degraded ? backend === "mock" ? "Live weather unavailable. Demo snapshot shown." : "Live weather unavailable" : backend === "mock" ? "Stored sample conditions" : "Live weather is off";
 
   return <div className={`data-status${live ? " live" : degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
 
 function Advisories({ items }: { items: Advisory[] }) {
-  if (!items.length) return <p className="empty-note">No advisories for this area in the current dataset.</p>;
-  return <div className="advisory-list">{items.map((item) => <article className={`adv-item${item.isMock ? " mock" : ""}`} key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-meta-row"><div className="adv-tags"><span className={`src-tag src-${item.source}`}>{item.label}</span>{item.isMock && <span className="advisory-demo-tag">Demo</span>}</div><time className="adv-time mono">{item.time}</time></div>{item.sourceUrl ? <a className="adv-title source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">{item.title}</a> : <div className="adv-title">{item.title}</div>}<div className="adv-desc">{item.description}</div></div></article>)}</div>;
+  if (!items.length) return <p className="empty-note">No announcements for this area in the current dataset.</p>;
+  return <div className="advisory-list">{items.map((item) => <article className={`adv-item${item.isMock ? " mock" : ""}`} key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-meta-row"><div className="adv-tags"><span className={`src-tag src-${item.source}`}>{item.label}</span>{item.isMock && <span className="advisory-demo-tag">Demo</span>}</div><time className="adv-time mono">{item.date ? `${item.date} · ` : ""}{item.time}</time></div>{item.sourceUrl ? <a className="adv-title source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">{item.title}</a> : <div className="adv-title">{item.title}</div>}<div className="adv-desc">{item.description}</div></div></article>)}</div>;
 }
 
 function Reports({ items }: { items: CommunityReport[] }) {
@@ -260,15 +262,15 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
 
   if (!selectedLocation) {
-    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">Start with one location. Add a destination when you want to check a route.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Demo locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is an informational demo. Always check current official advisories before traveling.</p></div></main>;
+    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">Start with one location. Add a destination when you want to check a route.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Demo locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is an informational demo. Always check current official announcements before traveling.</p></div></main>;
   }
 
-  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
+  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
     {activeScreen === "overview" && (trip ? <TripOverview trip={trip} navigate={navigate} /> : <LocationOverview location={selectedLocation} navigate={navigate} />)}
     {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : <LocationRiskFactors location={selectedLocation} />)}
-    {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route alerts" : "Area alerts"} title={trip ? "Advisories near this trip" : "Advisories for this area"} subtitle={trip ? "Notices linked to locations along this route." : `${selectedLocation.name}. Newest notices first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
+    {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route announcements" : "Area announcements"} title={trip ? "Announcements near this trip" : "Announcements for this area"} subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation.name}. Newest announcements first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
     {activeScreen === "map" && <RiskMap locations={trip ? trip.corridorLocations : locations} selectedLocation={trip ? trip.corridorLocations.find((location) => location.id === selectedLocation.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
     {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} reportingEnabled={communityReportingEnabled} onSubmitted={addSubmittedReport} />}
-  </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} onNavigate={navigate} /></nav></div>;
+  </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /></nav></div>;
 }

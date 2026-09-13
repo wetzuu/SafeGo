@@ -56,6 +56,7 @@ export interface Advisory {
   title: string;
   description: string;
   time: string;
+  date?: string;
   sourceUrl?: string;
   isMock?: boolean;
 }
