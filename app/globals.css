@@ -314,7 +314,7 @@
   }
 
   .overview-context-grid {
-    @apply mb-[18px] grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(270px,0.85fr)];
+    @apply mb-6 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)];
   }
 
   .overview-map-card {
@@ -445,55 +445,87 @@
   }
 
   .conditions-head {
-    @apply border-b-0 pb-2;
+    @apply border-b-0 pb-3;
   }
 
-  .overview-total-score {
-    @apply flex size-11 shrink-0 items-center justify-center rounded-full border-[3px] border-white font-mono text-[12px] text-white shadow-md;
+  .overview-weather-now {
+    @apply mx-4 flex items-center gap-3 rounded-box border border-weather/20 bg-weather-soft p-3.5;
   }
 
-  .overview-condition-location {
-    @apply mx-4 border-b border-hairline pb-3;
+  .overview-weather-icon {
+    @apply flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-weather shadow-sm;
   }
 
-  .overview-condition-location strong {
-    @apply block truncate text-[12px];
+  .overview-weather-icon svg {
+    @apply size-[18px];
   }
 
-  .overview-condition-location span {
-    @apply mt-0.5 block text-[10px] text-ink-soft;
+  .overview-weather-now > div:last-child {
+    @apply min-w-0;
   }
 
-  .overview-factor-list {
-    @apply grid gap-3 px-4 py-3.5;
+  .overview-weather-now span,
+  .overview-useful-condition span,
+  .overview-announcement-preview > span {
+    @apply block text-[9.5px] font-bold uppercase tracking-wide text-ink-soft;
   }
 
-  .overview-factor > div:first-child {
-    @apply mb-1.5 flex items-center justify-between gap-3 text-[10.5px] text-ink-soft;
+  .overview-weather-now strong {
+    @apply mt-0.5 block text-[17px] leading-tight text-weather;
   }
 
-  .overview-factor > div:first-child strong {
-    @apply shrink-0 font-mono text-[10.5px];
+  .overview-weather-now p,
+  .overview-useful-condition p,
+  .overview-announcement-preview p {
+    @apply mt-1 text-[10px] leading-normal text-ink-soft;
   }
 
-  .overview-factor-track {
-    @apply h-1.5 overflow-hidden rounded-full bg-neutral-200;
+  .overview-useful-conditions {
+    @apply grid px-4 pt-2;
   }
 
-  .overview-factor-track span {
-    @apply block h-full rounded-full;
+  .overview-useful-condition {
+    @apply grid min-h-[66px] grid-cols-[32px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-3 last:border-b-0;
   }
 
-  .overview-signal-counts {
-    @apply mx-4 flex gap-4 border-t border-hairline pt-3 text-[10px] text-ink-soft;
+  .overview-useful-condition .icon-badge {
+    @apply flex size-8 items-center justify-center self-start rounded-full;
   }
 
-  .overview-signal-counts strong {
-    @apply font-mono text-ink;
+  .overview-useful-condition .icon-badge svg {
+    @apply size-4;
+  }
+
+  .overview-useful-condition > div:last-child {
+    @apply min-w-0;
+  }
+
+  .overview-useful-condition strong {
+    @apply mt-0.5 block text-[12px] leading-tight;
+  }
+
+  .overview-useful-condition[data-tone="icon-ok"] strong {
+    @apply text-low;
+  }
+
+  .overview-useful-condition[data-tone="icon-mod"] strong {
+    @apply text-mod;
+  }
+
+  .overview-useful-condition[data-tone="icon-alert"] strong {
+    @apply text-crit;
+  }
+
+  .overview-announcement-preview {
+    @apply mx-4 mt-2 rounded-box border border-brand/20 bg-brand-soft/55 px-3 py-2.5;
+  }
+
+  .overview-announcement-preview strong {
+    @apply mt-1 block text-[11.5px] leading-normal;
   }
 
   .overview-context-note {
-    @apply px-4 pt-3 text-[9.5px] leading-normal text-ink-soft;
+    @apply px-4 pt-2.5 text-[9.5px] leading-normal text-ink-soft;
   }
 
   .overview-conditions-link {
@@ -546,6 +578,38 @@
 
   .overview-safety-note {
     @apply mt-4 border-t border-hairline pt-3 text-[10.5px] leading-normal text-ink-soft;
+  }
+
+  .overview-announcements {
+    @apply rounded-box border border-brand/25 bg-brand-soft/35 p-3.5 sm:p-4;
+  }
+
+  .overview-announcements .section-title {
+    @apply mb-3 mt-0;
+  }
+
+  .section-title-copy {
+    @apply flex min-w-0 items-center gap-2.5;
+  }
+
+  .section-title-icon {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white;
+  }
+
+  .section-title-icon svg {
+    @apply size-4;
+  }
+
+  .section-title-copy > div > span {
+    @apply block text-[9px] font-bold uppercase tracking-wider text-brand;
+  }
+
+  .section-title-copy h2 {
+    @apply mt-0.5 text-[14px] font-bold leading-tight;
+  }
+
+  .overview-announcements .adv-item:last-child {
+    @apply mb-0;
   }
 
   .route-coverage-note {
@@ -970,16 +1034,28 @@
     @apply mb-2 flex gap-3 rounded-box border border-hairline bg-white px-3.5 py-3;
   }
 
+  .adv-item.mock {
+    @apply border-weather bg-weather-soft/35;
+  }
+
   .adv-body {
     @apply min-w-0 flex-1;
   }
 
-  .adv-top {
-    @apply mb-1 flex flex-wrap items-center gap-2;
+  .adv-meta-row {
+    @apply mb-2 flex items-center justify-between gap-3;
+  }
+
+  .adv-tags {
+    @apply flex min-w-0 flex-wrap items-center gap-1.5;
   }
 
   .src-tag {
     @apply rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
+  }
+
+  .advisory-demo-tag {
+    @apply rounded-sm border border-mod bg-mod-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-mod;
   }
 
   .src-school {
@@ -999,11 +1075,7 @@
   }
 
   .adv-title {
-    @apply mb-0.5 text-[13.5px] font-semibold;
-  }
-
-  .adv-title.inline {
-    @apply mb-0;
+    @apply mb-1 block text-[13.5px] font-semibold leading-snug text-ink;
   }
 
   .adv-desc {

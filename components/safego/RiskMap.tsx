@@ -13,7 +13,7 @@ const MAP_LAYERS: MapLayer[] = [
   { key: "Weather", label: "Weather" },
   { key: "Flood / roads", label: "Flood & roads" },
   { key: "Official advisories", label: "Advisories" },
-  { key: "School status", label: "School status" },
+  { key: "School status", label: "Nearby university" },
   { key: "Community reports", label: "Community" },
 ];
 
@@ -278,7 +278,7 @@ export function RiskMap({
           </div>
           <div className="map-layer-reading">{activeLayerLabel}: <strong>{selectedScore}/100</strong></div>
           <div className="map-overall-row"><span>Overall travel risk</span><span className={`pill ${selectedLocation.risk.key}`}><span className="dot" />{selectedLocation.risk.percentage}/100. {selectedLocation.risk.name}</span></div>
-          <div className="map-factor-list">{selectedLocation.factors.map((factor) => <div key={factor.name}><span>{factor.name}</span><strong className="mono">{factor.score}</strong></div>)}</div>
+          <div className="map-factor-list">{selectedLocation.factors.map((factor) => <div key={factor.name}><span>{factor.name === "School status" ? "Nearby university status" : factor.name}</span><strong className="mono">{factor.score}</strong></div>)}</div>
           <div className="map-evidence"><span className="evidence-key verified"><span />{verifiedCount} verified</span><span className="evidence-key unverified"><span />{unverifiedCount} pending/unverified</span><span className="mono">Updated {selectedLocation.updated}</span></div>
           <div className="map-detail-section"><strong>Latest advisory</strong><p>{selectedLocation.advisories[0]?.title ?? "No advisory in the mock dataset."}</p></div>
           <div className="map-detail-section"><strong>Relevant hazard</strong><p>{selectedLocation.hazards[0]?.title ?? "No reported hazard in the mock dataset."}</p></div>

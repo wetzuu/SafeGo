@@ -32,7 +32,7 @@ const espanaInput: LocationInput = {
     { name: "Community reports", score: 40, pill: "mod", pillText: "3 recent", description: "3 flood reports and 1 stalled vehicle in the past hour, pending verification.", icon: "reports", tone: "icon-neutral" },
   ],
   advisories: [
-    { source: "gov", label: "Government", title: "PAGASA rainfall advisory: Metro Manila", description: "Moderate to heavy rainfall expected over Metro Manila within the next 3 hours.", time: "6:15 AM" },
+    { source: "weather", label: "PAGASA", title: "Orange Rainfall Warning for Metro Manila", description: "Demo announcement only. Heavy rainfall may cause flooding in low-lying areas within the next three hours. This is not an active PAGASA warning.", time: "6:15 AM", isMock: true },
     { source: "school", label: "School", title: "Mapúa University: classes proceed as scheduled", description: "No suspension announced. Monitor road conditions and allot extra travel time.", time: "6:00 AM" },
     { source: "weather", label: "Weather", title: "Localized flood watch: España / Sampaloc", description: "Street-level flooding possible in low-lying sections due to sustained rainfall.", time: "5:50 AM" },
     { source: "community", label: "Community", title: "Slow traffic along Quezon Blvd.", description: "Aggregated from 4 reports in the last hour. Pending official verification.", time: "5:40 AM" },

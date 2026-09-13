@@ -3,15 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
-import type { FactorName, SafeGoLocation } from "@/lib/safego/types";
+import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
-
-const FEATURED_FACTORS: FactorName[] = [
-  "Weather",
-  "Flood / roads",
-  "Official advisories",
-];
+import { Icon } from "./Icon";
 
 const RISK_LEGEND = [
   { label: "Low", range: "0–29", color: "#15803d" },
@@ -197,6 +192,12 @@ export function OverviewContextPanel({
   onViewConditions: () => void;
 }) {
   const contextLabel = trip ? "Highest-risk location" : "Selected location";
+  const weather = location?.stats.find((stat) => stat.label === "Weather");
+  const usefulConditions = (["Road condition", "School status"] as const).flatMap((label) => {
+    const condition = location?.stats.find((stat) => stat.label === label);
+    return condition ? [condition] : [];
+  });
+  const announcement = location?.advisories[0];
 
   return (
     <div className="overview-context-grid">
@@ -225,31 +226,29 @@ export function OverviewContextPanel({
         <div className="overview-panel-head conditions-head">
           <div>
             <span>{contextLabel}</span>
-            <h2>Conditions snapshot</h2>
+            <h2>Current conditions</h2>
           </div>
-          <strong className="overview-total-score" style={{ background: riskGradient(location.risk.percentage) }}>{location.risk.percentage}</strong>
         </div>
-        <div className="overview-condition-location">
-          <strong>{location.name}</strong>
-          <span>{location.city}. Updated {location.updated}.</span>
+        {weather && <div className="overview-weather-now">
+          <div className="overview-weather-icon"><Icon name="weather" /></div>
+          <div>
+            <span>Weather now</span>
+            <strong>{weather.value}</strong>
+            <p>{weather.detail}</p>
+          </div>
+        </div>}
+        <div className="overview-useful-conditions">
+          {usefulConditions.map((condition) => <div className="overview-useful-condition" data-tone={condition.tone} key={condition.label}>
+            <div className={`icon-badge ${condition.tone}`}><Icon name={condition.icon} /></div>
+            <div><span>{condition.label === "School status" ? "Nearby university status" : condition.label}</span><strong>{condition.value}</strong><p>{condition.detail}</p></div>
+          </div>)}
         </div>
-        <div className="overview-factor-list">
-          {FEATURED_FACTORS.map((name) => {
-            const factor = location.factors.find((candidate) => candidate.name === name);
-            if (!factor) return null;
-            return (
-              <div className="overview-factor" key={name}>
-                <div><span>{name}</span><strong style={{ color: riskGradient(factor.score) }}>{factor.score}/100</strong></div>
-                <div className="overview-factor-track"><span style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="overview-signal-counts">
-          <span><strong>{location.hazards.length}</strong> hazards</span>
-          <span><strong>{location.advisories.length}</strong> advisories</span>
-        </div>
-        <p className="overview-context-note">Map colors show travel risk. Open the full map to compare individual conditions.</p>
+        {announcement && <div className="overview-announcement-preview">
+          <span>Latest announcement</span>
+          <strong>{announcement.title}</strong>
+          <p>{announcement.isMock ? "Demo notice" : announcement.label}. {announcement.time}</p>
+        </div>}
+        <p className="overview-context-note">Updated {location.updated}. Open Conditions for hazards and road details.</p>
         <button className="overview-conditions-link" type="button" onClick={onViewConditions}>View condition details</button>
       </article> : <article className="card overview-conditions-card overview-conditions-empty">
         <div>

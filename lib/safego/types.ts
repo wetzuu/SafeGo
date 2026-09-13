@@ -57,6 +57,7 @@ export interface Advisory {
   description: string;
   time: string;
   sourceUrl?: string;
+  isMock?: boolean;
 }
 
 export interface CommunityReport {
