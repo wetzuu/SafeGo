@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
-import { isPilotLocation, PILOT } from "@/lib/trips/pilot";
+import { isPilotLocation } from "@/lib/trips/pilot";
 
 interface TripEnvelope {
   data?: TripAnalysis;
@@ -108,7 +108,7 @@ export function TripPlanner({
 
   return (
     <form className="trip-planner" onSubmit={submit}>
-      <p className="pilot-notice"><strong>{PILOT.name}</strong> · España, Lerma, Quiapo and Mapúa Makati. Coverage extends up to {PILOT.radiusMeters} meters around each point, with gaps between areas. Other routes may have insufficient coverage.</p>
+      <p className="demo-scope"><strong>Demo locations:</strong> España, Lerma, Quiapo, and Mapúa Makati.</p>
       <datalist id="safego-locations">
         {locations.filter(isPilotLocation).map((location) => <option key={location.id} value={location.name} />)}
       </datalist>
@@ -153,10 +153,10 @@ export function TripPlanner({
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-mode-help">
         {hasDestination
-          ? "SafeGo will analyze the road route between A and B."
-          : "Check one covered area, or add a destination to analyze a route."}
+          ? "SafeGo checks the roads between A and B."
+          : "Check one area, or add a destination for a route."}
       </p>
-      <p className="trip-attribution">Location lookup © OpenStreetMap contributors. Search runs only when you submit—not while typing.</p>
+      <p className="trip-attribution">Location lookup © OpenStreetMap contributors. Search runs only after you submit.</p>
     </form>
   );
 }

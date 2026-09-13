@@ -16,7 +16,6 @@
 .trip-coverage ul { padding-left: 22px; list-style: disc; }
 .pilot-notice { padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; line-height: 1.5; font-size: 0.85rem; }
 .unknown-legend { color: #475569; font-size: 0.85rem; padding: 8px 0; }
-.trip-snapshot-note { font-size: 0.8rem; color: #475569; margin-top: 8px; line-height: 1.5; }
 .trip-routing-note { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; }
 .validation-workbench { max-width: 1200px; margin: auto; padding: 20px; }
 .validation-controls { margin-top: 16px; }
@@ -167,7 +166,7 @@
   }
 
   .data-status {
-    @apply mb-4 flex items-center gap-2.5 rounded-box border border-hairline bg-white px-3 py-2.5 text-left;
+    @apply mb-3 flex items-center gap-2.5 rounded-box border border-hairline bg-white px-3 py-2 text-left;
   }
 
   .data-status.live {
@@ -191,7 +190,7 @@
   }
 
   .data-status-copy {
-    @apply flex min-w-0 flex-1 flex-col;
+    @apply flex min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-2;
   }
 
   .data-status-copy strong {
@@ -216,6 +215,14 @@
 
   .trip-planner {
     @apply rounded-box border border-hairline bg-white p-4 shadow-sm;
+  }
+
+  .demo-scope {
+    @apply mb-3 text-[11px] leading-normal text-ink-soft;
+  }
+
+  .demo-scope strong {
+    @apply text-ink;
   }
 
   .trip-input-row {
@@ -304,10 +311,6 @@
 
   .trip-bar button {
     @apply ml-auto cursor-pointer border-0 bg-transparent text-[11px] font-semibold text-brand;
-  }
-
-  .trip-stat-grid {
-    @apply mb-[18px] grid grid-cols-2 gap-3 lg:grid-cols-4;
   }
 
   .overview-context-grid {
@@ -497,45 +500,52 @@
     @apply mx-4 mt-auto mb-4 self-start;
   }
 
-  .trip-stat {
-    @apply flex flex-col px-4 py-3.5;
+  .overview-conditions-empty {
+    @apply justify-between p-4;
   }
 
-  .trip-stat span {
-    @apply text-[10.5px] font-semibold uppercase tracking-wide text-ink-soft;
+  .overview-conditions-empty > div > span {
+    @apply text-[9.5px] font-bold uppercase tracking-wider text-ink-soft;
   }
 
-  .trip-stat strong {
-    @apply mt-1 text-lg;
+  .overview-conditions-empty h2 {
+    @apply mt-1 text-[18px] font-bold;
   }
 
-  .route-hotspots {
-    @apply grid gap-2 lg:grid-cols-3;
+  .overview-conditions-empty p {
+    @apply mt-2 text-[11px] leading-relaxed text-ink-soft;
   }
 
-  .route-hotspot {
-    @apply flex overflow-hidden;
+  .overview-conditions-empty .overview-conditions-link {
+    @apply mx-0 mb-0 mt-5;
   }
 
-  .route-hotspot-color {
-    @apply w-1.5 shrink-0;
+  .trip-data-notice {
+    @apply mb-3 flex flex-row flex-wrap items-baseline gap-x-2 gap-y-0.5 text-ink-soft;
   }
 
-  .route-hotspot > div {
-    @apply p-3;
+  .trip-data-notice strong {
+    @apply text-[12px];
   }
 
-  .route-hotspot strong {
-    @apply text-[12.5px];
+  .trip-data-notice span {
+    @apply text-[11px] leading-normal text-ink-soft;
   }
 
-  .route-hotspot p,
+  .trip-data-notice.warning {
+    @apply rounded-box border border-mod bg-mod-soft px-3 py-2.5;
+  }
+
   .route-roads p {
     @apply mt-1 text-[11px] leading-normal text-ink-soft;
   }
 
   .route-roads {
     @apply mt-4 p-4 text-[12.5px];
+  }
+
+  .overview-safety-note {
+    @apply mt-4 border-t border-hairline pt-3 text-[10.5px] leading-normal text-ink-soft;
   }
 
   .route-coverage-note {

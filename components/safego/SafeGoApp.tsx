@@ -22,7 +22,7 @@ import { RiskGauge } from "./RiskGauge";
 import { RiskMap } from "./RiskMap";
 import { TripOverview } from "./TripOverview";
 import { TripPlanner } from "./TripPlanner";
-import { TripCoverage } from "./TripCoverage";
+import { TripDataNotice } from "./TripCoverage";
 import { isPilotLocation } from "@/lib/trips/pilot";
 
 const NAV_ITEMS: Array<{
@@ -59,21 +59,15 @@ function Navigation({ activeScreen, onNavigate }: { activeScreen: ScreenKey; onN
 
 function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; onRefresh: () => void }) {
   const weather = sources.find((source) => source.key === "open-meteo");
-  const operational = sources.filter((source) => source.key === "official-advisories" || source.key === "flood-road");
-  const activeOperational = operational.filter((source) => source.status === "active").length;
-  const operationalDetail = operational.length ? ` · ${activeOperational}/${operational.length} approved operational feeds active` : "";
   const live = weather?.status === "active";
   const degraded = weather?.status === "degraded";
-  const detail = live
-    ? `Live modeled weather · ${backend === "mock" ? "other signals use stored fallbacks" : "other signals from database"}${operationalDetail}`
-    : degraded
-      ? `Weather feed unavailable · stored signals shown${operationalDetail}`
-      : `Stored SafeGo signals · live weather disabled${operationalDetail}`;
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
+  const label = live ? "Weather updated" : degraded ? "Using stored conditions" : backend === "mock" ? "Demo data" : "Saved data";
+  const detail = updated ? `Updated ${updated}` : live ? "Current modeled conditions" : degraded ? "Live weather unavailable" : "Live weather is off";
 
-  return <div className={`data-status${live ? " live" : degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{live ? "Live weather connected" : degraded ? "Using stored weather" : "Offline data mode"}</strong><span>{detail}{updated ? ` · refreshed ${updated}` : ""}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
+  return <div className={`data-status${live ? " live" : degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
 
 function Advisories({ items }: { items: Advisory[] }) {
@@ -95,12 +89,11 @@ function LocationPill({ location }: { location: SafeGoLocation }) {
 }
 
 function LocationOverview({ location, navigate }: { location: SafeGoLocation; navigate: (screen: ScreenKey) => void }) {
-  return <section className="page"><PageHeader eyebrow="Area overview" title={location.name} subtitle={`${location.city} · informational snapshot, not an official suspension notice`} />
+  return <section className="page"><PageHeader eyebrow="Area overview" title={location.name} subtitle={`${location.city}. Informational only.`} />
     <div className={`risk-hero risk-${location.risk.key}`}><div className="risk-hero-top"><div><div className="risk-hero-q">Current travel risk for this area</div><div className="risk-level-row"><div className="risk-level-name">{location.risk.name}</div><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.percentage}/100</span></div><p className="risk-hero-why">{location.risk.summary}</p><div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div></div><div className="gauge-wrap"><RiskGauge score={location.risk.percentage} /></div></div></div>
     <OverviewContextPanel location={location} onOpenMap={() => navigate("map")} onViewConditions={() => navigate("conditions")} />
-    <div className="stat-row">{location.stats.map((stat) => <div className="card stat-card" key={stat.label}><div className="label">{stat.label}</div><div className="value-row"><div className="value">{stat.value}</div><div className={`icon-badge ${stat.tone}`}><Icon name={stat.icon} /></div></div><div className="sub">{stat.detail}</div></div>)}</div>
-    <div className="section-title">Latest advisories <button type="button" className="view-all" onClick={() => navigate("alerts")}>View all</button></div><Advisories items={location.advisories.slice(0, 3)} />
-    <div className="section-title">Community reports <button type="button" className="view-all" onClick={() => navigate("reports")}>View all</button></div><Reports items={location.reports} />
+    <div className="section-title">Latest advisories <button type="button" className="view-all" onClick={() => navigate("alerts")}>View all</button></div><Advisories items={location.advisories.slice(0, 2)} />
+    <p className="overview-safety-note">SafeGo does not replace government, school, or emergency announcements.</p>
   </section>;
 }
 
@@ -120,16 +113,15 @@ function LocationConditions({ location }: { location: SafeGoLocation }) {
 
 function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
   return <section className="page"><PageHeader eyebrow="Route risk" title="How this trip was scored" subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
-    <TripCoverage trip={trip} />
-    {trip.overallRiskScore !== null && <div className="card card-pad mb-[22px]"><div className="gauge-lg-wrap"><RiskGauge score={trip.overallRiskScore} size={190} /><div className="risk-level-name md">{trip.riskName}</div><p className="gauge-caption">The {trip.rawRiskScore}/100 weighted score uses only covered sections. Unknown sections do not count as low risk.</p>{trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}</div></div>}
+    <TripDataNotice trip={trip} />
+    {trip.overallRiskScore !== null && <div className="card card-pad mb-[22px]"><div className="gauge-lg-wrap"><RiskGauge score={trip.overallRiskScore} size={190} /><div className="risk-level-name md">{trip.riskName}</div><p className="gauge-caption">The {trip.rawRiskScore}/100 weighted score uses locations with available data. Missing data is not counted as low risk.</p>{trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}</div></div>}
     <div className="section-title">Risk points covering this route</div>
     <div>{trip.corridorLocations.map((location) => <article className="card factor-card route-factor-card" key={location.id}><div className="route-location-score" style={{ background: riskGradient(location.risk.percentage) }}>{location.risk.percentage}</div><div className="factor-body"><div className="factor-top"><div className="factor-name">{location.name}</div><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.name}</span></div><p className="factor-desc">{location.risk.summary}</p><p className="route-weather-detail"><strong>Weather:</strong> {location.factors.find((factor) => factor.name === "Weather")?.description}</p><div className="route-factor-pills">{location.factors.map((factor) => <span key={factor.name}>{factor.name}: <strong>{factor.score}</strong></span>)}</div></div></article>)}</div>
-    <div className="route-coverage-note"><strong>Method:</strong> {trip.coverageNote} These colors are a coverage estimate—not sensor readings for every road.</div>
   </section>;
 }
 
 function TripConditions({ trip }: { trip: TripAnalysis }) {
-  return <section className="page"><PageHeader eyebrow="Route conditions" title="Hazards and reports near your trip" subtitle="Aggregated from the SafeGo coverage locations associated with this route." /><div className="grid grid-2"><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div><div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Route corridor</span></div><Reports items={trip.reports} /></div></div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
+  return <section className="page"><PageHeader eyebrow="Route conditions" title="Hazards and reports near your trip" subtitle="Conditions reported near this route." /><div className="grid grid-2"><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div><div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Near route</span></div><Reports items={trip.reports} /></div></div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
 }
 
 interface ReportEnvelope {
@@ -264,13 +256,13 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
 
   if (!selectedLocation) {
-    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Where do you want to check?</h1><p className="search-lead">Check one SafeGo area, or add a destination to analyze safety conditions along the connecting roads.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Covered locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">Route colors are approximate and use nearby SafeGo risk points. Live weather is modeled data; flood, school, advisory, and community signals may still be mocks. Follow official announcements.</p></div></main>;
+    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">Start with one location. Add a destination when you want to check a route.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Demo locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is an informational demo. Always check current official advisories before traveling.</p></div></main>;
   }
 
-  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} />{trip && <p className="trip-snapshot-note">The route is a saved analysis. Refresh updates area data only; use Change trip and analyze again to update the route.</p>}</div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
+  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
     {activeScreen === "overview" && (trip ? <TripOverview trip={trip} navigate={navigate} /> : <LocationOverview location={selectedLocation} navigate={navigate} />)}
     {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : <LocationRiskFactors location={selectedLocation} />)}
-    {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route alerts" : "Area alerts"} title={trip ? "Advisories near this trip" : "Advisories for this area"} subtitle={trip ? "Notices from SafeGo coverage points near the generated route." : `${selectedLocation.name} · newest available notices first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
+    {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route alerts" : "Area alerts"} title={trip ? "Advisories near this trip" : "Advisories for this area"} subtitle={trip ? "Notices linked to locations along this route." : `${selectedLocation.name}. Newest notices first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
     {activeScreen === "map" && <RiskMap locations={trip ? trip.corridorLocations : locations} selectedLocation={trip ? trip.corridorLocations.find((location) => location.id === selectedLocation.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
     {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} reportingEnabled={communityReportingEnabled} onSubmitted={addSubmittedReport} />}

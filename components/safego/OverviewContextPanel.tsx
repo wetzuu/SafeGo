@@ -35,7 +35,7 @@ function CompactRiskMap({
   location,
   trip,
 }: {
-  location: SafeGoLocation;
+  location?: SafeGoLocation;
   trip?: TripAnalysis | null;
 }) {
   const mapElementRef = useRef<HTMLDivElement>(null);
@@ -78,7 +78,7 @@ function CompactRiskMap({
 
         const coverageLocations = trip?.corridorLocations.length
           ? trip.corridorLocations
-          : [location];
+          : location ? [location] : [];
 
         coverageLocations.forEach((coverageLocation) => {
           const color = riskGradient(coverageLocation.risk.percentage);
@@ -94,7 +94,7 @@ function CompactRiskMap({
             .bindTooltip(
               makeTooltip(
                 coverageLocation.name,
-                `${coverageLocation.risk.percentage}/100 · approximate coverage area`,
+                `${coverageLocation.risk.percentage}/100. Approximate data area.`,
               ),
               { direction: "top" },
             )
@@ -113,7 +113,7 @@ function CompactRiskMap({
               .bindTooltip(
                 makeTooltip(
                   segment.basisLocationName ?? "Insufficient information",
-                  segment.riskScore === null ? "Outside pilot coverage · no score" : `${segment.riskScore}/100 · approximate risk section`,
+                  segment.riskScore === null ? "Not enough information to score this section." : `${segment.riskScore}/100. Approximate risk section.`,
                 ),
               )
               .addTo(map);
@@ -140,7 +140,7 @@ function CompactRiskMap({
             padding: [22, 22],
             maxZoom: 13,
           });
-        } else {
+        } else if (location) {
           L.circleMarker(location.coordinates, {
             radius: 11,
             color: "#ffffff",
@@ -151,7 +151,7 @@ function CompactRiskMap({
             .bindTooltip(
               makeTooltip(
                 location.name,
-                `${location.risk.percentage}/100 · ${location.risk.name}`,
+                `${location.risk.percentage}/100. ${location.risk.name}.`,
               ),
               { direction: "top" },
             )
@@ -175,12 +175,12 @@ function CompactRiskMap({
   }, [location, trip]);
 
   return (
-    <div className="overview-map-frame" role="group" aria-label={trip ? "Compact interactive route risk map" : `Compact interactive map of ${location.name}`}>
+    <div className="overview-map-frame" role="group" aria-label={trip ? "Compact interactive route risk map" : `Compact interactive map of ${location?.name ?? "the selected area"}`}>
       <div className="overview-live-map" ref={mapElementRef} />
       {mapError && <div className="overview-map-error">The live map could not load. Check your connection or open the full Map page later.</div>}
       {!mapError && tileStatus === "loading" && <div className="map-tile-status compact" role="status">Loading map tiles…</div>}
-      {!mapError && tileStatus === "degraded" && <div className="map-tile-status compact warning" role="status">Base map unavailable · overlays remain visible</div>}
-      <span className="overview-map-badge">Live map · approximate coverage</span>
+      {!mapError && tileStatus === "degraded" && <div className="map-tile-status compact warning" role="status">Base map unavailable. Risk overlays remain visible.</div>}
+      <span className="overview-map-badge">Live map. Approximate data.</span>
     </div>
   );
 }
@@ -191,12 +191,12 @@ export function OverviewContextPanel({
   onOpenMap,
   onViewConditions,
 }: {
-  location: SafeGoLocation;
+  location?: SafeGoLocation;
   trip?: TripAnalysis | null;
   onOpenMap: () => void;
   onViewConditions: () => void;
 }) {
-  const contextLabel = trip ? "Highest-risk coverage point" : "Selected location";
+  const contextLabel = trip ? "Highest-risk location" : "Selected location";
 
   return (
     <div className="overview-context-grid">
@@ -217,11 +217,11 @@ export function OverviewContextPanel({
             </span>
           ))}
           {trip && <span className="overview-legend-item"><i style={{ background: UNKNOWN_ROUTE_COLOR }} /><span>Gray dashed: insufficient information</span></span>}
-          <span className="overview-area-legend"><i />Shaded circles show approximate SafeGo coverage areas</span>
+          <span className="overview-area-legend"><i />Shaded circles show approximate data areas</span>
         </div>
       </article>
 
-      <article className="card overview-conditions-card">
+      {location ? <article className="card overview-conditions-card">
         <div className="overview-panel-head conditions-head">
           <div>
             <span>{contextLabel}</span>
@@ -231,7 +231,7 @@ export function OverviewContextPanel({
         </div>
         <div className="overview-condition-location">
           <strong>{location.name}</strong>
-          <span>{location.city} · updated {location.updated}</span>
+          <span>{location.city}. Updated {location.updated}.</span>
         </div>
         <div className="overview-factor-list">
           {FEATURED_FACTORS.map((name) => {
@@ -249,9 +249,16 @@ export function OverviewContextPanel({
           <span><strong>{location.hazards.length}</strong> hazards</span>
           <span><strong>{location.advisories.length}</strong> advisories</span>
         </div>
-        <p className="overview-context-note">Map colors show calculated overall travel risk. Open the full map to compare weather, road, advisory, school, and community layers.</p>
+        <p className="overview-context-note">Map colors show travel risk. Open the full map to compare individual conditions.</p>
         <button className="overview-conditions-link" type="button" onClick={onViewConditions}>View condition details</button>
-      </article>
+      </article> : <article className="card overview-conditions-card overview-conditions-empty">
+        <div>
+          <span>Route conditions</span>
+          <h2>Limited information</h2>
+          <p>No nearby SafeGo data is available for this route. Gray map sections are not rated as safe.</p>
+        </div>
+        <button className="overview-conditions-link" type="button" onClick={onOpenMap}>Review the map</button>
+      </article>}
     </div>
   );
 }

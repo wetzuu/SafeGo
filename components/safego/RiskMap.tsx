@@ -6,7 +6,7 @@ import { riskGradient } from "@/lib/safego/risk-model";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { isPilotLocation, PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
-import { TripCoverage } from "./TripCoverage";
+import { TripDataNotice } from "./TripCoverage";
 
 const MAP_LAYERS: MapLayer[] = [
   { key: "overall", label: "Overall risk" },
@@ -152,7 +152,7 @@ export function RiskMap({
         coverageArea.bindTooltip(
           makeTooltip(
             location.name,
-            `${score}/100 · ${activeLayerLabel} · approximate coverage area`,
+            `${score}/100. ${activeLayerLabel}. Approximate data area.`,
           ),
           { direction: "top", opacity: 0.96 },
         );
@@ -175,7 +175,7 @@ export function RiskMap({
         });
 
         marker.bindTooltip(
-          makeTooltip(location.name, `${score}/100 · ${activeLayerLabel}`),
+          makeTooltip(location.name, `${score}/100. ${activeLayerLabel}.`),
           { direction: "top", opacity: 0.96 },
         );
         marker.on("click", () => onSelectLocation(location));
@@ -208,7 +208,7 @@ export function RiskMap({
           opacity: 0.9,
           lineCap: segment.riskScore === null ? "butt" : "round",
         })
-          .bindTooltip(makeTooltip(segment.basisLocationName ?? "Insufficient information", segment.riskScore === null ? "Outside pilot coverage · no score" : `${segment.riskScore}/100 · approximate route section`))
+          .bindTooltip(makeTooltip(segment.basisLocationName ?? "Insufficient information", segment.riskScore === null ? "Not enough information to score this section." : `${segment.riskScore}/100. Approximate route section.`))
           .addTo(routeLayer!);
       });
       ([
@@ -236,12 +236,11 @@ export function RiskMap({
     <section className="page" aria-labelledby="map-page-title">
       <div className="page-head">
         <div className="page-eyebrow">{trip ? "Route risk map" : "Area risk map"}</div>
-        <h1 className="page-title" id="map-page-title">{trip ? "A → B, colored by travel risk" : "Compare SafeGo coverage areas"}</h1>
+        <h1 className="page-title" id="map-page-title">{trip ? "A → B, colored by travel risk" : "Compare locations"}</h1>
         <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a marker to compare its available risk signals."}</p>
       </div>
 
-      {trip && <TripCoverage trip={trip} />}
-      {trip && <p className="route-coverage-note">Route lines always show overall risk. Layer buttons change the pilot point markers and circles.</p>}
+      {trip && <TripDataNotice trip={trip} />}
 
       <div className="map-layer-wrap" aria-label="Map data layer">
         <div className="map-control-label">Display layer</div>
@@ -260,33 +259,33 @@ export function RiskMap({
             <div className="live-map" ref={mapElementRef} />
             {mapError && <div className="map-load-error">The live map could not load. Check your internet connection and reload the page.</div>}
             {!mapError && tileStatus === "loading" && <div className="map-tile-status" role="status">Loading map tiles…</div>}
-            {!mapError && tileStatus === "degraded" && <div className="map-tile-status warning" role="status">Base map unavailable · SafeGo overlays remain visible</div>}
-            <div className="map-approx-badge">Live OpenStreetMap · approximate SafeGo coverage areas</div>
+            {!mapError && tileStatus === "degraded" && <div className="map-tile-status warning" role="status">Base map unavailable. Risk overlays remain visible.</div>}
+            <div className="map-approx-badge">OpenStreetMap. Approximate data areas.</div>
           </div>
           <div className="map-legend" aria-label="Risk color legend">
             <div className="map-legend-title">Score and risk level</div>
-            {trip && <p className="unknown-legend">Gray dashed route: insufficient information · no score</p>}
+            {trip && <p className="unknown-legend">Gray dashed route: not enough information to score</p>}
             <div className="map-gradient" />
             <div className="map-legend-labels"><span><strong>0</strong> Low</span><span><strong>30</strong> Moderate</span><span><strong>60</strong> High</span><span><strong>80–100</strong> Critical</span></div>
-            <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Approximate coverage area</span><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending/unverified report</span></div>
+            <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Approximate data area</span><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending or unverified report</span></div>
           </div>
         </div>
 
         {locations.length > 0 ? <aside className="map-detail card card-pad" aria-live="polite">
           <div className="map-detail-head">
-            <div><div className="map-detail-kicker">Approximate location · {selectedLocation.city}</div><h3>{selectedLocation.name}</h3></div>
+            <div><div className="map-detail-kicker">Approximate location. {selectedLocation.city}</div><h3>{selectedLocation.name}</h3></div>
             <span className="map-score" style={{ "--score-color": riskGradient(selectedScore) } as React.CSSProperties}>{selectedScore}</span>
           </div>
           <div className="map-layer-reading">{activeLayerLabel}: <strong>{selectedScore}/100</strong></div>
-          <div className="map-overall-row"><span>Overall travel risk</span><span className={`pill ${selectedLocation.risk.key}`}><span className="dot" />{selectedLocation.risk.percentage}/100 · {selectedLocation.risk.name}</span></div>
+          <div className="map-overall-row"><span>Overall travel risk</span><span className={`pill ${selectedLocation.risk.key}`}><span className="dot" />{selectedLocation.risk.percentage}/100. {selectedLocation.risk.name}</span></div>
           <div className="map-factor-list">{selectedLocation.factors.map((factor) => <div key={factor.name}><span>{factor.name}</span><strong className="mono">{factor.score}</strong></div>)}</div>
           <div className="map-evidence"><span className="evidence-key verified"><span />{verifiedCount} verified</span><span className="evidence-key unverified"><span />{unverifiedCount} pending/unverified</span><span className="mono">Updated {selectedLocation.updated}</span></div>
           <div className="map-detail-section"><strong>Latest advisory</strong><p>{selectedLocation.advisories[0]?.title ?? "No advisory in the mock dataset."}</p></div>
           <div className="map-detail-section"><strong>Relevant hazard</strong><p>{selectedLocation.hazards[0]?.title ?? "No reported hazard in the mock dataset."}</p></div>
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
-        </aside> : <aside className="map-detail card card-pad"><h3>No supporting pilot points</h3><p>This route has insufficient information. No local risk score or advisory has been assigned.</p></aside>}
+        </aside> : <aside className="map-detail card card-pad"><h3>No nearby data</h3><p>This route cannot be rated. Gray sections do not mean low risk.</p></aside>}
       </div>
-      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated route and risk inputs for product review. " : trip?.routingSource === "saved-demo" ? "Saved OSRM demo geometry is shown because live routing was unavailable. " : trip ? "The road geometry comes from OSRM/OpenStreetMap. " : ""}Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. Weather may be modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated review route. " : trip?.routingSource === "saved-demo" ? "Saved demo route. " : trip ? "Road map from OSRM and OpenStreetMap. " : ""}Colored areas are approximate. SafeGo does not replace official announcements.</p>
     </section>
   );
 }
