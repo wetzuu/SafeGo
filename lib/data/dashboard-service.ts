@@ -14,6 +14,15 @@ import type { DashboardSnapshot, SourceStatus } from "./contracts.ts";
 import { applyFloodRoadObservations, applyOfficialAdvisories } from "./operational-overlay.ts";
 import { getRepository } from "./repository.ts";
 
+type DashboardResult = {
+  backend: "mock" | "database";
+  snapshot: DashboardSnapshot;
+};
+
+const SNAPSHOT_CACHE_MS = 60 * 1000;
+let cachedSnapshot: { expiresAt: number; value: DashboardResult } | null = null;
+let pendingSnapshot: Promise<DashboardResult> | null = null;
+
 function scoreBand(score: number): { key: RiskKey; label: string } {
   if (score <= 29) return { key: "low", label: "Low" };
   if (score <= 59) return { key: "mod", label: "Moderate" };
@@ -85,10 +94,7 @@ function weatherSource(
   };
 }
 
-export async function getDashboardSnapshot(): Promise<{
-  backend: "mock" | "database";
-  snapshot: DashboardSnapshot;
-}> {
+async function buildDashboardSnapshot(): Promise<DashboardResult> {
   const { backend, repository } = getRepository();
   const [locations, storedSources] = await Promise.all([
     repository.listDashboardLocations(),
@@ -170,4 +176,24 @@ export async function getDashboardSnapshot(): Promise<{
       },
     };
   }
+}
+
+export function getDashboardSnapshot(
+  options: { forceRefresh?: boolean } = {},
+): Promise<DashboardResult> {
+  if (!options.forceRefresh && cachedSnapshot?.expiresAt && cachedSnapshot.expiresAt > Date.now()) {
+    return Promise.resolve(cachedSnapshot.value);
+  }
+  if (pendingSnapshot) return pendingSnapshot;
+
+  const request = buildDashboardSnapshot()
+    .then((value) => {
+      cachedSnapshot = { expiresAt: Date.now() + SNAPSHOT_CACHE_MS, value };
+      return value;
+    })
+    .finally(() => {
+      if (pendingSnapshot === request) pendingSnapshot = null;
+    });
+  pendingSnapshot = request;
+  return request;
 }

@@ -4,11 +4,21 @@ import { NextResponse } from "next/server";
 interface TripRequest {
   origin?: unknown;
   destination?: unknown;
+  preferSavedDemo?: unknown;
 }
 
 export async function POST(request: Request) {
+  let body: TripRequest;
   try {
-    const body = (await request.json()) as TripRequest;
+    body = (await request.json()) as TripRequest;
+  } catch {
+    return NextResponse.json(
+      { error: { code: "INVALID_JSON", message: "Send a valid JSON request body." } },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  try {
     const origin = typeof body.origin === "string" ? body.origin.trim() : "";
     const destination =
       typeof body.destination === "string" ? body.destination.trim() : "";
@@ -26,7 +36,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { analysis, backend } = await analyzeTrip(origin, destination);
+    const { analysis, backend } = await analyzeTrip(origin, destination, {
+      preferSavedDemo: body.preferSavedDemo === true,
+    });
     return NextResponse.json(
       { data: analysis, meta: { backend, generatedAt: analysis.generatedAt } },
       { headers: { "Cache-Control": "no-store" } },

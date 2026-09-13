@@ -34,12 +34,14 @@ export function TripPlanner({
   const [stops, setStops] = useState([""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [preferSavedDemo, setPreferSavedDemo] = useState(false);
   const hasDestination = stops.length === 2;
 
   function updateStop(index: number, value: string) {
     setStops((current) => current.map((stop, stopIndex) =>
       stopIndex === index ? value : stop,
     ));
+    setPreferSavedDemo(false);
     setError("");
   }
 
@@ -62,15 +64,25 @@ export function TripPlanner({
       const response = await fetch("/api/trips/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin: stops[0], destination: stops[1] }),
+        body: JSON.stringify({
+          origin: stops[0],
+          destination: stops[1],
+          preferSavedDemo,
+        }),
+        signal: AbortSignal.timeout(25_000),
       });
-      const envelope = (await response.json()) as TripEnvelope;
-      if (!response.ok || !envelope.data) {
-        throw new Error(envelope.error?.message || "The route could not be analyzed.");
+      const envelope = await response.json().catch(() => null) as TripEnvelope | null;
+      const analysis = envelope?.data;
+      if (!response.ok || !analysis) {
+        throw new Error(envelope?.error?.message || "The route service returned an unexpected response. Please try again.");
       }
-      onTrip(envelope.data);
+      onTrip(analysis);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The route could not be analyzed.");
+      const timedOut = caught instanceof DOMException
+        && (caught.name === "TimeoutError" || caught.name === "AbortError");
+      setError(timedOut
+        ? "The route check took too long. Check your connection and try again."
+        : caught instanceof Error ? caught.message : "The route could not be analyzed.");
     } finally {
       setLoading(false);
     }
@@ -78,16 +90,19 @@ export function TripPlanner({
 
   function addDestination() {
     setStops((current) => current.length === 1 ? [...current, ""] : current);
+    setPreferSavedDemo(false);
     setError("");
   }
 
   function removeDestination() {
     setStops((current) => [current[0]]);
+    setPreferSavedDemo(false);
     setError("");
   }
 
   function useExample() {
     setStops(["España Blvd., Sampaloc", "Lerma St., Sampaloc"]);
+    setPreferSavedDemo(true);
     setError("");
   }
 
@@ -133,7 +148,7 @@ export function TripPlanner({
         <button className="submit-btn" type="submit" disabled={loading}>
           {loading ? "Finding and analyzing route…" : hasDestination ? "Analyze my trip" : "Check this location"}
         </button>
-        <button className="example-trip" type="button" onClick={useExample}>Use example trip</button>
+        <button className="example-trip" type="button" onClick={useExample} disabled={loading}>Load stable demo trip</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-mode-help">

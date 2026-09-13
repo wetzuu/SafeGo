@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { backend, snapshot } = await getDashboardSnapshot();
+    const { backend, snapshot } = await getDashboardSnapshot({ forceRefresh: true });
     return dataResponse(snapshot, backend);
   } catch (error) {
     return dataServiceError(error);

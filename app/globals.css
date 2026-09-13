@@ -17,6 +17,7 @@
 .pilot-notice { padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; line-height: 1.5; font-size: 0.85rem; }
 .unknown-legend { color: #475569; font-size: 0.85rem; padding: 8px 0; }
 .trip-snapshot-note { font-size: 0.8rem; color: #475569; margin-top: 8px; line-height: 1.5; }
+.trip-routing-note { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; }
 .validation-workbench { max-width: 1200px; margin: auto; padding: 20px; }
 .validation-controls { margin-top: 16px; }
 .validation-controls label { display: block; font-weight: 700; margin-bottom: 8px; }
@@ -365,6 +366,51 @@
 
   .overview-map-error {
     @apply absolute inset-0 z-[600] flex items-center justify-center bg-surface px-8 text-center text-[12px] leading-normal text-ink-soft;
+  }
+
+  .system-state {
+    @apply flex min-h-screen items-center justify-center bg-surface px-5 py-10;
+  }
+
+  .system-state-card {
+    @apply w-full max-w-[520px] rounded-box border border-hairline bg-white p-6 shadow-sm sm:p-8;
+  }
+
+  .system-state-kicker {
+    @apply mt-7 text-[10px] font-bold uppercase tracking-wider text-brand;
+  }
+
+  .system-state-card h1 {
+    @apply mt-2 text-2xl font-bold leading-tight;
+  }
+
+  .system-state-card > p:last-of-type {
+    @apply mt-3 text-[13px] leading-relaxed text-ink-soft;
+  }
+
+  .system-state-actions {
+    @apply mt-6 flex flex-wrap gap-2;
+  }
+
+  .system-state-actions button,
+  .system-state-actions a {
+    @apply cursor-pointer rounded-box border border-brand bg-brand px-4 py-2.5 text-[12px] font-semibold text-white no-underline;
+  }
+
+  .system-state-actions a {
+    @apply bg-white text-brand;
+  }
+
+  .map-tile-status {
+    @apply pointer-events-none absolute right-2 top-2 z-[600] rounded-sm border border-hairline bg-white/95 px-2 py-1 text-[9.5px] font-semibold text-ink-soft shadow-sm;
+  }
+
+  .map-tile-status.warning {
+    @apply border-mod bg-mod-soft text-mod;
+  }
+
+  .map-tile-status.compact {
+    @apply max-w-[220px];
   }
 
   .overview-risk-legend {

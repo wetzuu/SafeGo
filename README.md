@@ -25,6 +25,15 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
+For a production-style local demo, verify and start the optimized build:
+
+```bash
+npm run check:demo
+npm run demo
+```
+
+`npm run demo` builds first and then serves the production build on port 3000.
+
 The default `auto` data mode uses the built-in mock dataset when no database is configured, so the commands above remain the quickest way to work on the front end.
 
 The dashboard requests a fresh snapshot when it opens, when the user presses Refresh, and every five minutes while the page remains open. Set `SAFEGO_WEATHER_PROVIDER=disabled` for fully offline development.
@@ -44,7 +53,7 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 
 ## Flow
 
-1. Enter a starting point and destination, or load the España-to-Lerma pilot example.
+1. Enter a starting point and destination, or load the stable España-to-Lerma pilot example.
 2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
 3. Review the route score, hotspots, colored map, corridor alerts, conditions, and reports.
 4. Select **Plan another trip** to start again.
@@ -106,6 +115,8 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 ## Route-risk model
 
 OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by pilot points in España, Lerma, Quiapo and Mapúa Makati. Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are gray and dashed. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
+
+Successful OSRM routes are cached in memory for ten minutes. Loading the stable demo trip uses a bundled OSRM geometry snapshot captured on September 14, 2026; the same snapshot is also the fallback for that exact example if live routing is unavailable. The interface labels saved geometry, and arbitrary trips never receive invented routes. Set `SAFEGO_DEMO_ROUTE_FALLBACK=false` to disable it.
 
 Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. No real user or historical validation has been completed yet.
 

@@ -55,7 +55,7 @@ export interface TripAnalysis {
   hazards: Hazard[];
   coverageNote: string;
   generatedAt: string;
-  routingSource: "osrm" | "simulation";
+  routingSource: "osrm" | "saved-demo" | "simulation";
   coverage: RouteCoverage;
   sources: SourceStatus[];
 }

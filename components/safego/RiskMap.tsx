@@ -63,6 +63,7 @@ export function RiskMap({
   const [activeLayer, setActiveLayer] = useState<MapLayerKey>("overall");
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [tileStatus, setTileStatus] = useState<"loading" | "ready" | "degraded">("loading");
   const activeLayerLabel =
     MAP_LAYERS.find((layer) => layer.key === activeLayer)?.label ?? "Overall risk";
   const selectedScore = layerScore(selectedLocation, activeLayer);
@@ -81,6 +82,9 @@ export function RiskMap({
     async function initializeMap() {
       if (!mapElementRef.current || mapRef.current) return;
       try {
+        setMapReady(false);
+        setMapError(false);
+        setTileStatus("loading");
         const L = await import("leaflet");
         if (cancelled || !mapElementRef.current) return;
 
@@ -90,11 +94,20 @@ export function RiskMap({
           maxZoom: 19,
           scrollWheelZoom: true,
         });
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        let tileFailed = false;
+        const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
+        });
+        tileLayer.on("tileerror", () => {
+          tileFailed = true;
+          if (!cancelled) setTileStatus("degraded");
+        });
+        tileLayer.on("load", () => {
+          if (!cancelled && !tileFailed) setTileStatus("ready");
+        });
+        tileLayer.addTo(map);
         map.fitBounds(L.latLngBounds(bounds), { padding: [28, 28], maxZoom: 12 });
         mapRef.current = map;
         markerLayerRef.current = L.layerGroup().addTo(map);
@@ -246,6 +259,8 @@ export function RiskMap({
           <div className="map-canvas" role="group" aria-label="Interactive map of SafeGo locations">
             <div className="live-map" ref={mapElementRef} />
             {mapError && <div className="map-load-error">The live map could not load. Check your internet connection and reload the page.</div>}
+            {!mapError && tileStatus === "loading" && <div className="map-tile-status" role="status">Loading map tiles…</div>}
+            {!mapError && tileStatus === "degraded" && <div className="map-tile-status warning" role="status">Base map unavailable · SafeGo overlays remain visible</div>}
             <div className="map-approx-badge">Live OpenStreetMap · approximate SafeGo coverage areas</div>
           </div>
           <div className="map-legend" aria-label="Risk color legend">
@@ -271,7 +286,7 @@ export function RiskMap({
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside> : <aside className="map-detail card card-pad"><h3>No supporting pilot points</h3><p>This route has insufficient information. No local risk score or advisory has been assigned.</p></aside>}
       </div>
-      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated route and risk inputs for product review. " : trip ? "The road geometry comes from OSRM/OpenStreetMap. " : ""}Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. Weather may be modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated route and risk inputs for product review. " : trip?.routingSource === "saved-demo" ? "Saved OSRM demo geometry is shown because live routing was unavailable. " : trip ? "The road geometry comes from OSRM/OpenStreetMap. " : ""}Markers and shaded circles represent approximate SafeGo coverage areas, not official boundaries. Weather may be modeled data while other signals remain stored or mocked. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

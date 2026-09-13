@@ -41,6 +41,7 @@ function CompactRiskMap({
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const [mapError, setMapError] = useState(false);
+  const [tileStatus, setTileStatus] = useState<"loading" | "ready" | "degraded">("loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +50,8 @@ function CompactRiskMap({
       if (!mapElementRef.current) return;
 
       try {
+        setMapError(false);
+        setTileStatus("loading");
         const L = await import("leaflet");
         if (cancelled || !mapElementRef.current) return;
 
@@ -58,11 +61,20 @@ function CompactRiskMap({
           maxZoom: 19,
           scrollWheelZoom: true,
         });
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        let tileFailed = false;
+        const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
+        });
+        tileLayer.on("tileerror", () => {
+          tileFailed = true;
+          if (!cancelled) setTileStatus("degraded");
+        });
+        tileLayer.on("load", () => {
+          if (!cancelled && !tileFailed) setTileStatus("ready");
+        });
+        tileLayer.addTo(map);
 
         const coverageLocations = trip?.corridorLocations.length
           ? trip.corridorLocations
@@ -166,6 +178,8 @@ function CompactRiskMap({
     <div className="overview-map-frame" role="group" aria-label={trip ? "Compact interactive route risk map" : `Compact interactive map of ${location.name}`}>
       <div className="overview-live-map" ref={mapElementRef} />
       {mapError && <div className="overview-map-error">The live map could not load. Check your connection or open the full Map page later.</div>}
+      {!mapError && tileStatus === "loading" && <div className="map-tile-status compact" role="status">Loading map tiles…</div>}
+      {!mapError && tileStatus === "degraded" && <div className="map-tile-status compact warning" role="status">Base map unavailable · overlays remain visible</div>}
       <span className="overview-map-badge">Live map · approximate coverage</span>
     </div>
   );

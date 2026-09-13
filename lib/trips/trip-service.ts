@@ -14,11 +14,12 @@ function uniqueBy<T>(items: T[], key: (item: T) => string) {
 export async function analyzeTrip(
   originQuery: string,
   destinationQuery: string,
+  options: { preferSavedDemo?: boolean } = {},
 ): Promise<{ analysis: TripAnalysis; backend: "mock" | "database" }> {
   const { backend, snapshot } = await getDashboardSnapshot();
   const origin = await resolvePlace(originQuery, snapshot.locations);
   const destination = await resolvePlace(destinationQuery, snapshot.locations);
-  const route = await fetchDrivingRoute(origin.coordinates, destination.coordinates);
+  const route = await fetchDrivingRoute(origin.coordinates, destination.coordinates, options);
   const routeRisk = analyzeRouteSegments(
     route.routeCoordinates,
     snapshot.locations,
@@ -58,7 +59,7 @@ export async function analyzeTrip(
       ),
       coverageNote: `${routeRisk.coverage.coveredPercent}% of this route is within the ${PILOT.name} coverage estimate. A rating requires at least ${PILOT.minimumCoveragePercent}% coverage within ${PILOT.radiusMeters} meters of a pilot point. Gray sections have insufficient information; coverage does not establish that the underlying data is current or verified.`,
       generatedAt: new Date().toISOString(),
-      routingSource: "osrm",
+      routingSource: route.routingSource,
       coverage: routeRisk.coverage,
       sources: snapshot.sources,
     },
