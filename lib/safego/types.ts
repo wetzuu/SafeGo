@@ -7,7 +7,7 @@ export type FactorName =
   | "School status"
   | "Community reports";
 
-export type IconName = "weather" | "school" | "flood" | "alert" | "reports";
+export type IconName = "weather" | "school" | "flood" | "alert" | "reports" | "clock" | "external" | "verified";
 export type IconTone = "icon-weather" | "icon-ok" | "icon-mod" | "icon-alert" | "icon-neutral" | "icon-brand" | "";
 export type ReportStatus = "verified" | "pending" | "unverified";
 export type AdvisorySource = "gov" | "school" | "weather" | "community";
@@ -61,6 +61,22 @@ export interface Advisory {
   isMock?: boolean;
 }
 
+export type UniversityOperatingStatus = "open" | "suspended" | "online" | "no-update";
+
+export interface UniversityStatus {
+  id: string;
+  name: string;
+  campus?: string;
+  status: UniversityOperatingStatus;
+  statusLabel: string;
+  announcement: string;
+  date: string;
+  time: string;
+  isMock: boolean;
+  sourceName?: string;
+  sourceUrl?: string;
+}
+
 export interface CommunityReport {
   type: string;
   title: string;
@@ -95,13 +111,15 @@ export interface LocationInput {
   stats: Stat[];
   factors: RiskFactor[];
   advisories: Advisory[];
+  universities?: UniversityStatus[];
   reports: CommunityReport[];
   points: RoutePoint[];
   floods: Hazard[];
   hazards: Hazard[];
 }
 
-export interface SafeGoLocation extends LocationInput {
+export interface SafeGoLocation extends Omit<LocationInput, "universities"> {
+  universities: UniversityStatus[];
   risk: RiskAssessment;
 }
 

@@ -23,7 +23,8 @@ import { RiskMap } from "./RiskMap";
 import { TripOverview } from "./TripOverview";
 import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
-import { isPilotLocation } from "@/lib/trips/pilot";
+import { isAreaDashboardLocation } from "@/lib/trips/pilot";
+import { NearbyUniversities } from "./NearbyUniversities";
 
 const NAV_ITEMS: Array<{
   key: ScreenKey;
@@ -98,6 +99,7 @@ function LocationOverview({ location, navigate }: { location: SafeGoLocation; na
   return <section className="page"><PageHeader eyebrow="Area overview" title={location.name} subtitle={`${location.city}. Informational only.`} />
     <div className={`risk-hero risk-${location.risk.key}`}><div className="risk-hero-top"><div><div className="risk-hero-q">Current travel risk for this area</div><div className="risk-level-row"><div className="risk-level-name">{location.risk.name}</div><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.percentage}/100</span></div><p className="risk-hero-why">{location.risk.summary}</p><div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div></div><div className="gauge-wrap"><RiskGauge score={location.risk.percentage} /></div></div></div>
     <OverviewContextPanel location={location} onOpenMap={() => navigate("map")} onViewConditions={() => navigate("conditions")} />
+    <NearbyUniversities universities={location.universities} />
     <section className="overview-announcements" aria-labelledby="overview-announcements-title"><div className="section-title"><div className="section-title-copy"><span className="section-title-icon"><Icon name="alert" /></span><div><span>Official and local updates</span><h2 id="overview-announcements-title">Latest announcements</h2></div></div><button type="button" className="view-all" onClick={() => navigate("alerts")}>View all</button></div><Advisories items={location.advisories.slice(0, 2)} /></section>
     <p className="overview-safety-note">SafeGo does not replace government, school, or emergency announcements.</p>
   </section>;
@@ -175,7 +177,7 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
 }
 
 export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean }) {
-  const [locations, setLocations] = useState(initialLocations.filter(isPilotLocation));
+  const [locations, setLocations] = useState(initialLocations.filter(isAreaDashboardLocation));
   const [dataBackend, setDataBackend] = useState(initialBackend);
   const [sources, setSources] = useState(initialSources);
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
@@ -190,7 +192,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       const response = await fetch("/api/dashboard", { cache: "no-store" });
       if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
       const envelope = (await response.json()) as DashboardEnvelope;
-      setLocations(envelope.data.locations.filter(isPilotLocation));
+      setLocations(envelope.data.locations.filter(isAreaDashboardLocation));
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);

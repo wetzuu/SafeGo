@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
-import { isPilotLocation } from "@/lib/trips/pilot";
+import { isAreaDashboardLocation } from "@/lib/trips/pilot";
 
 interface TripEnvelope {
   data?: TripAnalysis;
@@ -81,7 +81,7 @@ export function TripPlanner({
     setError("");
 
     if (!hasDestination) {
-      const location = findLocation(locations.filter(isPilotLocation), stops[0]);
+      const location = findLocation(locations.filter(isAreaDashboardLocation), stops[0]);
       if (!location) {
         setError("Choose one of the available SafeGo locations to view its risk dashboard.");
         return;
@@ -115,9 +115,9 @@ export function TripPlanner({
 
   return (
     <form className="trip-planner" onSubmit={submit}>
-      <p className="demo-scope"><strong>Demo locations:</strong> España, Lerma, Quiapo, and Mapúa Makati.</p>
+      <p className="demo-scope"><strong>Demo areas:</strong> España, Lerma, Quiapo, Mapúa Makati, and Pasig.</p>
       <datalist id="safego-locations">
-        {locations.filter(isPilotLocation).map((location) => <option key={location.id} value={location.name} />)}
+        {locations.filter(isAreaDashboardLocation).map((location) => <option key={location.id} value={location.name} />)}
       </datalist>
       {stops.map((stop, index) => (
         <div className="trip-stop" key={index}>

@@ -1652,6 +1652,153 @@
     @apply mt-3 rounded-box border border-hairline bg-surface px-3 py-2 text-[11.5px] text-neutral-500;
   }
 
+  .nearby-universities {
+    @apply mt-[22px];
+  }
+
+  .university-count {
+    @apply rounded-full bg-surface px-3 py-1 text-[11px] font-semibold text-ink-soft;
+  }
+
+  .university-list {
+    @apply grid gap-3 md:grid-cols-2;
+  }
+
+  .university-row {
+    @apply relative overflow-hidden border-l-4 p-4;
+  }
+
+  .university-row.open {
+    @apply border-l-low;
+  }
+
+  .university-row.suspended {
+    @apply border-l-crit;
+  }
+
+  .university-row.online {
+    @apply border-l-brand;
+  }
+
+  .university-row.unknown {
+    @apply border-l-neutral-400;
+  }
+
+  .university-heading {
+    @apply flex items-start justify-between gap-4;
+  }
+
+  .university-heading h3 {
+    @apply text-[15px] font-bold leading-snug text-ink;
+  }
+
+  .university-heading p {
+    @apply mt-0.5 text-[11.5px] text-ink-soft;
+  }
+
+  .university-identity {
+    @apply flex min-w-0 items-start gap-3;
+  }
+
+  .university-icon {
+    @apply grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-brand;
+  }
+
+  .university-icon svg {
+    @apply size-[18px];
+  }
+
+  .university-status {
+    @apply flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10.5px] font-bold;
+  }
+
+  .university-status svg {
+    @apply size-3.5;
+  }
+
+  .university-status.open {
+    @apply border-low bg-low-soft text-low;
+  }
+
+  .university-status.suspended {
+    @apply border-crit bg-crit-soft text-crit;
+  }
+
+  .university-status.online {
+    @apply border-brand bg-brand-soft text-brand;
+  }
+
+  .university-status.unknown {
+    @apply border-hairline bg-surface text-ink-soft;
+  }
+
+  .university-announcement {
+    @apply text-[12.5px] leading-relaxed text-ink-soft;
+  }
+
+  .university-alert {
+    @apply mt-3 flex items-start gap-2.5 rounded-lg bg-surface px-3 py-2.5;
+  }
+
+  .university-alert-icon {
+    @apply mt-0.5 text-mod;
+  }
+
+  .university-row.suspended .university-alert-icon {
+    @apply text-crit;
+  }
+
+  .university-alert-icon svg {
+    @apply size-4;
+  }
+
+  .university-meta {
+    @apply mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5 text-[10.5px] text-neutral-500;
+  }
+
+  .university-source,
+  .university-meta time {
+    @apply flex items-center gap-1.5;
+  }
+
+  .university-source {
+    @apply font-bold text-mod;
+  }
+
+  .university-meta svg {
+    @apply size-3.5;
+  }
+
+  .university-source-link {
+    @apply mt-3 flex min-h-10 items-center justify-between gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[11.5px] font-bold text-brand transition hover:border-brand hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2;
+  }
+
+  .university-source-link span {
+    @apply flex items-center gap-2;
+  }
+
+  .university-source-link svg {
+    @apply size-4 shrink-0;
+  }
+
+  .university-disclaimer {
+    @apply mt-2.5 flex items-start gap-2 text-[10.5px] leading-relaxed text-neutral-500;
+  }
+
+  .university-disclaimer svg {
+    @apply mt-0.5 size-3.5 shrink-0;
+  }
+
+  @media (max-width: 639px) {
+    .university-heading {
+      @apply flex-col gap-3;
+    }
+
+    .university-status {
+      @apply ml-12;
+    }
+  }
+
   .mono {
     @apply font-mono;
   }

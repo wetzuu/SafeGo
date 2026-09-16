@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { MockSafeGoRepository } from "../lib/data/mock-repository.ts";
+import { isAreaDashboardLocation } from "../lib/trips/pilot.ts";
 
 test("mock repository exposes every preset location", async () => {
   const repository = new MockSafeGoRepository();
@@ -25,6 +26,35 @@ test("mock repository returns calculated risk details", async () => {
   ));
   assert.ok(result.advisories.some((advisory) =>
     advisory.label === "PAGASA" && advisory.isMock,
+  ));
+});
+
+test("Pasig exposes area-specific nearby university statuses", async () => {
+  const repository = new MockSafeGoRepository();
+  const locations = await repository.listDashboardLocations();
+  const pasig = locations.find((location) => location.id === "ortigas-pasig");
+
+  assert.ok(pasig);
+  assert.equal(pasig.city, "Pasig");
+  assert.equal(pasig.universities.length, 2);
+  assert.ok(pasig.universities.every((university) => university.isMock));
+  assert.ok(pasig.universities.some((university) => university.status === "suspended"));
+  assert.ok(pasig.universities.every((university) =>
+    university.campus?.toLocaleLowerCase().includes("pasig")
+      || university.campus?.toLocaleLowerCase().includes("ortigas"),
+  ));
+});
+
+test("every supported dashboard area has university statuses with official channels", async () => {
+  const repository = new MockSafeGoRepository();
+  const areas = (await repository.listDashboardLocations()).filter(isAreaDashboardLocation);
+
+  assert.equal(areas.length, 5);
+  assert.ok(areas.every((area) => area.universities.length > 0));
+  assert.ok(areas.flatMap((area) => area.universities).every((university) =>
+    university.isMock
+      && university.sourceName
+      && university.sourceUrl?.startsWith("https://"),
   ));
 });
 

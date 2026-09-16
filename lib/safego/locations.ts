@@ -6,6 +6,7 @@ const DEMO_SNAPSHOT_DATE = "Sep 14, 2026";
 function createLocation(input: LocationInput): SafeGoLocation {
   return {
     ...input,
+    universities: input.universities ?? [],
     advisories: input.advisories.map((advisory) => ({
       ...advisory,
       date: advisory.date ?? DEMO_SNAPSHOT_DATE,
@@ -43,6 +44,10 @@ const espanaInput: LocationInput = {
     { source: "school", label: "School", title: "Mapúa University: classes proceed as scheduled", description: "No suspension announced. Monitor road conditions and allot extra travel time.", time: "6:00 AM" },
     { source: "weather", label: "Weather", title: "Localized flood watch: España / Sampaloc", description: "Street-level flooding possible in low-lying sections due to sustained rainfall.", time: "5:50 AM" },
     { source: "community", label: "Community", title: "Slow traffic along Quezon Blvd.", description: "Aggregated from 4 reports in the last hour. Pending official verification.", time: "5:40 AM" },
+  ],
+  universities: [
+    { id: "ust-manila", name: "University of Santo Tomas", campus: "España, Manila", status: "open", statusLabel: "No suspension in demo", announcement: "Demo status: no class suspension is stored for this campus. Check the official university announcements before leaving.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true, sourceName: "University of Santo Tomas", sourceUrl: "https://www.ust.edu.ph/" },
+    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", status: "no-update", statusLabel: "No update in dataset", announcement: "SafeGo has no current suspension post stored for this campus. An empty status does not confirm that classes are ongoing.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true, sourceName: "Far Eastern University", sourceUrl: "https://www.feu.edu.ph/" },
   ],
   reports: [
     { type: "Flooding", title: "Ankle-deep flooding", meta: "España Blvd. corner Morayta · 6:20 AM", status: "pending", statusLabel: "Pending" },
@@ -93,6 +98,10 @@ const makatiInput: LocationInput = {
     { source: "gov", label: "Government", title: "PAGASA rainfall advisory: Metro Manila", description: "Metro-wide rainfall advisory remains in effect.", time: "6:15 AM" },
     { source: "weather", label: "Weather", title: "Makati campus: no flood watch", description: "No street-level flooding reported on campus or immediately outside the gates.", time: "5:55 AM" },
   ],
+  universities: [
+    { id: "mapua-makati-campus", name: "Mapúa University", campus: "Makati Campus", status: "open", statusLabel: "Classes ongoing in demo", announcement: "Demo status: the stored campus notice says classes proceed as scheduled. Verify the latest Mapúa announcement before traveling.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true, sourceName: "Mapúa University", sourceUrl: "https://www.mapua.edu.ph/" },
+    { id: "ceu-makati", name: "Centro Escolar University", campus: "Makati Campus", status: "no-update", statusLabel: "No update in dataset", announcement: "No campus-specific suspension announcement is stored in this SafeGo demo snapshot.", date: DEMO_SNAPSHOT_DATE, time: "5:50 AM", isMock: true, sourceName: "Centro Escolar University", sourceUrl: "https://www.ceu.edu.ph/" },
+  ],
   reports: [
     { type: "Road Hazard", title: "Wet tiles at Main Building steps", meta: "Makati campus · 6:10 AM", status: "verified", statusLabel: "Verified" },
   ],
@@ -130,6 +139,10 @@ const quiapoInput: LocationInput = {
     { source: "gov", label: "Government", title: "Flood bulletin: Quiapo underpass", description: "Shin-level flooding. Motorists advised to use alternate routes.", time: "5:50 AM" },
     { source: "weather", label: "Weather", title: "Heavy rain continuing", description: "Sustained rainfall over central Manila this morning.", time: "6:15 AM" },
     { source: "community", label: "Community", title: "Stalled vehicles in the underpass", description: "Several reports since 5:40 AM. Not all verified.", time: "6:05 AM" },
+  ],
+  universities: [
+    { id: "ceu-manila", name: "Centro Escolar University", campus: "Mendiola, Manila", status: "no-update", statusLabel: "No update in dataset", announcement: "No official suspension post is stored for this campus in the current demo snapshot.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true, sourceName: "Centro Escolar University", sourceUrl: "https://www.ceu.edu.ph/" },
+    { id: "san-sebastian-manila", name: "San Sebastian College-Recoletos", campus: "C. M. Recto Avenue, Manila", status: "online", statusLabel: "Alternative delivery in demo", announcement: "Demo status: classes are shown using alternative delivery. Confirm the current modality with the college.", date: DEMO_SNAPSHOT_DATE, time: "6:05 AM", isMock: true, sourceName: "San Sebastian College-Recoletos", sourceUrl: "https://sscrmnl.edu.ph/" },
   ],
   reports: [
     { type: "Flooding", title: "Shin-level water in underpass", meta: "Quiapo · 6:05 AM", status: "verified", statusLabel: "Verified" },
@@ -174,6 +187,10 @@ const lermaInput: LocationInput = {
     { source: "community", label: "Community", title: "Open manhole on Lerma St.", description: "Verified report. Marked and being monitored.", time: "5:55 AM" },
     { source: "gov", label: "Government", title: "PAGASA rainfall advisory: Metro Manila", description: "Moderate to heavy rainfall expected over Metro Manila.", time: "6:15 AM" },
   ],
+  universities: [
+    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", status: "no-update", statusLabel: "No update in dataset", announcement: "SafeGo has no current suspension post stored for this nearby campus. Confirm through FEU's official channel.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true, sourceName: "Far Eastern University", sourceUrl: "https://www.feu.edu.ph/" },
+    { id: "ue-manila", name: "University of the East", campus: "C. M. Recto Avenue, Manila", status: "open", statusLabel: "No suspension in demo", announcement: "Demo status: no suspension is stored for this campus. Road hazards near Lerma may still affect the trip.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true, sourceName: "University of the East", sourceUrl: "https://www.ue.edu.ph/" },
+  ],
   reports: [
     { type: "Road Hazard", title: "Open manhole reported", meta: "Lerma St. · 5:55 AM", status: "verified", statusLabel: "Verified" },
     { type: "Flooding", title: "Ankle-deep near España", meta: "Lerma / España · 6:18 AM", status: "pending", statusLabel: "Pending" },
@@ -184,6 +201,70 @@ const lermaInput: LocationInput = {
   ],
   floods: [{ title: "Lerma / España corner", meta: "Ankle-deep spillover from España Blvd." }],
   hazards: [{ title: "Open manhole, Lerma St.", meta: "Reported 5:55 AM · Verified" }],
+};
+
+const pasigInput: LocationInput = {
+  id: "ortigas-pasig",
+  name: "Ortigas Center, Pasig",
+  city: "Pasig",
+  aliases: ["ortigas", "pasig", "ortigas center", "kapitolyo"],
+  coordinates: [14.5869, 121.0614],
+  updated: "6:45 AM",
+  riskSummary: "Rain is affecting parts of Ortigas Center, but the stored demo snapshot shows main access roads as passable. Check current city and campus announcements before leaving.",
+  riskStatus: "Passable with caution",
+  stats: [
+    { label: "Weather", value: "Moderate rain, 26°C", detail: "Gusts to 32 km/h", icon: "weather", tone: "icon-weather" },
+    { label: "School status", value: "Mixed announcements", detail: "1 demo suspension · 1 awaiting update", icon: "school", tone: "icon-mod" },
+    { label: "Road condition", value: "Wet roads", detail: "Slow movement near low-lying intersections", icon: "flood", tone: "icon-mod" },
+    { label: "Latest advisory", value: "Monitor Pasig updates", detail: "Demo city notice · 6:30 AM", icon: "alert", tone: "icon-mod" },
+  ],
+  factors: [
+    { name: "Weather", score: 44, pill: "mod", pillText: "Moderate", description: "Modeled moderate rain over Ortigas Center with occasional gusts.", icon: "weather", tone: "icon-weather" },
+    { name: "Flood / roads", score: 36, pill: "mod", pillText: "Watched", description: "Stored demo observations show wet roads and isolated ponding near low-lying intersections.", icon: "flood", tone: "icon-mod" },
+    { name: "Official advisories", score: 40, pill: "mod", pillText: "Monitor", description: "A demo Pasig notice advises commuters to monitor localized flooding and campus updates.", icon: "alert", tone: "icon-mod" },
+    { name: "School status", score: 48, pill: "mod", pillText: "Mixed", description: "Demo campus records include one suspension and one institution awaiting an update.", icon: "school", tone: "icon-mod" },
+    { name: "Community reports", score: 20, pill: "low", pillText: "Limited", description: "No verified community hazard report is attached to the Pasig demo snapshot.", icon: "reports", tone: "icon-neutral" },
+  ],
+  advisories: [
+    { source: "gov", label: "Pasig City", title: "Monitor low-lying roads during continued rainfall", description: "Demo announcement only. Check Pasig City DRRMO channels for an active bulletin.", time: "6:30 AM" },
+    { source: "school", label: "University", title: "One nearby campus has a demo class-suspension notice", description: "See Nearby universities for institution-level status. These entries are demonstration data.", time: "6:20 AM" },
+  ],
+  universities: [
+    {
+      id: "uap-ortigas",
+      name: "University of Asia and the Pacific",
+      campus: "Ortigas Center",
+      status: "suspended",
+      statusLabel: "Classes suspended",
+      announcement: "Demo announcement: on-campus classes are suspended for the day. Verify through the university's official channels.",
+      date: DEMO_SNAPSHOT_DATE,
+      time: "6:20 AM",
+      isMock: true,
+      sourceName: "UA&P University Student Government",
+      sourceUrl: "https://www.facebook.com/uapusg",
+    },
+    {
+      id: "plp-pasig",
+      name: "Pamantasan ng Lungsod ng Pasig",
+      campus: "Pasig",
+      status: "no-update",
+      statusLabel: "No update in dataset",
+      announcement: "SafeGo has no current suspension announcement for this university. No update does not mean classes are confirmed.",
+      date: DEMO_SNAPSHOT_DATE,
+      time: "6:15 AM",
+      isMock: true,
+      sourceName: "Pamantasan ng Lungsod ng Pasig",
+      sourceUrl: "https://plpasig.edu.ph/",
+    },
+  ],
+  reports: [],
+  points: [
+    { kind: "start", label: "West side", name: "ADB Avenue", detail: "Wet pavement · passable in demo snapshot" },
+    { kind: "mid", label: "Watched", name: "Julia Vargas Avenue", detail: "Slow movement near intersections" },
+    { kind: "end", label: "East side", name: "Ortigas Avenue", detail: "Monitor low-lying sections" },
+  ],
+  floods: [{ title: "No verified Pasig flood observation connected", meta: "Stored demo conditions only", tone: "icon-neutral" }],
+  hazards: [{ title: "Slippery roads near Ortigas intersections", meta: "Demo observation · unverified" }],
 };
 
 function cloneEspana(
@@ -210,7 +291,7 @@ export const LOCATIONS: SafeGoLocation[] = [
   createLocation(lermaInput),
   cloneEspana("binondo", "Binondo, Manila", "Manila", ["binondo", "manila", "divisoria", "ongpin"], [14.601, 120.9745]),
   cloneEspana("katipunan", "Katipunan Avenue, Quezon City", "Quezon City", ["katipunan", "quezon city", "qc", "ateneo", "up diliman"], [14.6405, 121.0741]),
-  cloneEspana("ortigas-pasig", "Ortigas Center, Pasig", "Pasig", ["ortigas", "pasig", "ortigas center", "kapitolyo"], [14.5869, 121.0614]),
+  createLocation(pasigInput),
 ];
 
 export function searchLocations(query: string) {

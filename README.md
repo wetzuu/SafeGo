@@ -34,7 +34,7 @@ npm run demo
 
 `npm run demo` builds first and then serves the production build on port 3000.
 
-The default `auto` data mode uses the built-in mock dataset when no database is configured, so the commands above remain the quickest way to work on the front end.
+The default `.env.example` configuration uses `SAFEGO_DATA_MODE=mock` for a stable demo. If the variable is omitted, `auto` mode uses PostgreSQL only when `DATABASE_URL` is configured and otherwise falls back to the built-in dataset.
 
 The dashboard requests a fresh snapshot when it opens, when the user presses Refresh, and every five minutes while the page remains open. Set `SAFEGO_WEATHER_PROVIDER=disabled` for fully offline development.
 
@@ -53,7 +53,7 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 
 ## Flow
 
-1. Enter a starting point and destination, or load the stable España-to-Lerma pilot example.
+1. Check a supported area such as Pasig, optionally add a destination, or load the stable España-to-Lerma pilot example.
 2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
 3. Review the route score, compact map, road conditions, announcements, and major roads.
 4. Select **Plan another trip** to start again.
@@ -63,10 +63,14 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 | Screen       | Contents                                                          |
 | ------------ | ----------------------------------------------------------------- |
 | Search       | Location field, result list, suggested areas                      |
-| Overview     | Route score, compact risk map, current conditions, announcements, and major roads |
+| Overview     | Route score, compact risk map, current conditions, announcements, nearby university statuses, and major roads |
 | Risk factors | SafeGo risk points and factors covering the route                  |
 | Announcements | Official, school, and local updates near the area or route         |
 | Map          | Real road route with green/yellow/orange/red risk sections         |
+
+Nearby university entries are tied to the selected SafeGo area rather than shown
+citywide. The current entries are labeled demo data; a suspension must not be
+treated as official until an approved university or government source is connected.
 | Conditions   | Hazards and community observations near the route                  |
 | Reports      | Optional moderated community-report workflow; hidden when disabled |
 

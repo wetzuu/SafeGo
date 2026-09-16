@@ -110,9 +110,9 @@ a small formative study, not statistical proof of effectiveness.
 | --- | --- | --- | --- | --- | --- | --- |
 | Pending | — | — | Not run | — | — | Recruit participants |
 
-## Implementation verification — 2026-09-11
+## Implementation verification — 2026-09-16
 
-- All 39 automated tests passed, including seven synthetic acceptance cases,
+- All 43 automated tests passed, including seven synthetic acceptance cases,
   the coverage threshold, unknown states, geometry preservation and risk floors.
 - Lint, TypeScript and the production build passed. The built `/validation`
   response has HTTP status 404.

@@ -45,6 +45,7 @@ function toDashboardLocation(row: LocationDetailsRow): SafeGoLocation {
     updated: row.updated_label,
     factors: row.factors,
     advisories: row.advisories,
+    universities: row.display_payload.universities ?? [],
     reports: row.community_reports,
     risk: row.assessment,
   };

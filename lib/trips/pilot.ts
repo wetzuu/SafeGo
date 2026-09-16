@@ -8,8 +8,19 @@ export const PILOT = {
   sampleLengthMeters: 100,
 };
 
+export const AREA_DASHBOARD_LOCATION_IDS = [
+  ...PILOT.locationIds,
+  "ortigas-pasig",
+] as const;
+
 export const UNKNOWN_ROUTE_COLOR = "#64748b";
 
 export function isPilotLocation(location: { id: string }) {
   return PILOT.locationIds.includes(location.id);
+}
+
+export function isAreaDashboardLocation(location: { id: string }) {
+  return AREA_DASHBOARD_LOCATION_IDS.includes(
+    location.id as (typeof AREA_DASHBOARD_LOCATION_IDS)[number],
+  );
 }
