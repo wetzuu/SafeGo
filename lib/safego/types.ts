@@ -67,6 +67,8 @@ export interface UniversityStatus {
   id: string;
   name: string;
   campus?: string;
+  logoPath: string;
+  logoAlt: string;
   status: UniversityOperatingStatus;
   statusLabel: string;
   announcement: string;

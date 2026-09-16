@@ -1700,12 +1700,12 @@
     @apply flex min-w-0 items-start gap-3;
   }
 
-  .university-icon {
-    @apply grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-brand;
+  .university-logo {
+    @apply grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-hairline bg-white p-1.5 shadow-sm;
   }
 
-  .university-icon svg {
-    @apply size-[18px];
+  .university-logo img {
+    @apply size-full object-contain;
   }
 
   .university-status {
@@ -1795,7 +1795,7 @@
     }
 
     .university-status {
-      @apply ml-12;
+      @apply ml-[60px];
     }
   }
 

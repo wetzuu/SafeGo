@@ -52,6 +52,10 @@ test("every supported dashboard area has university statuses and only verified p
   assert.equal(areas.length, 5);
   assert.ok(areas.every((area) => area.universities.length > 0));
   const universities = areas.flatMap((area) => area.universities);
+  assert.ok(universities.every((university) =>
+    university.logoPath.startsWith("/university-logos/")
+      && university.logoAlt.length > 0,
+  ));
   const linked = universities.filter((university) => university.announcementUrl);
   assert.equal(linked.length, 1);
   assert.ok(linked.every((university) =>
