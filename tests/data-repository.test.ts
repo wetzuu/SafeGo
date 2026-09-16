@@ -45,16 +45,19 @@ test("Pasig exposes area-specific nearby university statuses", async () => {
   ));
 });
 
-test("every supported dashboard area has university statuses with official channels", async () => {
+test("every supported dashboard area has university statuses and only verified posts are linked", async () => {
   const repository = new MockSafeGoRepository();
   const areas = (await repository.listDashboardLocations()).filter(isAreaDashboardLocation);
 
   assert.equal(areas.length, 5);
   assert.ok(areas.every((area) => area.universities.length > 0));
-  assert.ok(areas.flatMap((area) => area.universities).every((university) =>
-    university.isMock
-      && university.sourceName
-      && university.sourceUrl?.startsWith("https://"),
+  const universities = areas.flatMap((area) => area.universities);
+  const linked = universities.filter((university) => university.announcementUrl);
+  assert.equal(linked.length, 1);
+  assert.ok(linked.every((university) =>
+    university.announcementVerified
+      && !university.isMock
+      && university.announcementUrl?.startsWith("https://www.facebook.com/"),
   ));
 });
 

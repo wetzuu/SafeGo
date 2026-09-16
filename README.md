@@ -71,6 +71,9 @@ The database commands are repeatable: migrations are recorded in `schema_migrati
 Nearby university entries are tied to the selected SafeGo area rather than shown
 citywide. The current entries are labeled demo data; a suspension must not be
 treated as official until an approved university or government source is connected.
+The UI shows an announcement link only when the stored URL points to a confirmed,
+post-level notice from the university or its central student council. General
+homepages and social-media profiles are not treated as announcement evidence.
 | Conditions   | Hazards and community observations near the route                  |
 | Reports      | Optional moderated community-report workflow; hidden when disabled |
 

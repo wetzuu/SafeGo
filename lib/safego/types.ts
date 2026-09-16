@@ -74,7 +74,8 @@ export interface UniversityStatus {
   time: string;
   isMock: boolean;
   sourceName?: string;
-  sourceUrl?: string;
+  announcementUrl?: string;
+  announcementVerified?: boolean;
 }
 
 export interface CommunityReport {
