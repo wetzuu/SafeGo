@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { isAreaDashboardLocation } from "@/lib/trips/pilot";
@@ -35,6 +35,10 @@ export function TripPlanner({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preferSavedDemo, setPreferSavedDemo] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
+
   const hasDestination = stops.length === 2;
 
   function updateStop(index: number, value: string) {
@@ -46,6 +50,9 @@ export function TripPlanner({
   }
 
   async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean) {
+    if (activeRequest.current) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     setError("");
     try {
@@ -57,22 +64,24 @@ export function TripPlanner({
           destination,
           preferSavedDemo: useSavedDemo,
         }),
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
       });
       const envelope = await response.json().catch(() => null) as TripEnvelope | null;
       const analysis = envelope?.data;
       if (!response.ok || !analysis) {
         throw new Error(envelope?.error?.message || "The route service returned an unexpected response. Please try again.");
       }
-      onTrip(analysis);
+      if (!controller.signal.aborted) onTrip(analysis);
     } catch (caught) {
+      if (controller.signal.aborted) return;
       const timedOut = caught instanceof DOMException
         && (caught.name === "TimeoutError" || caught.name === "AbortError");
       setError(timedOut
         ? "The route check took too long. Check your connection and try again."
         : caught instanceof Error ? caught.message : "The route could not be analyzed.");
     } finally {
-      setLoading(false);
+      activeRequest.current = null;
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
 
@@ -135,19 +144,20 @@ export function TripPlanner({
                 list="safego-locations"
                 placeholder={index === 0 ? "Search a SafeGo location" : "Where are you going?"}
                 autoComplete="off"
+                disabled={loading}
                 required
                 maxLength={160}
                 autoFocus={index === 1}
               />
             </div>
             {index > 0 && (
-              <button className="remove-trip-stop" type="button" onClick={removeDestination} aria-label="Remove destination">×</button>
+              <button className="remove-trip-stop" type="button" onClick={removeDestination} disabled={loading} aria-label="Remove destination">×</button>
             )}
           </div>
         </div>
       ))}
       {!hasDestination && (
-        <button className="add-trip-stop" type="button" onClick={addDestination}>
+        <button className="add-trip-stop" type="button" onClick={addDestination} disabled={loading}>
           <span aria-hidden="true">+</span> Add destination
         </button>
       )}

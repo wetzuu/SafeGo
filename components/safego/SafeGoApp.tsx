@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   DashboardSnapshot,
   DataBackend,
@@ -15,6 +15,7 @@ import type {
 } from "@/lib/safego/types";
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
+import { assessTrip } from "@/lib/trips/trip-assessment";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import { OverviewContextPanel } from "./OverviewContextPanel";
@@ -186,13 +187,18 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
 
+  const refreshInFlight = useRef(false);
+
   const refreshDashboard = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
     setRefreshing(true);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const response = await fetch("/api/dashboard", { cache: "no-store", signal: AbortSignal.timeout(25_000) });
       if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
       const envelope = (await response.json()) as DashboardEnvelope;
       setLocations(envelope.data.locations.filter(isAreaDashboardLocation));
+      setTrip((current) => current ? assessTrip(current, envelope.data) : null);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
@@ -205,6 +211,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
         { key: "open-meteo", name: "Open-Meteo forecast models", kind: "weather", status: "degraded", lastSuccessAt: null, lastFailureAt: new Date().toISOString(), errorMessage: "Dashboard refresh failed." },
       ]);
     } finally {
+      refreshInFlight.current = false;
       setRefreshing(false);
     }
   }, []);
