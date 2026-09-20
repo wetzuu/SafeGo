@@ -38,6 +38,19 @@ The default `.env.example` configuration uses `SAFEGO_DATA_MODE=mock` for a stab
 
 The dashboard requests a fresh snapshot when it opens, when the user presses Refresh, and every five minutes while the page remains open. Set `SAFEGO_WEATHER_PROVIDER=disabled` for fully offline development.
 
+### Java Spring Boot server (in progress)
+
+Requires Java 21. From `server/demo/`:
+
+```bash
+./gradlew bootRun
+```
+
+The server starts on port 8080 and exposes the same current API backend in Next.js with the same mock dataset.
+
+Refer to `server/API.md` for the API documentation.
+
+
 ### PostgreSQL/PostGIS data mode
 
 Create a PostgreSQL database with PostGIS available, copy `.env.example` to `.env.local`, and update `DATABASE_URL`. Then run:

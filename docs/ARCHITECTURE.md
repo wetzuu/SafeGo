@@ -42,9 +42,16 @@ The browser never receives database credentials or provider configuration. Exter
 - Official-advisory and flood/road feeds must use the normalized contracts in `docs/SOURCE_FEEDS.md`; unknown location IDs and expired items are ignored.
 - Public community intake remains disabled until moderation is explicitly enabled.
 
-## Future Java backend
+## Java backend (in progress)
 
-When a Spring Boot backend is introduced, preserve the current JSON contracts under `app/api/`. Port repository, provider, and risk services first, point Next.js to the Java API, verify response parity, and only then remove the matching TypeScript server modules. The React/Leaflet frontend can remain unchanged.
+The Spring Boot server at `server/demo/` now exposes all six API endpoints backed by mock data. The risk model, mock repository, all domain types, and the full route-risk pipeline (preset geocoding, saved-demo route, Nominatim + OSRM for arbitrary trips, segment scoring) are ported. Weather enrichment is not yet included.
+
+Next steps (in order):
+1. Verify end-to-end response parity between the Java and Next.js APIs on a representative set of requests.
+2. Port the Open-Meteo weather provider so the dashboard reflects live conditions.
+3. Port the PostgreSQL repository so the database data mode works.
+4. Point the Next.js frontend at the Java API base URL via an environment variable.
+5. Remove the matching TypeScript server modules only after parity is confirmed.
 
 ## Before pushing
 
