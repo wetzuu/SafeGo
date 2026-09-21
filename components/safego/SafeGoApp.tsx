@@ -65,17 +65,17 @@ function Navigation({ activeScreen, reportsEnabled, onNavigate }: { activeScreen
   );
 }
 
-function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; onRefresh: () => void }) {
+function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavailable, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; apiUnavailable: boolean; onRefresh: () => void }) {
   const weather = sources.find((source) => source.key === "open-meteo");
   const live = weather?.status === "active";
   const degraded = weather?.status === "degraded";
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
-  const label = live ? "Weather updated" : degraded ? "Using stored conditions" : backend === "mock" ? "Demo snapshot" : "Saved data";
-  const detail = updated ? `Updated ${updated}` : live ? "Current modeled conditions" : degraded ? backend === "mock" ? "Live weather unavailable. Demo snapshot shown." : "Live weather unavailable" : backend === "mock" ? "Stored sample conditions" : "Live weather is off";
+  const label = apiUnavailable ? "API unavailable" : live ? "Weather updated" : degraded ? "Using stored conditions" : backend === "mock" ? "Demo snapshot" : "Saved data";
+  const detail = apiUnavailable ? "Start the Java server to load live data. Showing demo conditions." : updated ? `Updated ${updated}` : live ? "Current modeled conditions" : degraded ? backend === "mock" ? "Live weather unavailable. Demo snapshot shown." : "Live weather unavailable" : backend === "mock" ? "Stored sample conditions" : "Live weather is off";
 
-  return <div className={`data-status${live ? " live" : degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
+  return <div className={`data-status${!apiUnavailable && live ? " live" : apiUnavailable || degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
 
 function Advisories({ items }: { items: Advisory[] }) {
@@ -183,6 +183,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [sources, setSources] = useState(initialSources);
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [apiUnavailable, setApiUnavailable] = useState(false);
   const [trip, setTrip] = useState<TripAnalysis | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
@@ -194,9 +195,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     refreshInFlight.current = true;
     setRefreshing(true);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store", signal: AbortSignal.timeout(25_000) });
+      const response = await fetch("/api/dashboard?refresh=true", { cache: "no-store", signal: AbortSignal.timeout(25_000) });
       if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
       const envelope = (await response.json()) as DashboardEnvelope;
+      setApiUnavailable(false);
       setLocations(envelope.data.locations.filter(isAreaDashboardLocation));
       setTrip((current) => current ? assessTrip(current, envelope.data) : null);
       setDataBackend(envelope.meta.backend);
@@ -206,10 +208,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
         ? envelope.data.locations.find((location) => location.id === current.id) ?? current
         : current);
     } catch {
-      setSources((current) => [
-        ...current.filter((source) => source.key !== "open-meteo"),
-        { key: "open-meteo", name: "Open-Meteo forecast models", kind: "weather", status: "degraded", lastSuccessAt: null, lastFailureAt: new Date().toISOString(), errorMessage: "Dashboard refresh failed." },
-      ]);
+      setApiUnavailable(true);
     } finally {
       refreshInFlight.current = false;
       setRefreshing(false);
@@ -271,10 +270,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
 
   if (!selectedLocation) {
-    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">Start with one location. Add a destination when you want to check a route.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Demo locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is an informational demo. Always check current official announcements before traveling.</p></div></main>;
+    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">Start with one location. Add a destination when you want to check a route.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Demo locations</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is an informational demo. Always check current official announcements before traveling.</p></div></main>;
   }
 
-  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
+  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
     {activeScreen === "overview" && (trip ? <TripOverview trip={trip} navigate={navigate} /> : <LocationOverview location={selectedLocation} navigate={navigate} />)}
     {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : <LocationRiskFactors location={selectedLocation} />)}
     {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route announcements" : "Area announcements"} title={trip ? "Announcements near this trip" : "Announcements for this area"} subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation.name}. Newest announcements first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}

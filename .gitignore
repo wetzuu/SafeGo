@@ -47,4 +47,6 @@ next-env.d.ts
 backend/target/
 backend/.gradle/
 backend/build/
+/server/demo/build/
+/server/demo/.gradle/
 *.class

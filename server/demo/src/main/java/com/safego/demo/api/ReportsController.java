@@ -1,6 +1,6 @@
 package com.safego.demo.api;
 
-import com.safego.demo.data.MockRepository;
+import com.safego.demo.data.DashboardService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +18,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @RestController
 @RequestMapping("/api/reports")
 public class ReportsController {
+    private final DashboardService dashboard;
+
+    public ReportsController(DashboardService dashboard) {
+        this.dashboard = dashboard;
+    }
 
     private static final long WINDOW_MS = 10 * 60 * 1_000L;
     private static final int MAX_PER_WINDOW = 5;
@@ -79,13 +84,15 @@ public class ReportsController {
                     "Too many reports were submitted. Try again in a few minutes."));
         }
 
-        return MockRepository.submitCommunityReport(locationId, reportType, locationText, description)
-            .map(report -> ResponseEntity.status(201)
+        return dashboard.submitCommunityReport(locationId, reportType, locationText, description)
+            .map(report -> {
+                return ResponseEntity.status(201)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .<Object>body(Map.of(
                     "data", report,
-                    "meta", Map.of("backend", "mock", "generatedAt", Instant.now().toString())
-                )))
+                    "meta", Map.of("backend", dashboard.backend(), "generatedAt", Instant.now().toString())
+                ));
+            })
             .orElseGet(() -> ResponseEntity.status(404)
                 .body(ApiResponse.error("LOCATION_NOT_FOUND",
                     "That SafeGo coverage location no longer exists.")));

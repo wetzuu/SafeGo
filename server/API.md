@@ -165,7 +165,7 @@ Combined snapshot for the UI: all locations plus source statuses.
 }
 ```
 
-`weatherUpdatedAt` is `null` on the Java server until the weather provider is ported. The Next.js server may return an ISO timestamp here.
+`weatherUpdatedAt` is an ISO timestamp when Open-Meteo succeeds, or `null` when disabled or unavailable. `GET /api/dashboard?refresh=true` bypasses the one-minute snapshot cache; the UI uses this for Refresh.
 
 ---
 
@@ -319,7 +319,7 @@ Community report submission. **Disabled by default** — returns 503 unless both
 
 ## Current limitations
 
-- **No live weather.** `dashboard.weatherUpdatedAt` is always `null`. Scores reflect stored mock data only.
-- **Mock data only.** All responses come from the built-in fixture dataset. No database reads.
+- **Provider-dependent live data.** Weather and approved operational feeds require network access; failures preserve stored conditions and report degraded source status.
+- **Database mode requires setup.** Set `SAFEGO_DATA_MODE=database`, configure `DATABASE_URL`, and run `npm run db:setup` before starting Java.
 - **In-memory rate limiting.** Restarts the server = resets rate limit state.
 - **Trip geocoding** falls back to Nominatim for non-preset places; those calls hit the public OSM API.

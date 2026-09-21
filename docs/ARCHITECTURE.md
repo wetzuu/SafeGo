@@ -5,7 +5,7 @@
 ```text
 Browser
   -> Next.js UI
-  -> Next.js route handlers
+  -> Next.js /api rewrite -> Java Spring Boot API
       -> SafeGo repository -> mock fixtures or PostgreSQL/PostGIS
       -> Open-Meteo -> modeled current weather
       -> approved normalized feeds -> official advisories and flood/road observations
@@ -13,18 +13,18 @@ Browser
       -> OSRM -> road geometry and road names
 ```
 
-The browser never receives database credentials or provider configuration. External requests are made by server-only provider modules.
+The browser never receives database credentials or provider configuration. The Java server makes external provider requests; Next.js serves the UI and forwards `/api/*`.
 
 ## Source layout
 
 | Path | Responsibility |
 | --- | --- |
-| `app/` | Next.js pages, global styles, and HTTP route handlers |
+| `app/` | Next.js pages and global styles |
 | `components/safego/` | Interactive trip planner, dashboard, and Leaflet map |
 | `lib/safego/` | Core location types, fixtures, and area-risk model |
 | `lib/trips/` | Trip contracts and route-risk calculation |
-| `lib/providers/` | External weather, geocoding, and routing adapters |
-| `lib/data/` | Repository contracts, mock/PostgreSQL implementations, dashboard composition |
+| `server/demo/` | Active Java API, data loading, weather/feed ingestion, routing, and risk model |
+| `lib/providers/`, `lib/data/` | Previous TypeScript backend retained for comparison; not active at runtime |
 | `db/migrations/` | Ordered PostgreSQL/PostGIS schema migrations |
 | `scripts/` | Database migration and seed commands |
 | `tests/` | Pure model and repository tests |
@@ -42,16 +42,11 @@ The browser never receives database credentials or provider configuration. Exter
 - Official-advisory and flood/road feeds must use the normalized contracts in `docs/SOURCE_FEEDS.md`; unknown location IDs and expired items are ignored.
 - Public community intake remains disabled until moderation is explicitly enabled.
 
-## Java backend (in progress)
+## Java backend
 
-The Spring Boot server at `server/demo/` now exposes all six API endpoints backed by mock data. The risk model, mock repository, all domain types, and the full route-risk pipeline (preset geocoding, saved-demo route, Nominatim + OSRM for arbitrary trips, segment scoring) are ported. Weather enrichment is not yet included.
+The Spring Boot server at `server/demo/` owns all six API endpoints. It uses the built-in fixtures by default, or the existing seeded PostgreSQL/PostGIS schema when configured. Its dashboard composes stored data, current modeled Open-Meteo weather, and optional normalized official-advisory and flood/road feeds before recalculating risk. Location and trip endpoints read that same cached snapshot. Provider failures preserve stored conditions and expose degraded source status.
 
-Next steps (in order):
-1. Verify end-to-end response parity between the Java and Next.js APIs on a representative set of requests.
-2. Port the Open-Meteo weather provider so the dashboard reflects live conditions.
-3. Port the PostgreSQL repository so the database data mode works.
-4. Point the Next.js frontend at the Java API base URL via an environment variable.
-5. Remove the matching TypeScript server modules only after parity is confirmed.
+The older TypeScript backend files remain for parity comparison but are not called by the frontend. Next.js forwards API requests to Java through `next.config.ts`. Java and Next.js must both run locally.
 
 ## Before pushing
 

@@ -1,6 +1,6 @@
 package com.safego.demo.api;
 
-import com.safego.demo.data.MockRepository;
+import com.safego.demo.data.DashboardService;
 import com.safego.demo.model.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RestController
 @RequestMapping("/api/trips/analyze")
 public class TripAnalyzeController {
+    private final DashboardService dashboard;
+
+    public TripAnalyzeController(DashboardService dashboard) {
+        this.dashboard = dashboard;
+    }
 
     private static final String PILOT_ID = "manila-makati-v1";
     private static final String PILOT_NAME = "Manila–Makati pilot";
@@ -83,7 +88,7 @@ public class TripAnalyzeController {
         }
 
         try {
-            List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+            List<SafeGoLocation> locations = dashboard.snapshot(false).locations();
 
             ResolvedPlace originPlace = resolvePlace(origin, locations);
             ResolvedPlace destPlace = resolvePlace(destination, locations);
@@ -95,7 +100,7 @@ public class TripAnalyzeController {
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .body(Map.of(
                     "data", analysis,
-                    "meta", Map.of("backend", "mock", "generatedAt", analysis.generatedAt())
+                    "meta", Map.of("backend", dashboard.backend(), "generatedAt", analysis.generatedAt())
                 ));
         } catch (TripError e) {
             return ResponseEntity.status(400)
@@ -413,7 +418,7 @@ public class TripAnalyzeController {
             overallScore, rawScore, riskKey, riskName, safetyRule,
             corridorLocations, advisories, reports, hazards,
             coverageNote, Instant.now().toString(), route.source(),
-            coverage, MockRepository.listSourceStatuses()
+            coverage, dashboard.snapshot(false).sources()
         );
     }
 

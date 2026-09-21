@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "next dev",
+    "dev:api": "node scripts/java-api.mjs",
     "build": "next build",
     "demo": "npm run build && npm run start",
     "build:prototype": "npx @tailwindcss/cli -i prototype/safego.src.css -o prototype/safego.css",

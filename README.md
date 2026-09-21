@@ -16,29 +16,32 @@ npx http-server prototype
 
 Open `http://localhost:8080` in your browser.
 
-### Next.js App
+### App (Next.js + Java API)
+
+Install Node.js and Java 21. On Windows, start both services from the project root:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser.
+Open `http://localhost:3000` in your browser. The UI runs on port 3000 and the Java API on port 8080. The first run downloads Gradle dependencies and may take a few minutes. Keep the terminal open. If port 3000 is already in use, stop the older Next.js server or open the port shown in the terminal.
 
-For a production-style local demo, verify and start the optimized build:
+For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows stored demo data but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.
+
+For a production-style local demo, verify the build, then keep the API and UI running in separate terminals:
 
 ```bash
 npm run check:demo
-npm run demo
 ```
 
-`npm run demo` builds first and then serves the production build on port 3000.
+Run `npm run dev:api` in one terminal and `npm run demo` in another. `npm run demo` builds first and then serves the production build on port 3000.
 
 The default `.env.example` configuration uses `SAFEGO_DATA_MODE=mock` for a stable demo. If the variable is omitted, `auto` mode uses PostgreSQL only when `DATABASE_URL` is configured and otherwise falls back to the built-in dataset.
 
 The dashboard requests a fresh snapshot when it opens, when the user presses Refresh, and every five minutes while the page remains open. Set `SAFEGO_WEATHER_PROVIDER=disabled` for fully offline development.
 
-### Java Spring Boot server (in progress)
+### Java Spring Boot server
 
 Requires Java 21. From `server/demo/`:
 
@@ -46,7 +49,7 @@ Requires Java 21. From `server/demo/`:
 ./gradlew bootRun
 ```
 
-The server starts on port 8080 and exposes the same current API backend in Next.js with the same mock dataset.
+The server starts on port 8080. All `/api/*` requests are forwarded to it by Next.js. It loads the built-in dataset or the existing PostgreSQL/PostGIS schema, applies live weather and configured feeds, and calculates route risks.
 
 Refer to `server/API.md` for the API documentation.
 
@@ -100,12 +103,13 @@ The Next.js app is independent from the original static prototype:
 - `lib/safego/locations.ts` is the current mock-data source.
 - `lib/safego/risk-model.ts` contains the versioned risk calculation.
 - `lib/safego/types.ts` defines the shared domain contracts for future APIs.
-- `lib/data/` contains the mock and PostgreSQL repositories used by API routes.
+- `server/demo/` contains the active Java API, repositories, providers, and risk calculation.
+- `lib/data/` retains the earlier TypeScript implementation as a reference for parity checks; it is not an active API runtime.
 - `db/migrations/` contains the PostgreSQL/PostGIS schema.
 - `scripts/db-migrate.ts` and `scripts/db-seed.ts` set up local or hosted databases.
 - `prototype/` remains available as the original design reference only.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, future Java migration boundary, and pre-push checklist.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, and pre-push checklist.
 
 ## Data APIs
 
@@ -122,7 +126,7 @@ Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. 
 
 ## Live weather normalization
 
-Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result alongside any configured official and flood/road feeds. Weather observations expire after ten minutes; provider failure leaves the stored location data in place and marks the feed as degraded.
+Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result alongside any configured official and flood/road feeds. The Java dashboard caches its assembled snapshot for one minute; provider failure leaves the stored location data in place and marks the feed as degraded.
 
 This is modeled weather, not a PAGASA warning. It never creates or modifies an official advisory, flood report, school notice, or community verification status.
 
@@ -166,7 +170,7 @@ below Critical. Severe weather (85+) supported by an elevated official advisory
 
 Reports navigation is hidden by default. It appears only when both `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`; `POST /api/reports` rejects submissions otherwise. This prevents the unfinished intake code from collecting public reports before verification and abuse handling exist.
 
-PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Next.js server process. Database seeds now replace fixture reports without deleting community submissions.
+PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Java server process. Database seeds now replace fixture reports without deleting community submissions.
 
 Before production use, replace the in-memory rate limit with a shared durable limiter, add moderation and abuse handling, and publish retention/privacy rules.
 
