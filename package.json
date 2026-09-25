@@ -13,6 +13,8 @@
     "db:migrate": "node scripts/db-migrate.ts",
     "db:seed": "node scripts/db-seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:verify": "node scripts/db-verify.ts",
+    "db:backup": "node scripts/db-backup.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

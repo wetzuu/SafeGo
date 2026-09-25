@@ -50,3 +50,7 @@ backend/build/
 /server/demo/build/
 /server/demo/.gradle/
 *.class
+
+# Local database backups
+backups/
+*.dump

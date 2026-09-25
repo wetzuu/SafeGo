@@ -1,7 +1,8 @@
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
 import postgres from "postgres";
 import { LOCATIONS } from "../lib/safego/locations.ts";
 
+const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
 const connectionString = process.env.DATABASE_URL?.trim();

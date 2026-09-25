@@ -78,6 +78,9 @@ Set `SAFEGO_DATA_MODE=database` to require the database. Use `mock` to force the
 
 The database commands are repeatable: migrations are recorded in `schema_migrations`, and seeding replaces each preset location's observations, advisories, reports, and current assessment without duplicating them.
 
+For a repeatable local PostGIS service, database verification, backups, and the
+staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
+
 ## Flow
 
 1. Check a supported area such as Pasig, optionally add a destination, or load the stable España-to-Lerma pilot example.
