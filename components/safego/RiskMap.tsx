@@ -152,7 +152,7 @@ export function RiskMap({
         coverageArea.bindTooltip(
           makeTooltip(
             location.name,
-            `${score}/100. ${activeLayerLabel}. Approximate data area.`,
+            `${score}/100. ${activeLayerLabel}. SafeGo has information near this point.`,
           ),
           { direction: "top", opacity: 0.96 },
         );
@@ -237,7 +237,7 @@ export function RiskMap({
       <div className="page-head">
         <div className="page-eyebrow">{trip ? "Route risk map" : "Area risk map"}</div>
         <h1 className="page-title" id="map-page-title">{trip ? "A → B, colored by travel risk" : "Compare locations"}</h1>
-        <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a marker to compare its available risk signals."}</p>
+        <p className="page-sub">{trip ? `${trip.origin.label} → ${trip.destination.label}` : "Select a point to see what SafeGo knows nearby."}</p>
       </div>
 
       {trip && <TripDataNotice trip={trip} />}
@@ -260,14 +260,14 @@ export function RiskMap({
             {mapError && <div className="map-load-error">The live map could not load. Check your internet connection and reload the page.</div>}
             {!mapError && tileStatus === "loading" && <div className="map-tile-status" role="status">Loading map tiles…</div>}
             {!mapError && tileStatus === "degraded" && <div className="map-tile-status warning" role="status">Base map unavailable. Risk overlays remain visible.</div>}
-            <div className="map-approx-badge">OpenStreetMap. Approximate data areas.</div>
+            <div className="map-approx-badge">Map areas are approximate</div>
           </div>
           <div className="map-legend" aria-label="Risk color legend">
             <div className="map-legend-title">Score and risk level</div>
             {trip && <p className="unknown-legend">Gray dashed route: not enough information to score</p>}
             <div className="map-gradient" />
             <div className="map-legend-labels"><span><strong>0</strong> Low</span><span><strong>30</strong> Moderate</span><span><strong>60</strong> High</span><span><strong>80–100</strong> Critical</span></div>
-            <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Approximate data area</span><span className="evidence-key verified"><span />Verified hazard</span><span className="evidence-key unverified"><span />Pending or unverified report</span></div>
+            <div className="map-evidence-legend"><span className="evidence-key area-evidence"><span />Nearby information</span><span className="evidence-key verified"><span />Confirmed hazard</span><span className="evidence-key unverified"><span />Unconfirmed report</span></div>
           </div>
         </div>
 
@@ -280,12 +280,12 @@ export function RiskMap({
           <div className="map-overall-row"><span>Overall travel risk</span><span className={`pill ${selectedLocation.risk.key}`}><span className="dot" />{selectedLocation.risk.percentage}/100. {selectedLocation.risk.name}</span></div>
           <div className="map-factor-list">{selectedLocation.factors.map((factor) => <div key={factor.name}><span>{factor.name === "School status" ? "Nearby university status" : factor.name}</span><strong className="mono">{factor.score}</strong></div>)}</div>
           <div className="map-evidence"><span className="evidence-key verified"><span />{verifiedCount} verified</span><span className="evidence-key unverified"><span />{unverifiedCount} pending/unverified</span><span className="mono">Updated {selectedLocation.updated}</span></div>
-          <div className="map-detail-section"><strong>Latest announcement</strong><p>{selectedLocation.advisories[0]?.title ?? "No announcement in the current dataset."}</p></div>
-          <div className="map-detail-section"><strong>Relevant hazard</strong><p>{selectedLocation.hazards[0]?.title ?? "No reported hazard in the mock dataset."}</p></div>
+          <div className="map-detail-section"><strong>Latest announcement</strong><p>{selectedLocation.advisories[0]?.title ?? "No announcement is available here. Check official channels for updates."}</p></div>
+          <div className="map-detail-section"><strong>Relevant hazard</strong><p>{selectedLocation.hazards[0]?.title ?? "SafeGo has no hazard report to show here."}</p></div>
           <button className="submit-btn map-dashboard-btn" type="button" onClick={onViewDashboard}>View full dashboard</button>
         </aside> : <aside className="map-detail card card-pad"><h3>No nearby data</h3><p>This route cannot be rated. Gray sections do not mean low risk.</p></aside>}
       </div>
-      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Simulated review route. " : trip?.routingSource === "saved-demo" ? "Saved demo route. " : trip ? "Road map from OSRM and OpenStreetMap. " : ""}Colored areas are approximate. SafeGo does not replace official announcements.</p>
+      <p className="map-disclaimer">{trip?.routingSource === "simulation" ? "Practice route. " : trip?.routingSource === "saved-demo" ? "Saved example route. " : ""}Map and place information © OpenStreetMap contributors. Colored areas are approximate. SafeGo does not replace official announcements.</p>
     </section>
   );
 }

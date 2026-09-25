@@ -25,6 +25,17 @@ npm install
 npm run dev
 ```
 
+SafeGo needs a JDK 21, not a Java 8 runtime or JDK 27. The launcher uses
+`SAFEGO_JAVA_HOME` or `JAVA_HOME` when they point to JDK 21, and also detects a
+user-local Microsoft JDK 21 under `%LOCALAPPDATA%\Programs\SafeGoJdk21`.
+If another Java version is your system default, set the JDK for this terminal
+without changing your system-wide configuration:
+
+```powershell
+$env:SAFEGO_JAVA_HOME = 'C:\path\to\jdk-21'
+npm run dev
+```
+
 Open `http://localhost:3000` in your browser. The UI runs on port 3000 and the Java API on port 8080. The first run downloads Gradle dependencies and may take a few minutes. Keep the terminal open. If port 3000 is already in use, stop the older Next.js server or open the port shown in the terminal.
 
 For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows stored demo data but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.

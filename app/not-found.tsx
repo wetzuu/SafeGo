@@ -8,7 +8,7 @@ export default function NotFound() {
         <Brand />
         <p className="system-state-kicker">Page unavailable</p>
         <h1>This SafeGo page is not available.</h1>
-        <p>The validation workbench is development-only, and the requested page may not exist in this build.</p>
+        <p>The link may be old or incorrect. Return to the planner to start a new check.</p>
         <div className="system-state-actions">
           <Link href="/">Return to trip planner</Link>
         </div>

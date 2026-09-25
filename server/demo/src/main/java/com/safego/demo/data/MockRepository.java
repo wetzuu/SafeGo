@@ -157,8 +157,8 @@ public final class MockRepository {
             new Advisory("community", "Community", "Slow traffic along Quezon Blvd.",                 "Aggregated from 4 reports in the last hour. Pending official verification.", "5:40 AM", null, null)
         );
         List<UniversityStatus> universities = List.of(
-            new UniversityStatus("ust-manila",  "University of Santo Tomas", "España, Manila",            "/university-logos/ust.png",  "University of Santo Tomas seal",    "open",      "No suspension in demo",     "Demo status: no class suspension is stored for this campus. Check the official university announcements before leaving.", DEMO_DATE, "6:00 AM", true,  null, null, null),
-            new UniversityStatus("feu-manila",  "Far Eastern University",    "Nicanor Reyes Street, Manila", "/university-logos/feu.webp", "Far Eastern University seal",       "no-update", "No update in dataset",       "SafeGo has no current suspension post stored for this campus. An empty status does not confirm that classes are ongoing.", DEMO_DATE, "5:55 AM", true, null, null, null)
+            new UniversityStatus("ust-manila",  "University of Santo Tomas", "España, Manila",            "/university-logos/ust.png",  "University of Santo Tomas seal",    "open",      "No demo suspension",       "This example does not include a class suspension for this campus. Check official university announcements before leaving.", DEMO_DATE, "6:00 AM", true,  null, null, null),
+            new UniversityStatus("feu-manila",  "Far Eastern University",    "Nicanor Reyes Street, Manila", "/university-logos/feu.webp", "Far Eastern University seal",       "no-update", "No update available",       "SafeGo has no current suspension announcement for this campus. This does not confirm that classes are ongoing.", DEMO_DATE, "5:55 AM", true, null, null, null)
         );
         List<CommunityReport> reports = List.of(
             new CommunityReport("Flooding",             "Ankle-deep flooding",       "España Blvd. corner Morayta · 6:20 AM", "pending",    "Pending"),
@@ -180,7 +180,7 @@ public final class MockRepository {
             ),
             factors, advisories, universities, reports,
             List.of(
-                new RoutePoint("start", "North of area", "Lacson / España",              "Dry at this end of the corridor"),
+                new RoutePoint("start", "North of area", "Lacson / España",              "Dry at this end of the road"),
                 new RoutePoint("mid",   "Watched",       "España Blvd. (Sampaloc)",       "Ankle-deep flooding at 2 points · reduced speed"),
                 new RoutePoint("mid",   "Watched",       "Quezon Blvd. underpass",         "Passable, water rising slowly"),
                 new RoutePoint("end",   "South of area", "Toward Quiapo",                 "Low visibility reported near the underpass")
@@ -228,7 +228,7 @@ public final class MockRepository {
             List.of("mapua", "mapúa", "makati", "mapua makati", "campus"),
             new double[]{14.5665, 121.02},
             "6:40 AM",
-            "Campus grounds are dry. Nearby Makati corridors have localized flooding, but access to the campus is currently clear.",
+            "Campus grounds are dry. Some nearby Makati roads have localized flooding, but access to the campus is currently clear.",
             "Passable",
             List.of(
                 new Stat("Weather",         "Rain, 25°C",            "Lighter than inland Sampaloc",    "weather", "icon-weather"),
@@ -262,8 +262,8 @@ public final class MockRepository {
         List<UniversityStatus> universities = List.of(
             new UniversityStatus("san-sebastian-manila", "San Sebastian College-Recoletos", "C. M. Recto Avenue, Manila",
                 "/university-logos/sscr.png", "San Sebastian College-Recoletos seal",
-                "online", "Alternative delivery in demo",
-                "Demo status: classes are shown using alternative delivery. Confirm the current modality with the college.",
+                "online", "Online in this example",
+                "This example shows classes using alternative delivery. Confirm the current class arrangement with the college.",
                 DEMO_DATE, "6:05 AM", true, null, null, null)
         );
         List<CommunityReport> reports = List.of(
@@ -311,8 +311,8 @@ public final class MockRepository {
             new Advisory("gov",       "Government",  "PAGASA rainfall advisory: Metro Manila","Moderate to heavy rainfall expected over Metro Manila.", "6:15 AM", null, null)
         );
         List<UniversityStatus> universities = List.of(
-            new UniversityStatus("feu-manila",  "Far Eastern University",    "Nicanor Reyes Street, Manila", "/university-logos/feu.webp", "Far Eastern University seal",       "no-update", "No update in dataset",       "SafeGo has no current suspension post stored for this nearby campus. Confirm through FEU's official channel.", DEMO_DATE, "5:55 AM", true, null, null, null),
-            new UniversityStatus("ue-manila",   "University of the East",    "C. M. Recto Avenue, Manila",   "/university-logos/ue.png",   "University of the East anniversary logo","open",      "No suspension in demo",       "Demo status: no suspension is stored for this campus. Road hazards near Lerma may still affect the trip.", DEMO_DATE, "6:00 AM", true, null, null, null)
+            new UniversityStatus("feu-manila",  "Far Eastern University",    "Nicanor Reyes Street, Manila", "/university-logos/feu.webp", "Far Eastern University seal",       "no-update", "No update available",       "SafeGo has no current suspension announcement for this nearby campus. Confirm through FEU's official channel.", DEMO_DATE, "5:55 AM", true, null, null, null),
+            new UniversityStatus("ue-manila",   "University of the East",    "C. M. Recto Avenue, Manila",   "/university-logos/ue.png",   "University of the East anniversary logo","open",      "No demo suspension",         "This example does not include a suspension for this campus. Road hazards near Lerma may still affect the trip.", DEMO_DATE, "6:00 AM", true, null, null, null)
         );
         List<CommunityReport> reports = List.of(
             new CommunityReport("Road Hazard", "Open manhole reported",    "Lerma St. · 5:55 AM",       "verified", "Verified"),
@@ -343,11 +343,11 @@ public final class MockRepository {
 
     private static SafeGoLocation buildPasig() {
         List<RiskFactor> factors = List.of(
-            new RiskFactor("Weather",             44, "mod", "Moderate", "Modeled moderate rain over Ortigas Center with occasional gusts.",                        "weather", "icon-weather"),
+            new RiskFactor("Weather",             44, "mod", "Moderate", "Estimated moderate rain over Ortigas Center with occasional gusts.",                      "weather", "icon-weather"),
             new RiskFactor("Flood / roads",       36, "mod", "Watched",  "Stored demo observations show wet roads and isolated ponding near low-lying intersections.", "flood",   "icon-mod"),
             new RiskFactor("Official advisories", 40, "mod", "Monitor",  "A demo Pasig notice advises commuters to monitor localized flooding and campus updates.",   "alert",   "icon-mod"),
             new RiskFactor("School status",       48, "mod", "Mixed",    "Demo campus records include one suspension and one institution awaiting an update.",         "school",  "icon-mod"),
-            new RiskFactor("Community reports",   20, "low", "Limited",  "No verified community hazard report is attached to the Pasig demo snapshot.",               "reports", "icon-neutral")
+            new RiskFactor("Community reports",   20, "low", "Limited",  "This Pasig example has no confirmed community hazard report.",                               "reports", "icon-neutral")
         );
         List<Advisory> advisories = List.of(
             new Advisory("gov",    "Pasig City",  "Monitor low-lying roads during continued rainfall",          "Demo announcement only. Check Pasig City DRRMO channels for an active bulletin.", "6:30 AM", null, null),
@@ -361,7 +361,7 @@ public final class MockRepository {
                 DEMO_DATE, "6:20 AM", true, null, null, null),
             new UniversityStatus("plp-pasig", "Pamantasan ng Lungsod ng Pasig", "Pasig",
                 "/university-logos/plp.png", "Pamantasan ng Lungsod ng Pasig logo",
-                "no-update", "No update in dataset",
+                "no-update", "No update available",
                 "SafeGo has no current suspension announcement for this university. No update does not mean classes are confirmed.",
                 DEMO_DATE, "6:15 AM", true, null, null, null)
         );
@@ -370,7 +370,7 @@ public final class MockRepository {
             List.of("ortigas", "pasig", "ortigas center", "kapitolyo"),
             new double[]{14.5869, 121.0614},
             "6:45 AM",
-            "Rain is affecting parts of Ortigas Center, but the stored demo snapshot shows main access roads as passable. Check current city and campus announcements before leaving.",
+            "Rain is affecting parts of Ortigas Center, but this example shows main access roads as passable. Check current city and campus announcements before leaving.",
             "Passable with caution",
             List.of(
                 new Stat("Weather",         "Moderate rain, 26°C",  "Gusts to 32 km/h",                             "weather", "icon-weather"),
@@ -380,7 +380,7 @@ public final class MockRepository {
             ),
             factors, advisories, universities, List.of(),
             List.of(
-                new RoutePoint("start", "West side", "ADB Avenue",        "Wet pavement · passable in demo snapshot"),
+                new RoutePoint("start", "West side", "ADB Avenue",        "Wet pavement · passable in this example"),
                 new RoutePoint("mid",   "Watched",   "Julia Vargas Avenue","Slow movement near intersections"),
                 new RoutePoint("end",   "East side", "Ortigas Avenue",    "Monitor low-lying sections")
             ),

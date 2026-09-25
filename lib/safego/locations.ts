@@ -46,8 +46,8 @@ const espanaInput: LocationInput = {
     { source: "community", label: "Community", title: "Slow traffic along Quezon Blvd.", description: "Aggregated from 4 reports in the last hour. Pending official verification.", time: "5:40 AM" },
   ],
   universities: [
-    { id: "ust-manila", name: "University of Santo Tomas", campus: "España, Manila", logoPath: "/university-logos/ust.png", logoAlt: "University of Santo Tomas seal", status: "open", statusLabel: "No suspension in demo", announcement: "Demo status: no class suspension is stored for this campus. Check the official university announcements before leaving.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true },
-    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", logoPath: "/university-logos/feu.webp", logoAlt: "Far Eastern University seal", status: "no-update", statusLabel: "No update in dataset", announcement: "SafeGo has no current suspension post stored for this campus. An empty status does not confirm that classes are ongoing.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true },
+    { id: "ust-manila", name: "University of Santo Tomas", campus: "España, Manila", logoPath: "/university-logos/ust.png", logoAlt: "University of Santo Tomas seal", status: "open", statusLabel: "No demo suspension", announcement: "This example does not include a class suspension for this campus. Check official university announcements before leaving.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true },
+    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", logoPath: "/university-logos/feu.webp", logoAlt: "Far Eastern University seal", status: "no-update", statusLabel: "No update available", announcement: "SafeGo has no current suspension announcement for this campus. This does not confirm that classes are ongoing.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true },
   ],
   reports: [
     { type: "Flooding", title: "Ankle-deep flooding", meta: "España Blvd. corner Morayta · 6:20 AM", status: "pending", statusLabel: "Pending" },
@@ -55,7 +55,7 @@ const espanaInput: LocationInput = {
     { type: "Transport Disruption", title: "Jeepney route rerouted", meta: "Quezon Blvd. · 5:40 AM", status: "unverified", statusLabel: "Unverified" },
   ],
   points: [
-    { kind: "start", label: "North of area", name: "Lacson / España", detail: "Dry at this end of the corridor" },
+    { kind: "start", label: "North of area", name: "Lacson / España", detail: "Dry at this end of the road" },
     { kind: "mid", label: "Watched", name: "España Blvd. (Sampaloc)", detail: "Ankle-deep flooding at 2 points · reduced speed" },
     { kind: "mid", label: "Watched", name: "Quezon Blvd. underpass", detail: "Passable, water rising slowly" },
     { kind: "end", label: "South of area", name: "Toward Quiapo", detail: "Low visibility reported near the underpass" },
@@ -78,7 +78,7 @@ const makatiInput: LocationInput = {
   aliases: ["mapua", "mapúa", "makati", "mapua makati", "campus"],
   coordinates: [14.5665, 121.02],
   updated: "6:40 AM",
-  riskSummary: "Campus grounds are dry. Nearby Makati corridors have localized flooding, but access to the campus is currently clear.",
+  riskSummary: "Campus grounds are dry. Some nearby Makati roads have localized flooding, but access to the campus is currently clear.",
   riskStatus: "Passable",
   stats: [
     { label: "Weather", value: "Rain, 25°C", detail: "Lighter than inland Sampaloc", icon: "weather", tone: "icon-weather" },
@@ -140,7 +140,7 @@ const quiapoInput: LocationInput = {
     { source: "community", label: "Community", title: "Stalled vehicles in the underpass", description: "Several reports since 5:40 AM. Not all verified.", time: "6:05 AM" },
   ],
   universities: [
-    { id: "san-sebastian-manila", name: "San Sebastian College-Recoletos", campus: "C. M. Recto Avenue, Manila", logoPath: "/university-logos/sscr.png", logoAlt: "San Sebastian College-Recoletos seal", status: "online", statusLabel: "Alternative delivery in demo", announcement: "Demo status: classes are shown using alternative delivery. Confirm the current modality with the college.", date: DEMO_SNAPSHOT_DATE, time: "6:05 AM", isMock: true },
+    { id: "san-sebastian-manila", name: "San Sebastian College-Recoletos", campus: "C. M. Recto Avenue, Manila", logoPath: "/university-logos/sscr.png", logoAlt: "San Sebastian College-Recoletos seal", status: "online", statusLabel: "Online in this example", announcement: "This example shows classes using alternative delivery. Confirm the current class arrangement with the college.", date: DEMO_SNAPSHOT_DATE, time: "6:05 AM", isMock: true },
   ],
   reports: [
     { type: "Flooding", title: "Shin-level water in underpass", meta: "Quiapo · 6:05 AM", status: "verified", statusLabel: "Verified" },
@@ -186,8 +186,8 @@ const lermaInput: LocationInput = {
     { source: "gov", label: "Government", title: "PAGASA rainfall advisory: Metro Manila", description: "Moderate to heavy rainfall expected over Metro Manila.", time: "6:15 AM" },
   ],
   universities: [
-    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", logoPath: "/university-logos/feu.webp", logoAlt: "Far Eastern University seal", status: "no-update", statusLabel: "No update in dataset", announcement: "SafeGo has no current suspension post stored for this nearby campus. Confirm through FEU's official channel.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true },
-    { id: "ue-manila", name: "University of the East", campus: "C. M. Recto Avenue, Manila", logoPath: "/university-logos/ue.png", logoAlt: "University of the East anniversary logo", status: "open", statusLabel: "No suspension in demo", announcement: "Demo status: no suspension is stored for this campus. Road hazards near Lerma may still affect the trip.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true },
+    { id: "feu-manila", name: "Far Eastern University", campus: "Nicanor Reyes Street, Manila", logoPath: "/university-logos/feu.webp", logoAlt: "Far Eastern University seal", status: "no-update", statusLabel: "No update available", announcement: "SafeGo has no current suspension announcement for this nearby campus. Confirm through FEU's official channel.", date: DEMO_SNAPSHOT_DATE, time: "5:55 AM", isMock: true },
+    { id: "ue-manila", name: "University of the East", campus: "C. M. Recto Avenue, Manila", logoPath: "/university-logos/ue.png", logoAlt: "University of the East anniversary logo", status: "open", statusLabel: "No demo suspension", announcement: "This example does not include a suspension for this campus. Road hazards near Lerma may still affect the trip.", date: DEMO_SNAPSHOT_DATE, time: "6:00 AM", isMock: true },
   ],
   reports: [
     { type: "Road Hazard", title: "Open manhole reported", meta: "Lerma St. · 5:55 AM", status: "verified", statusLabel: "Verified" },
@@ -208,7 +208,7 @@ const pasigInput: LocationInput = {
   aliases: ["ortigas", "pasig", "ortigas center", "kapitolyo"],
   coordinates: [14.5869, 121.0614],
   updated: "6:45 AM",
-  riskSummary: "Rain is affecting parts of Ortigas Center, but the stored demo snapshot shows main access roads as passable. Check current city and campus announcements before leaving.",
+  riskSummary: "Rain is affecting parts of Ortigas Center, but this example shows main access roads as passable. Check current city and campus announcements before leaving.",
   riskStatus: "Passable with caution",
   stats: [
     { label: "Weather", value: "Moderate rain, 26°C", detail: "Gusts to 32 km/h", icon: "weather", tone: "icon-weather" },
@@ -217,11 +217,11 @@ const pasigInput: LocationInput = {
     { label: "Latest advisory", value: "Monitor Pasig updates", detail: "Demo city notice · 6:30 AM", icon: "alert", tone: "icon-mod" },
   ],
   factors: [
-    { name: "Weather", score: 44, pill: "mod", pillText: "Moderate", description: "Modeled moderate rain over Ortigas Center with occasional gusts.", icon: "weather", tone: "icon-weather" },
+    { name: "Weather", score: 44, pill: "mod", pillText: "Moderate", description: "Estimated moderate rain over Ortigas Center with occasional gusts.", icon: "weather", tone: "icon-weather" },
     { name: "Flood / roads", score: 36, pill: "mod", pillText: "Watched", description: "Stored demo observations show wet roads and isolated ponding near low-lying intersections.", icon: "flood", tone: "icon-mod" },
     { name: "Official advisories", score: 40, pill: "mod", pillText: "Monitor", description: "A demo Pasig notice advises commuters to monitor localized flooding and campus updates.", icon: "alert", tone: "icon-mod" },
     { name: "School status", score: 48, pill: "mod", pillText: "Mixed", description: "Demo campus records include one suspension and one institution awaiting an update.", icon: "school", tone: "icon-mod" },
-    { name: "Community reports", score: 20, pill: "low", pillText: "Limited", description: "No verified community hazard report is attached to the Pasig demo snapshot.", icon: "reports", tone: "icon-neutral" },
+    { name: "Community reports", score: 20, pill: "low", pillText: "Limited", description: "This Pasig example has no confirmed community hazard report.", icon: "reports", tone: "icon-neutral" },
   ],
   advisories: [
     { source: "gov", label: "Pasig City", title: "Monitor low-lying roads during continued rainfall", description: "Demo announcement only. Check Pasig City DRRMO channels for an active bulletin.", time: "6:30 AM" },
@@ -248,7 +248,7 @@ const pasigInput: LocationInput = {
       logoPath: "/university-logos/plp.png",
       logoAlt: "Pamantasan ng Lungsod ng Pasig logo",
       status: "no-update",
-      statusLabel: "No update in dataset",
+      statusLabel: "No update available",
       announcement: "SafeGo has no current suspension announcement for this university. No update does not mean classes are confirmed.",
       date: DEMO_SNAPSHOT_DATE,
       time: "6:15 AM",
@@ -257,7 +257,7 @@ const pasigInput: LocationInput = {
   ],
   reports: [],
   points: [
-    { kind: "start", label: "West side", name: "ADB Avenue", detail: "Wet pavement · passable in demo snapshot" },
+    { kind: "start", label: "West side", name: "ADB Avenue", detail: "Wet pavement · passable in this example" },
     { kind: "mid", label: "Watched", name: "Julia Vargas Avenue", detail: "Slow movement near intersections" },
     { kind: "end", label: "East side", name: "Ortigas Avenue", detail: "Monitor low-lying sections" },
   ],

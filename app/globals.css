@@ -282,7 +282,7 @@
   }
 
   .trip-error {
-    @apply mt-3 rounded-box border border-crit bg-crit-soft px-3 py-2 text-[12px] text-crit;
+    @apply mt-3 rounded-box border border-crit bg-crit-soft px-3 py-3 text-[13px] leading-normal text-crit;
   }
 
   .trip-mode-help {
@@ -819,7 +819,7 @@
   }
 
   .bottom-tabs .nav-item {
-    @apply flex-1 flex-col gap-0.5 px-1 py-1.5 text-center text-[9.5px];
+    @apply min-h-12 flex-1 flex-col justify-center gap-0.5 px-1 py-1.5 text-center text-[9.5px];
   }
 
   .bottom-tabs .nav-item svg {
@@ -1194,6 +1194,14 @@
 
   .calculation-intro {
     @apply mb-3 text-[12.5px] leading-normal text-ink-soft;
+  }
+
+  .result-explanation h2 {
+    @apply text-base font-bold;
+  }
+
+  .result-explanation p {
+    @apply mt-3 text-[13px] leading-relaxed text-ink-soft;
   }
 
   .calculation-list {

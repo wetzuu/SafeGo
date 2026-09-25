@@ -115,14 +115,14 @@ public class DashboardService {
             String condition = weatherLabel(code);
             int score = scoreWeather(code, rain, gust);
             String description = String.format(Locale.ENGLISH,
-                "%s, %.1f mm precipitation, winds %d km/h with gusts to %d km/h. Modeled conditions from Open-Meteo.",
+                "%s, %.1f mm precipitation, winds %d km/h with gusts to %d km/h. Weather estimate from Open-Meteo.",
                 condition, rain, Math.round(wind), Math.round(gust));
             SafeGoLocation location = locations.get(index);
             RiskFactor factor = new RiskFactor("Weather", score, bandKey(score), bandLabel(score), description, "weather", "icon-weather");
             List<Stat> stats = location.stats().stream().map(s -> s.label().equals("Weather")
                 ? new Stat(s.label(), condition + ", " + Math.round(temp) + "°C",
                     String.format(Locale.ENGLISH, "%.1f mm · gusts %d km/h", rain, Math.round(gust)), s.icon(), s.tone()) : s).toList();
-            String summary = "Live modeled weather is included in this score. Other factors use the latest available configured or stored SafeGo signals.";
+            String summary = "The latest weather estimate is included in this result. Other factors use the most recent information available to SafeGo.";
             String observed = current.path("time").asText();
             String updated = TIME.format(LocalDateTime.parse(observed).atZone(MANILA));
             result.add(copy(location, updated, summary, stats, replace(location.factors(), factor), location.advisories(), location.floods(), location.hazards()));

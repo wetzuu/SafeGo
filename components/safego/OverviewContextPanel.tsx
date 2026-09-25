@@ -89,7 +89,7 @@ function CompactRiskMap({
             .bindTooltip(
               makeTooltip(
                 coverageLocation.name,
-                `${coverageLocation.risk.percentage}/100. Approximate data area.`,
+                `${coverageLocation.risk.percentage}/100. SafeGo has information near this point.`,
               ),
               { direction: "top" },
             )
@@ -175,7 +175,7 @@ function CompactRiskMap({
       {mapError && <div className="overview-map-error">The live map could not load. Check your connection or open the full Map page later.</div>}
       {!mapError && tileStatus === "loading" && <div className="map-tile-status compact" role="status">Loading map tiles…</div>}
       {!mapError && tileStatus === "degraded" && <div className="map-tile-status compact warning" role="status">Base map unavailable. Risk overlays remain visible.</div>}
-      <span className="overview-map-badge">Live map. Approximate data.</span>
+      <span className="overview-map-badge">Map areas are approximate</span>
     </div>
   );
 }
@@ -218,7 +218,7 @@ export function OverviewContextPanel({
             </span>
           ))}
           {trip && <span className="overview-legend-item"><i style={{ background: UNKNOWN_ROUTE_COLOR }} /><span>Gray dashed: insufficient information</span></span>}
-          <span className="overview-area-legend"><i />Shaded circles show approximate data areas</span>
+          <span className="overview-area-legend"><i />Shaded circles show where SafeGo has nearby information</span>
         </div>
       </article>
 

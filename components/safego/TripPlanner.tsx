@@ -10,6 +10,13 @@ interface TripEnvelope {
   error?: { message?: string };
 }
 
+function friendlyRouteError(status: number) {
+  if (status === 400) return "Check both place names and try again.";
+  if (status === 404) return "We couldn’t find a road route between those places. Try nearby landmarks or the demo trip.";
+  if (status === 422) return "SafeGo cannot check that trip yet. Try one of the supported areas or the demo trip.";
+  return "SafeGo couldn’t check this route right now. Try again, or open the demo trip.";
+}
+
 function normalized(value: string) {
   return value.trim().toLocaleLowerCase();
 }
@@ -68,9 +75,7 @@ export function TripPlanner({
       });
       const envelope = await response.json().catch(() => null) as TripEnvelope | null;
       const analysis = envelope?.data;
-      if (!response.ok || !analysis) {
-        throw new Error(envelope?.error?.message || "The route service returned an unexpected response. Please try again.");
-      }
+      if (!response.ok || !analysis) throw new Error(friendlyRouteError(response.status));
       if (!controller.signal.aborted) onTrip(analysis);
     } catch (caught) {
       if (controller.signal.aborted) return;
@@ -78,7 +83,7 @@ export function TripPlanner({
         && (caught.name === "TimeoutError" || caught.name === "AbortError");
       setError(timedOut
         ? "The route check took too long. Check your connection and try again."
-        : caught instanceof Error ? caught.message : "The route could not be analyzed.");
+        : caught instanceof Error ? caught.message : "SafeGo couldn’t check this route right now.");
     } finally {
       activeRequest.current = null;
       if (!controller.signal.aborted) setLoading(false);
@@ -92,7 +97,7 @@ export function TripPlanner({
     if (!hasDestination) {
       const location = findLocation(locations.filter(isAreaDashboardLocation), stops[0]);
       if (!location) {
-        setError("Choose one of the available SafeGo locations to view its risk dashboard.");
+        setError("Choose one of the supported areas shown below.");
         return;
       }
       onLocation(location);
@@ -124,7 +129,7 @@ export function TripPlanner({
 
   return (
     <form className="trip-planner" onSubmit={submit}>
-      <p className="demo-scope"><strong>Demo areas:</strong> España, Lerma, Quiapo, Mapúa Makati, and Pasig.</p>
+      <p className="demo-scope"><strong>Currently supported:</strong> España, Lerma, Quiapo, Mapúa Makati, and Pasig.</p>
       <datalist id="safego-locations">
         {locations.filter(isAreaDashboardLocation).map((location) => <option key={location.id} value={location.name} />)}
       </datalist>
@@ -163,9 +168,9 @@ export function TripPlanner({
       )}
       <div className="trip-actions">
         <button className="submit-btn" type="submit" disabled={loading}>
-          {loading ? "Finding and analyzing route…" : hasDestination ? "Analyze my trip" : "Check this location"}
+          {loading ? "Checking your route…" : hasDestination ? "Check my trip" : "Check this area"}
         </button>
-        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>{loading ? "Opening demo…" : "Run demo route"}</button>
+        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>{loading ? "Opening example…" : "Try an example trip"}</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-mode-help">
@@ -173,7 +178,7 @@ export function TripPlanner({
           ? "SafeGo checks the roads between A and B."
           : "Check one area, or add a destination for a route."}
       </p>
-      <p className="trip-attribution">Location lookup © OpenStreetMap contributors. Search runs only after you submit.</p>
+      <p className="trip-attribution">Map and place information © OpenStreetMap contributors.</p>
     </form>
   );
 }
