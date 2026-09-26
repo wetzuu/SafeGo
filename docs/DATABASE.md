@@ -29,9 +29,10 @@ The database is bound to `127.0.0.1` and stored in the named Docker volume
 
 ## Backups
 
-When PostgreSQL client tools are installed, `npm run db:backup` creates a custom
-format backup in `backups/`. Set `SAFEGO_BACKUP_DIR` to store it elsewhere.
-The `backups/` directory is ignored by Git.
+`npm run db:backup` creates a custom-format backup in `backups/`. It uses local
+PostgreSQL client tools when available and otherwise uses the local Docker
+database service. Set `SAFEGO_BACKUP_DIR` to store it elsewhere. The `backups/`
+directory is ignored by Git.
 
 With Docker and the local service, a backup can also be created without local
 client tools:
