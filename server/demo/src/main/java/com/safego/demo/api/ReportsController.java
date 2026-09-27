@@ -1,6 +1,8 @@
 package com.safego.demo.api;
 
 import com.safego.demo.data.DashboardService;
+import com.safego.demo.util.GeoUtils;
+import com.safego.demo.util.RateLimiter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,26 +14,25 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 @RestController
 @RequestMapping("/api/reports")
 public class ReportsController {
-    private final DashboardService dashboard;
-
-    public ReportsController(DashboardService dashboard) {
-        this.dashboard = dashboard;
-    }
 
     private static final long WINDOW_MS = 10 * 60 * 1_000L;
     private static final int MAX_PER_WINDOW = 5;
     private static final List<String> VALID_TYPES = List.of(
         "Flooding", "Road Hazard", "Transport Disruption", "Power / Signal Outage", "Other"
     );
-    private static final ConcurrentHashMap<String, List<Long>> submissions = new ConcurrentHashMap<>();
 
+    private static final RateLimiter RATE_LIMITER = new RateLimiter();
     static volatile Boolean reportingEnabledOverride = null;
+
+    private final DashboardService dashboard;
+
+    public ReportsController(DashboardService dashboard) {
+        this.dashboard = dashboard;
+    }
 
     static boolean isReportingEnabled() {
         if (reportingEnabledOverride != null) return reportingEnabledOverride;
@@ -40,7 +41,7 @@ public class ReportsController {
     }
 
     static void clearSubmissions() {
-        submissions.clear();
+        RATE_LIMITER.clear();
     }
 
     @PostMapping
@@ -49,9 +50,7 @@ public class ReportsController {
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwarded,
             @RequestHeader(value = "X-Real-Ip", required = false) String realIp) {
 
-        boolean enabled = isReportingEnabled();
-
-        if (!enabled) {
+        if (!isReportingEnabled()) {
             return ResponseEntity.status(503)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .body(ApiResponse.error("REPORTING_DISABLED",
@@ -63,10 +62,10 @@ public class ReportsController {
                 .body(ApiResponse.error("INVALID_JSON", "Send the report as valid JSON."));
         }
 
-        String locationId  = clean(body.get("locationId"));
-        String reportType  = clean(body.get("reportType"));
-        String locationText = clean(body.get("locationText"));
-        String description = clean(body.get("description"));
+        String locationId   = GeoUtils.clean(body.get("locationId"));
+        String reportType   = GeoUtils.clean(body.get("reportType"));
+        String locationText = GeoUtils.clean(body.get("locationText"));
+        String description  = GeoUtils.clean(body.get("description"));
 
         if (!locationId.matches("[a-z0-9-]{1,80}")) {
             return ResponseEntity.status(400)
@@ -86,7 +85,7 @@ public class ReportsController {
         }
 
         String clientKey = clientKey(forwarded, realIp);
-        if (!acceptsSubmission(clientKey)) {
+        if (!RATE_LIMITER.tryAcquire(clientKey, WINDOW_MS, MAX_PER_WINDOW)) {
             return ResponseEntity.status(429)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .header("Retry-After", "600")
@@ -95,22 +94,15 @@ public class ReportsController {
         }
 
         return dashboard.submitCommunityReport(locationId, reportType, locationText, description)
-            .map(report -> {
-                return ResponseEntity.status(201)
+            .map(report -> ResponseEntity.status(201)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .<Object>body(Map.of(
                     "data", report,
                     "meta", Map.of("backend", dashboard.backend(), "generatedAt", Instant.now().toString())
-                ));
-            })
+                )))
             .orElseGet(() -> ResponseEntity.status(404)
                 .body(ApiResponse.error("LOCATION_NOT_FOUND",
                     "That SafeGo coverage location no longer exists.")));
-    }
-
-    private static String clean(Object value) {
-        if (!(value instanceof String s)) return "";
-        return s.replaceAll("\\s+", " ").trim();
     }
 
     private static String clientKey(String forwarded, String realIp) {
@@ -119,19 +111,5 @@ public class ReportsController {
         }
         if (realIp != null && !realIp.isBlank()) return realIp.trim();
         return "local";
-    }
-
-    private static boolean acceptsSubmission(String key) {
-        long now = System.currentTimeMillis();
-        List<Long> times = submissions.computeIfAbsent(key, k -> new CopyOnWriteArrayList<>());
-        List<Long> recent = times.stream().filter(t -> now - t < WINDOW_MS).toList();
-        if (recent.size() >= MAX_PER_WINDOW) {
-            submissions.put(key, new CopyOnWriteArrayList<>(recent));
-            return false;
-        }
-        List<Long> updated = new CopyOnWriteArrayList<>(recent);
-        updated.add(now);
-        submissions.put(key, updated);
-        return true;
     }
 }
