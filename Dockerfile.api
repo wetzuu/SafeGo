@@ -1,0 +1,21 @@
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /app
+COPY server/demo/gradle ./gradle
+COPY server/demo/gradlew server/demo/gradlew.bat server/demo/build.gradle server/demo/settings.gradle ./
+RUN chmod +x gradlew
+COPY server/demo/src ./src
+RUN ./gradlew --no-daemon bootJar
+
+FROM eclipse-temurin:21-jre-jammy AS runtime
+WORKDIR /app
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system --gid 1001 safego \
+  && useradd --system --uid 1001 --gid safego safego
+COPY --from=build --chown=safego:safego /app/build/libs/demo-0.0.1-SNAPSHOT.jar app.jar
+USER safego
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=4 \
+  CMD curl --fail --silent http://127.0.0.1:8080/api/health > /dev/null || exit 1
+ENTRYPOINT ["java", "-jar", "app.jar"]

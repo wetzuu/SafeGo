@@ -1,0 +1,84 @@
+name: safego-staging
+
+services:
+  database:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_DB: safego
+      POSTGRES_USER: safego
+      POSTGRES_PASSWORD: ${SAFEGO_DB_PASSWORD:?Set SAFEGO_DB_PASSWORD in .env.staging}
+    volumes:
+      - safego_staging_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safego -d safego"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.tools
+    environment:
+      DATABASE_URL: postgresql://safego:${SAFEGO_DB_PASSWORD}@database:5432/safego
+      DATABASE_SSL: "false"
+    command: npm run db:migrate
+    depends_on:
+      database:
+        condition: service_healthy
+    profiles: [tools]
+
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile.tools
+    environment:
+      DATABASE_URL: postgresql://safego:${SAFEGO_DB_PASSWORD}@database:5432/safego
+      DATABASE_SSL: "false"
+    command: npm run db:verify
+    depends_on:
+      database:
+        condition: service_healthy
+    profiles: [tools]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      SAFEGO_DATA_MODE: database
+      DATABASE_URL: postgresql://safego:${SAFEGO_DB_PASSWORD}@database:5432/safego
+      DATABASE_SSL: "false"
+      SAFEGO_WEATHER_PROVIDER: ${SAFEGO_WEATHER_PROVIDER:-open-meteo}
+      SAFEGO_GEOCODING_BASE_URL: ${SAFEGO_GEOCODING_BASE_URL:-https://nominatim.openstreetmap.org/search}
+      SAFEGO_ROUTING_BASE_URL: ${SAFEGO_ROUTING_BASE_URL:-https://router.project-osrm.org}
+      SAFEGO_CONTACT_EMAIL: ${SAFEGO_CONTACT_EMAIL:-}
+      SAFEGO_DEMO_ROUTE_FALLBACK: ${SAFEGO_DEMO_ROUTE_FALLBACK:-true}
+      SAFEGO_OFFICIAL_ADVISORY_FEED_URL: ${SAFEGO_OFFICIAL_ADVISORY_FEED_URL:-}
+      SAFEGO_OFFICIAL_ADVISORY_FEED_TOKEN: ${SAFEGO_OFFICIAL_ADVISORY_FEED_TOKEN:-}
+      SAFEGO_FLOOD_ROAD_FEED_URL: ${SAFEGO_FLOOD_ROAD_FEED_URL:-}
+      SAFEGO_FLOOD_ROAD_FEED_TOKEN: ${SAFEGO_FLOOD_ROAD_FEED_TOKEN:-}
+      SAFEGO_COMMUNITY_REPORTS_ENABLED: ${SAFEGO_COMMUNITY_REPORTS_ENABLED:-false}
+      SAFEGO_MODERATION_ENABLED: ${SAFEGO_MODERATION_ENABLED:-false}
+      SAFEGO_ALLOWED_ORIGINS: ${SAFEGO_ALLOWED_ORIGINS:?Set SAFEGO_ALLOWED_ORIGINS in .env.staging}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        JAVA_BACKEND_URL: http://api:8080
+    ports:
+      - "${SAFEGO_WEB_BIND:-127.0.0.1}:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  safego_staging_postgres:

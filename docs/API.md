@@ -24,6 +24,20 @@ All endpoints set `Cache-Control: no-store`.
 
 ---
 
+## GET /api/health
+
+Lightweight readiness check used by the local launcher and deployment monitors.
+It does not call Open-Meteo, routing, geocoding, or operational feeds.
+
+```json
+{
+  "meta": { "backend": "mock", "generatedAt": "..." },
+  "data": { "status": "ready", "service": "safego-api" }
+}
+```
+
+---
+
 ## GET /api/locations
 
 Lists every SafeGo location with its current risk summary.

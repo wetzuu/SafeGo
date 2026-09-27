@@ -35,6 +35,7 @@ yarn-error.log*
 # local environment files (the documented template is safe to commit)
 .env*
 !.env.example
+!.env.staging.example
 
 # vercel
 .vercel

@@ -38,6 +38,11 @@ npm run dev
 
 Open `http://localhost:3000` in your browser. The UI runs on port 3000 and the Java API on port 8080. The first run downloads Gradle dependencies and may take a few minutes. Keep the terminal open. If port 3000 is already in use, stop the older Next.js server or open the port shown in the terminal.
 
+For a connection-independent presentation after dependencies have been cached,
+run `npm run dev:offline` and use the built-in example trip. See
+[`docs/DEMO_CHECKLIST.md`](docs/DEMO_CHECKLIST.md) for the complete pre-demo and
+fallback checklist. API readiness is available at `GET /api/health`.
+
 For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows stored demo data but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.
 
 For a production-style local demo, verify the build, then keep the API and UI running in separate terminals:
@@ -124,6 +129,10 @@ The Next.js app is independent from the original static prototype:
 - `prototype/` remains available as the original design reference only.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, and pre-push checklist.
+
+For the private three-service staging stack, container health checks and rollout
+steps, see [docs/STAGING.md](docs/STAGING.md). The existing `compose.yaml` remains
+the local database-only setup.
 
 ## Data APIs
 

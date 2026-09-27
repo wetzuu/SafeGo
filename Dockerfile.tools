@@ -1,0 +1,9 @@
+FROM node:24-bookworm-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY db ./db
+COPY lib ./lib
+COPY scripts ./scripts
+COPY tsconfig.json next.config.ts ./
+CMD ["npm", "run", "db:verify"]

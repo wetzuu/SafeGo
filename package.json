@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:offline": "node scripts/offline-demo.mjs",
     "dev:web": "next dev",
     "dev:api": "node scripts/java-api.mjs",
     "build": "next build",
@@ -14,6 +15,13 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "db:verify": "node scripts/db-verify.ts",
     "db:backup": "node scripts/db-backup.mjs",
+    "staging:config": "docker compose --env-file .env.staging -f compose.staging.yaml config",
+    "staging:build": "docker compose --env-file .env.staging -f compose.staging.yaml build",
+    "staging:migrate": "docker compose --env-file .env.staging -f compose.staging.yaml --profile tools run --rm migrate",
+    "staging:seed": "docker compose --env-file .env.staging -f compose.staging.yaml --profile tools run --rm migrate npm run db:seed",
+    "staging:verify": "docker compose --env-file .env.staging -f compose.staging.yaml --profile tools run --rm verify",
+    "staging:up": "docker compose --env-file .env.staging -f compose.staging.yaml up -d database api web",
+    "staging:down": "docker compose --env-file .env.staging -f compose.staging.yaml down",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -22,7 +30,7 @@
     "test:all": "npm test && npm run test:java",
     "validate:risk": "node scripts/validate-risk.ts",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "check:demo": "npm run check && npm run validate:risk"
+    "check:demo": "npm run check && npm run test:java && npm run validate:risk"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

@@ -1,0 +1,29 @@
+FROM node:24-bookworm-slim AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM dependencies AS build
+ARG JAVA_BACKEND_URL=http://api:8080
+ENV JAVA_BACKEND_URL=${JAVA_BACKEND_URL}
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY public ./public
+COPY next.config.ts tsconfig.json postcss.config.mjs eslint.config.mjs ./
+RUN npm run build
+
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+WORKDIR /app
+RUN groupadd --system --gid 1001 safego && useradd --system --uid 1001 --gid safego safego
+COPY --from=build --chown=safego:safego /app/.next/standalone ./
+COPY --from=build --chown=safego:safego /app/.next/static ./.next/static
+COPY --from=build --chown=safego:safego /app/public ./public
+USER safego
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=4 \
+  CMD node -e "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+CMD ["node", "server.js"]

@@ -1,0 +1,14 @@
+.git
+.github
+.next
+node_modules
+output
+tmp
+backups
+*.dump
+.env
+.env.local
+.env.staging
+server/demo/.gradle
+server/demo/build
+prototype

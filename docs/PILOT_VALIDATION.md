@@ -112,8 +112,10 @@ a small formative study, not statistical proof of effectiveness.
 
 ## Implementation verification — 2026-09-16
 
-- All 43 automated tests passed, including seven synthetic acceptance cases,
-  the coverage threshold, unknown states, geometry preservation and risk floors.
+- The automated frontend and Java suites cover the seven synthetic acceptance
+  cases, coverage threshold, unknown states, geometry preservation, health
+  reporting and risk floors. Run `npm run check:demo` for the current result;
+  avoid copying a test count here because it changes as coverage improves.
 - Lint, TypeScript and the production build passed. The built `/validation`
   response has HTTP status 404.
 - Browser smoke checks exercised the normal planner and scenario workbench.

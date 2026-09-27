@@ -15,12 +15,24 @@ const javacName = windows ? "javac.exe" : "javac";
 const localJdks = windows && process.env.LOCALAPPDATA
   ? join(process.env.LOCALAPPDATA, "Programs", "SafeGoJdk21")
   : null;
-const localHomes = localJdks && existsSync(localJdks)
-  ? readdirSync(localJdks, { withFileTypes: true })
+function jdkHomes(parent) {
+  return parent && existsSync(parent)
+    ? readdirSync(parent, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.startsWith("jdk-21"))
-    .map((entry) => join(localJdks, entry.name))
-  : [];
-const candidates = [process.env.SAFEGO_JAVA_HOME, process.env.JAVA_HOME, ...localHomes]
+    .map((entry) => join(parent, entry.name))
+    : [];
+}
+const discoveredHomes = windows
+  ? [
+      ...jdkHomes(localJdks),
+      ...jdkHomes(join(process.env.ProgramFiles ?? "C:/Program Files", "Java")),
+      ...jdkHomes(join(process.env.ProgramFiles ?? "C:/Program Files", "Eclipse Adoptium")),
+    ]
+  : [
+      ...jdkHomes("/usr/lib/jvm"),
+      ...jdkHomes("/Library/Java/JavaVirtualMachines"),
+    ];
+const candidates = [process.env.SAFEGO_JAVA_HOME, process.env.JAVA_HOME, ...discoveredHomes]
   .filter(Boolean);
 function isJava21(home) {
   if (!existsSync(join(home, "bin", javacName))) return false;
