@@ -130,8 +130,10 @@ public final class MockRepository {
         List<RoutePoint> points, List<Hazard> floods, List<Hazard> hazards
     ) {
         List<Advisory> advisories = rawAdvisories.stream()
-            .map(a -> a.date() != null ? a : new Advisory(
-                a.source(), a.label(), a.title(), a.description(), a.time(), DEMO_DATE, a.isMock()))
+            .map(a -> new Advisory(
+                a.source(), a.label(), a.title(), a.description(), a.time(),
+                a.date() != null ? a.date() : DEMO_DATE,
+                Boolean.TRUE, a.sourceUrl()))
             .toList();
 
         RiskAssessment risk = RiskModel.analyzeRisk(factors, riskSummary, riskStatus);

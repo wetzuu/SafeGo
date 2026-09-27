@@ -29,16 +29,16 @@ public class TripAnalyzeController {
         this.dashboard = dashboard;
     }
 
-    private static final String PILOT_ID = "manila-makati-v1";
-    private static final String PILOT_NAME = "Manila–Makati pilot";
-    private static final double PILOT_RADIUS_METERS = 850.0;
-    private static final int PILOT_MIN_COVERAGE_PCT = 90;
-    private static final double SAMPLE_LENGTH_METERS = 100.0;
-    private static final List<String> PILOT_LOCATION_IDS =
+    static final String PILOT_ID = "manila-makati-v1";
+    static final String PILOT_NAME = "Manila–Makati pilot";
+    static final double PILOT_RADIUS_METERS = 850.0;
+    static final int PILOT_MIN_COVERAGE_PCT = 90;
+    static final double SAMPLE_LENGTH_METERS = 100.0;
+    static final List<String> PILOT_LOCATION_IDS =
         List.of("espana", "lerma", "quiapo", "mapua-makati");
 
-    private static final double[] ESPANA_COORD = {14.612, 120.9902};
-    private static final double[] LERMA_COORD = {14.6049, 120.9888};
+    static final double[] ESPANA_COORD = {14.612, 120.9902};
+    static final double[] LERMA_COORD = {14.6049, 120.9888};
     private static final double[][] ESPANA_TO_LERMA = {
         {14.612167,120.990381},{14.611941,120.990603},{14.611887,120.990655},
         {14.611788,120.990755},{14.611396,120.991132},{14.611344,120.991183},
@@ -254,7 +254,7 @@ public class TripAnalyzeController {
         return new RouteResult(routeCoords, roadNames, "osrm");
     }
 
-    private static RouteResult savedDemoRoute(double[] origin, double[] dest) {
+    static RouteResult savedDemoRoute(double[] origin, double[] dest) {
         if (samePoint(origin, ESPANA_COORD) && samePoint(dest, LERMA_COORD)) {
             return new RouteResult(ESPANA_TO_LERMA.clone(), DEMO_ROAD_NAMES, "saved-demo");
         }
@@ -267,20 +267,34 @@ public class TripAnalyzeController {
         return null;
     }
 
-    private static boolean samePoint(double[] a, double[] b) {
+    static boolean samePoint(double[] a, double[] b) {
         return Math.abs(a[0] - b[0]) < 0.000001 && Math.abs(a[1] - b[1]) < 0.000001;
     }
 
-    private TripAnalysis assessTrip(
+    TripAnalysis assessTrip(
             ResolvedPlace origin, ResolvedPlace dest, RouteResult route,
             List<SafeGoLocation> locations) {
+        List<SourceStatus> sources = dashboard != null ? dashboard.snapshot(false).sources() : List.of();
+        return assessTrip(origin, dest, route, locations, sources);
+    }
+
+    TripAnalysis assessTrip(
+            ResolvedPlace origin, ResolvedPlace dest, RouteResult route,
+            List<SafeGoLocation> locations, List<SourceStatus> sources) {
 
         List<SafeGoLocation> pilotLocations = locations.stream()
             .filter(loc -> PILOT_LOCATION_IDS.contains(loc.id()))
             .toList();
 
         double[][] coords = route.coordinates();
-        if (coords.length < 2) throw new TripError("TRIP_ANALYSIS_FAILED", "Route needs at least two points.");
+        if (coords == null || coords.length < 2) throw new TripError("TRIP_ANALYSIS_FAILED", "Route needs at least two points.");
+        for (double[] pt : coords) {
+            if (pt == null || pt.length < 2 || Double.isNaN(pt[0]) || Double.isNaN(pt[1])
+                    || Double.isInfinite(pt[0]) || Double.isInfinite(pt[1])
+                    || Math.abs(pt[0]) > 90.0 || Math.abs(pt[1]) > 180.0) {
+                throw new TripError("TRIP_ANALYSIS_FAILED", "A route with at least two valid coordinates is required.");
+            }
+        }
 
         List<double[]> sampled = new ArrayList<>();
         sampled.add(coords[0]);
@@ -329,8 +343,8 @@ public class TripAnalyzeController {
 
             RawSegment seg = new RawSegment(
                 new double[][]{s, e}, score, covered,
-                nearest != null ? nearest.id() : null,
-                nearest != null ? nearest.name() : null,
+                covered && nearest != null ? nearest.id() : null,
+                covered && nearest != null ? nearest.name() : null,
                 segLen, nearest != null ? nearestDist * 1000.0 : null
             );
 
@@ -418,11 +432,11 @@ public class TripAnalyzeController {
             overallScore, rawScore, riskKey, riskName, safetyRule,
             corridorLocations, advisories, reports, hazards,
             coverageNote, Instant.now().toString(), route.source(),
-            coverage, dashboard.snapshot(false).sources()
+            coverage, sources
         );
     }
 
-    private static double distanceKm(double[] a, double[] b) {
+    static double distanceKm(double[] a, double[] b) {
         double R = 6371.0;
         double dLat = Math.toRadians(b[0] - a[0]);
         double dLon = Math.toRadians(b[1] - a[1]);
@@ -450,32 +464,34 @@ public class TripAnalyzeController {
         return List.copyOf(seen.values());
     }
 
-    private static String clean(Object v) {
+    static String clean(Object v) {
         return (v instanceof String s) ? s.replaceAll("\\s+", " ").trim() : "";
     }
 
-    private static String normalize(String v) {
-        return v.toLowerCase()
+    static String normalize(String v) {
+        return java.text.Normalizer.normalize(v, java.text.Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "")
+            .toLowerCase()
             .replaceAll("[^a-z0-9]+", " ")
             .trim();
     }
 
-    private static ResponseEntity<Object> bad(String code, String msg) {
+    static ResponseEntity<Object> bad(String code, String msg) {
         return ResponseEntity.status(400)
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .body(ApiResponse.error(code, msg));
     }
 
-    private static class TripError extends RuntimeException {
+    static class TripError extends RuntimeException {
         final String code;
         TripError(String code, String msg) { super(msg); this.code = code; }
     }
 
-    private record TimedValue<T>(T value, long expiresAt) {}
+    record TimedValue<T>(T value, long expiresAt) {}
 
-    private record RouteResult(double[][] coordinates, List<String> roadNames, String source) {}
+    record RouteResult(double[][] coordinates, List<String> roadNames, String source) {}
 
-    private static class RawSegment {
+    static class RawSegment {
         double[][] coords;
         Double score;
         boolean covered;
@@ -494,7 +510,7 @@ public class TripAnalyzeController {
         RawSegment merge(RawSegment next) {
             double[][] merged = Arrays.copyOf(coords, coords.length + next.coords.length - 1);
             System.arraycopy(next.coords, 1, merged, coords.length, next.coords.length - 1);
-            double maxDist = (nearestDist == null && next.nearestDist == null) ? 0
+            Double maxDist = (nearestDist == null && next.nearestDist == null) ? null
                 : nearestDist == null ? next.nearestDist
                 : next.nearestDist == null ? nearestDist
                 : Math.max(nearestDist, next.nearestDist);

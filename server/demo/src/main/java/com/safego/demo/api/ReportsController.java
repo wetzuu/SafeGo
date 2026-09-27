@@ -31,15 +31,25 @@ public class ReportsController {
     );
     private static final ConcurrentHashMap<String, List<Long>> submissions = new ConcurrentHashMap<>();
 
+    static volatile Boolean reportingEnabledOverride = null;
+
+    static boolean isReportingEnabled() {
+        if (reportingEnabledOverride != null) return reportingEnabledOverride;
+        return "true".equals(System.getenv("SAFEGO_COMMUNITY_REPORTS_ENABLED"))
+            && "true".equals(System.getenv("SAFEGO_MODERATION_ENABLED"));
+    }
+
+    static void clearSubmissions() {
+        submissions.clear();
+    }
+
     @PostMapping
     public ResponseEntity<Object> submit(
             @RequestBody(required = false) Map<String, Object> body,
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwarded,
             @RequestHeader(value = "X-Real-Ip", required = false) String realIp) {
 
-        boolean enabled =
-            "true".equals(System.getenv("SAFEGO_COMMUNITY_REPORTS_ENABLED"))
-            && "true".equals(System.getenv("SAFEGO_MODERATION_ENABLED"));
+        boolean enabled = isReportingEnabled();
 
         if (!enabled) {
             return ResponseEntity.status(503)

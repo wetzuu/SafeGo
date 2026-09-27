@@ -137,37 +137,42 @@ public class DashboardService {
             URI uri = URI.create(endpoint.trim());
             if (!uri.getScheme().equals("https") && !"localhost".equals(uri.getHost())) throw new IllegalArgumentException("Feed endpoint must use HTTPS.");
             JsonNode root = request(uri.toString(), System.getenv(tokenKey));
-            JsonNode items = root.path("items");
-            if (!items.isArray() || items.size() > 1000) throw new IllegalArgumentException("Feed response items must be an array of at most 1000 entries.");
-            Map<String, JsonNode> active = new LinkedHashMap<>();
-            for (JsonNode item : items) {
-                String id = required(item, "id", 120);
-                String expiry = required(item, "expiresAt", 40);
-                if (!Instant.parse(expiry).isAfter(Instant.now())) continue;
-                required(item, "sourceName", 100);
-                required(item, "title", 200);
-                required(item, "description", 1000);
-                String sourceUrl = required(item, "sourceUrl", 500);
-                URI link = URI.create(sourceUrl);
-                if (!link.getScheme().equals("https") && !"localhost".equals(link.getHost())) throw new IllegalArgumentException("Feed sourceUrl must use HTTPS.");
-                JsonNode ids = item.path("locationIds");
-                if (!ids.isArray() || ids.isEmpty() || ids.size() > 50) throw new IllegalArgumentException("Feed locationIds must contain 1 to 50 IDs.");
-                for (JsonNode locationId : ids) if (!locationId.isTextual() || locationId.asText().length() > 80) throw new IllegalArgumentException("Invalid location ID.");
-                int severity = item.path("severityScore").asInt(-1);
-                if (!item.path("severityScore").isIntegralNumber() || severity < 0 || severity > 100) throw new IllegalArgumentException("Invalid severity score.");
-                String kind = required(item, official ? "sourceKind" : "kind", 20);
-                if (official && !List.of("gov", "school", "weather").contains(kind)) throw new IllegalArgumentException("Invalid advisory source kind.");
-                if (!official && !List.of("flood", "road").contains(kind)) throw new IllegalArgumentException("Invalid flood/road kind.");
-                Instant.parse(required(item, official ? "issuedAt" : "observedAt", 40));
-                active.put(id, item);
-            }
-            return new FeedResult(List.copyOf(active.values()), status(key, name, key, "active", null));
+            List<JsonNode> active = parseFeedItems(root, official);
+            return new FeedResult(active, status(key, name, key, "active", null));
         } catch (Exception e) {
             return new FeedResult(List.of(), status(key, name, key, "degraded", safeMessage(e)));
         }
     }
 
-    private List<SafeGoLocation> applyFeed(List<SafeGoLocation> locations, List<JsonNode> all, boolean official) {
+    static List<JsonNode> parseFeedItems(JsonNode root, boolean official) {
+        JsonNode items = root.path("items");
+        if (!items.isArray() || items.size() > 1000) throw new IllegalArgumentException("Feed response items must be an array of at most 1000 entries.");
+        Map<String, JsonNode> active = new LinkedHashMap<>();
+        for (JsonNode item : items) {
+            String id = required(item, "id", 120);
+            String expiry = required(item, "expiresAt", 40);
+            if (!Instant.parse(expiry).isAfter(Instant.now())) continue;
+            required(item, "sourceName", 100);
+            required(item, "title", 200);
+            required(item, "description", 1000);
+            String sourceUrl = required(item, "sourceUrl", 500);
+            URI link = URI.create(sourceUrl);
+            if (!link.getScheme().equals("https") && !"localhost".equals(link.getHost())) throw new IllegalArgumentException("Feed sourceUrl must use HTTPS.");
+            JsonNode ids = item.path("locationIds");
+            if (!ids.isArray() || ids.isEmpty() || ids.size() > 50) throw new IllegalArgumentException("Feed locationIds must contain 1 to 50 IDs.");
+            for (JsonNode locationId : ids) if (!locationId.isTextual() || locationId.asText().length() > 80) throw new IllegalArgumentException("Invalid location ID.");
+            int severity = item.path("severityScore").asInt(-1);
+            if (!item.path("severityScore").isIntegralNumber() || severity < 0 || severity > 100) throw new IllegalArgumentException("Invalid severity score.");
+            String kind = required(item, official ? "sourceKind" : "kind", 20);
+            if (official && !List.of("gov", "school", "weather").contains(kind)) throw new IllegalArgumentException("Invalid advisory source kind.");
+            if (!official && !List.of("flood", "road").contains(kind)) throw new IllegalArgumentException("Invalid flood/road kind.");
+            Instant.parse(required(item, official ? "issuedAt" : "observedAt", 40));
+            active.put(id, item);
+        }
+        return List.copyOf(active.values());
+    }
+
+    List<SafeGoLocation> applyFeed(List<SafeGoLocation> locations, List<JsonNode> all, boolean official) {
         List<SafeGoLocation> result = new ArrayList<>();
         for (SafeGoLocation location : locations) {
             List<JsonNode> items = all.stream().filter(item -> {
@@ -273,7 +278,7 @@ public class DashboardService {
         if (code == 1 || code == 2 || code == 3) return 5;
         return 0;
     }
-    private static String weatherLabel(int code) {
+    static String weatherLabel(int code) {
         if (code == 0) return "Clear";
         if (List.of(1, 2, 3).contains(code)) return "Partly cloudy";
         if (code == 45 || code == 48) return "Foggy";
@@ -285,5 +290,5 @@ public class DashboardService {
         return "Unknown conditions";
     }
 
-    private record FeedResult(List<JsonNode> items, SourceStatus status) {}
+    record FeedResult(List<JsonNode> items, SourceStatus status) {}
 }

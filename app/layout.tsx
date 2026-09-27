@@ -8,7 +8,11 @@ export const metadata: Metadata = {
     "Check weather, flooding, road conditions, and official updates for a supported route or area.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
       <body>{children}</body>
