@@ -22,6 +22,18 @@ Errors skip `data` and return `"error"` instead:
 
 All endpoints set `Cache-Control: no-store`.
 
+## Account endpoints
+
+SafeGo accounts use a 30-day opaque session in an HTTP-only, SameSite=Lax cookie. Passwords are stored only as BCrypt hashes. Set `SAFEGO_COOKIE_SECURE=true` when the app is served over HTTPS.
+
+- `POST /api/auth/register` with `{ "email", "name", "password" }` creates an account and signs in. Passwords need 10–128 characters, including a letter and number.
+- `POST /api/auth/login` with `{ "email", "password" }` signs in.
+- `GET /api/auth/session` returns the active profile or `401 UNAUTHENTICATED`.
+- `POST /api/auth/logout` invalidates the session and clears its cookie.
+- `PUT /api/account/places` with `{ "home", "school" }` resolves and updates the signed-in user's saved places. Empty values remove a saved place. The returned profile includes `homePlace` and `schoolPlace`, each containing the entered label, canonical label, `[latitude, longitude]`, source, preset match, and approximation flag.
+
+In mock mode, account data is held by the Java process and resets when that process restarts. In database mode, migration `0004_accounts.sql` persists users, saved places, and hashed sessions in PostgreSQL.
+
 ---
 
 ## GET /api/health
@@ -202,6 +214,8 @@ Resolves origin and destination, finds a road route, and scores each segment by 
 | `origin` | string | Place name or preset location ID. Max 160 chars. |
 | `destination` | string | Place name or preset location ID. Max 160 chars. Must differ from `origin`. |
 | `preferSavedDemo` | boolean | Optional. `true` uses the bundled España↔Lerma geometry instead of calling OSRM live. |
+| `originCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
+| `destinationCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
 
 Preset IDs (matched by name/alias too): `espana`, `mapua-makati`, `quiapo`, `lerma`, `binondo`, `katipunan`, `ortigas-pasig`.
 Anything else hits Nominatim (Philippines only).

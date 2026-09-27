@@ -11,6 +11,7 @@ demo, but required for staging and production.
 
    ```text
    SAFEGO_DATA_MODE=database
+   SAFEGO_DB_PORT=5432
    DATABASE_URL=postgresql://safego:safego_local@localhost:5432/safego
    DATABASE_SSL=false
    ```
@@ -18,7 +19,7 @@ demo, but required for staging and production.
 4. Start and prepare the database:
 
    ```bash
-   docker compose up -d database
+   docker compose --env-file .env.local up -d database
    npm run db:setup
    npm run db:verify
    npm run dev
@@ -26,6 +27,8 @@ demo, but required for staging and production.
 
 The database is bound to `127.0.0.1` and stored in the named Docker volume
 `safego_postgres_data`. The local password is for development only.
+If port 5432 is already occupied, set `SAFEGO_DB_PORT=5433`, update the port in
+`DATABASE_URL`, and keep using the `--env-file .env.local` command above.
 
 ## Backups
 
@@ -67,3 +70,15 @@ npm run check
 
 Then start SafeGo with `SAFEGO_DATA_MODE=database`. In this mode a missing or
 unavailable database stops the Java API instead of silently showing demo data.
+
+## Account and saved-place persistence
+
+Migration `0004_accounts.sql` stores users, BCrypt password hashes, saved-place
+labels, and hashed sessions. Migration `0005_saved_place_coordinates.sql` adds
+the canonical label, PostGIS point, source, preset match, and approximation flag
+for Home and School. Run `npm run db:migrate` after pulling these migrations.
+
+Saved places are resolved only when the user presses Save. Preset locations are
+matched locally; other Philippine locations use the configured server-side
+geocoder. Later route checks send the stored coordinates to the Java API, so a
+saved place does not need to be geocoded again after an API restart.

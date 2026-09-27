@@ -53,6 +53,8 @@ public class TripAnalyzeController {
 
         String origin = clean(body.get("origin"));
         String destination = clean(body.get("destination"));
+        Object originCoordinates = body.get("originCoordinates");
+        Object destinationCoordinates = body.get("destinationCoordinates");
         boolean preferDemo = Boolean.TRUE.equals(body.get("preferSavedDemo"));
 
         if (origin.isEmpty() || destination.isEmpty()
@@ -66,8 +68,8 @@ public class TripAnalyzeController {
         try {
             List<SafeGoLocation> locations = dashboard.snapshot(false).locations();
 
-            ResolvedPlace originPlace = geocodingService.resolvePlace(origin, locations);
-            ResolvedPlace destPlace = geocodingService.resolvePlace(destination, locations);
+            ResolvedPlace originPlace = resolveSubmittedPlace(origin, originCoordinates, locations);
+            ResolvedPlace destPlace = resolveSubmittedPlace(destination, destinationCoordinates, locations);
             RouteResult route = routingService.fetchRoute(originPlace.coordinates(), destPlace.coordinates(), preferDemo);
 
             TripAnalysis analysis = assessTrip(originPlace, destPlace, route, locations);
@@ -117,6 +119,20 @@ public class TripAnalyzeController {
 
     public static String normalize(String v) {
         return GeoUtils.normalize(v);
+    }
+
+    private ResolvedPlace resolveSubmittedPlace(String label, Object rawCoordinates, List<SafeGoLocation> locations) throws Exception {
+        if (rawCoordinates == null) return geocodingService.resolvePlace(label, locations);
+        if (!(rawCoordinates instanceof List<?> values) || values.size() != 2
+                || !(values.get(0) instanceof Number latitude) || !(values.get(1) instanceof Number longitude)) {
+            throw new TripError("INVALID_COORDINATES", "Saved-place coordinates are invalid. Save the place again and retry.");
+        }
+        double lat = latitude.doubleValue();
+        double lon = longitude.doubleValue();
+        if (!Double.isFinite(lat) || !Double.isFinite(lon) || lat < 4 || lat > 22 || lon < 116 || lon > 127) {
+            throw new TripError("INVALID_COORDINATES", "Saved-place coordinates must be within the Philippines.");
+        }
+        return new ResolvedPlace(label, new double[]{lat, lon}, "saved-account", null, true);
     }
 
     private static ResponseEntity<Object> bad(String code, String msg) {

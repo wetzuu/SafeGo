@@ -47,14 +47,18 @@ public class DashboardService {
         return backend;
     }
 
+    public List<SafeGoLocation> canonicalLocations() {
+        return database == null
+            ? MockRepository.listDashboardLocations()
+            : database.listDashboardLocations();
+    }
+
     public synchronized DashboardSnapshot snapshot(boolean refresh) {
         if (!refresh && cached != null && System.currentTimeMillis() < expiresAt) {
             return cached;
         }
 
-        List<SafeGoLocation> locations = database == null
-            ? MockRepository.listDashboardLocations()
-            : database.listDashboardLocations();
+        List<SafeGoLocation> locations = canonicalLocations();
 
         List<SourceStatus> sources = new ArrayList<>(
             database == null ? MockRepository.listSourceStatuses() : database.listSourceStatuses()

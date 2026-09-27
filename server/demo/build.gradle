@@ -21,6 +21,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	implementation 'org.springframework.security:spring-security-crypto'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-rest-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'

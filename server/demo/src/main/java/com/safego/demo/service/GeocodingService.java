@@ -19,12 +19,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GeocodingService {
 
-    private static final String NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
+    private static final String DEFAULT_NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
     private static final long GEO_CACHE_MS = 24 * 60 * 60 * 1_000L;
 
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final ConcurrentHashMap<String, TimedValue<ResolvedPlace>> geoCache;
+    private long lastPublicRequestAt;
 
     public GeocodingService() {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(12)).build(), new ObjectMapper());
@@ -65,8 +66,11 @@ public class GeocodingService {
         return place;
     }
 
-    public ResolvedPlace queryNominatim(String query) throws Exception {
-        String url = NOMINATIM_BASE + "?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
+    public synchronized ResolvedPlace queryNominatim(String query) throws Exception {
+        long wait = 1_000L - (System.currentTimeMillis() - lastPublicRequestAt);
+        if (wait > 0) Thread.sleep(wait);
+        String base = System.getenv().getOrDefault("SAFEGO_GEOCODING_BASE_URL", DEFAULT_NOMINATIM_BASE).trim();
+        String url = base + "?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
             + "&format=jsonv2&limit=1&countrycodes=ph&addressdetails=0";
         String contact = System.getenv("SAFEGO_CONTACT_EMAIL");
         String ua = "SafeGo-Prototype/0.1 " + (contact != null ? "(" + contact + ")" : "(local development)");
@@ -79,7 +83,12 @@ public class GeocodingService {
             .GET()
             .build();
 
-        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> resp;
+        try {
+            resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        } finally {
+            lastPublicRequestAt = System.currentTimeMillis();
+        }
         if (resp.statusCode() != 200) {
             throw new Exception("Geocoding service returned HTTP " + resp.statusCode() + ".");
         }

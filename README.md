@@ -81,7 +81,7 @@ npm run dev
 
 Set `SAFEGO_DATA_MODE=database` to require the database. Use `mock` to force the local fixtures, or `auto` to use the database only when `DATABASE_URL` is present.
 
-The database commands are repeatable: migrations are recorded in `schema_migrations`, and seeding replaces each preset location's observations, advisories, reports, and current assessment without duplicating them.
+The database commands are repeatable: migrations are recorded in `schema_migrations`, and seeding replaces each preset location's observations, advisories, reports, and current assessment without duplicating them. Database mode also persists accounts, sessions, and the canonical coordinates resolved for each saved Home and School.
 
 For a repeatable local PostGIS service, database verification, backups, and the
 staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
@@ -204,4 +204,4 @@ Before production use, replace the in-memory rate limit with a shared durable li
 - Turn-by-turn navigation, arrival-time estimates, or road-level risk sensors
 - Precise hazard boundaries
 - Report verification and moderation workflow
-- Accounts
+- Email verification, password recovery, multi-factor authentication, and account deletion

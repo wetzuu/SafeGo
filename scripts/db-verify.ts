@@ -32,7 +32,7 @@ try {
   `;
 
   if (!summary?.postgis_version) throw new Error("PostGIS is not enabled.");
-  if (summary.migrations < 3) throw new Error(`Expected at least 3 migrations; found ${summary.migrations}.`);
+  if (summary.migrations < 5) throw new Error(`Expected at least 5 migrations; found ${summary.migrations}.`);
   if (summary.locations === 0 || summary.assessments === 0) {
     throw new Error("The database is connected but has not been seeded.");
   }

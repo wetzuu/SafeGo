@@ -26,6 +26,8 @@ import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
 import { isAreaDashboardLocation } from "@/lib/trips/pilot";
 import { NearbyUniversities } from "./NearbyUniversities";
+import { AccountPanel, loadAccountSession } from "./AccountPanel";
+import type { AccountProfile } from "@/lib/account/types";
 
 const NAV_ITEMS: Array<{
   key: ScreenKey;
@@ -186,6 +188,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [trip, setTrip] = useState<TripAnalysis | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
+  const [account, setAccount] = useState<AccountProfile | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const refreshInFlight = useRef(false);
 
@@ -212,6 +216,11 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       refreshInFlight.current = false;
       setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const accountTimer = window.setTimeout(() => void loadAccountSession().then(setAccount), 0);
+    return () => window.clearTimeout(accountTimer);
   }, []);
 
   useEffect(() => {
@@ -269,15 +278,15 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
 
   if (!selectedLocation) {
-    return <main id="search-screen"><div className="search-panel trip-search-panel"><div className="brandmark search-brand"><Brand /></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">See what SafeGo knows about conditions before you travel.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} /><div className="suggest-label">Try a supported area</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is for guidance only. Always check current government, school, and emergency announcements before traveling.</p></div></main>;
+    return <><main id="search-screen"><div className="search-panel trip-search-panel"><div className="search-account-row"><div className="brandmark search-brand"><Brand /></div><button className="account-button" type="button" onClick={() => setAccountOpen(true)}>{account ? `Hi, ${account.name}` : "Sign in"}</button></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">See what SafeGo knows about conditions before you travel.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} account={account} /><div className="suggest-label">Try a supported area</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is for guidance only. Always check current government, school, and emergency announcements before traveling.</p></div></main><AccountPanel key={`${account?.email ?? "guest"}-${accountOpen}`} open={accountOpen} account={account} onClose={() => setAccountOpen(false)} onAccount={setAccount} /></>;
   }
 
-  return <div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}</div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
+  return <><div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button><button type="button" className="side-account" onClick={() => setAccountOpen(true)}>{account ? account.name : "Sign in"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}<button className="account-button" type="button" onClick={() => setAccountOpen(true)}>{account ? account.name : "Sign in"}</button></div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
     {activeScreen === "overview" && (trip ? <TripOverview trip={trip} navigate={navigate} /> : <LocationOverview location={selectedLocation} navigate={navigate} />)}
     {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : <LocationRiskFactors location={selectedLocation} />)}
     {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route announcements" : "Area announcements"} title={trip ? "Announcements near this trip" : "Announcements for this area"} subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation.name}. Newest announcements first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
     {activeScreen === "map" && <RiskMap locations={trip ? trip.corridorLocations : locations} selectedLocation={trip ? trip.corridorLocations.find((location) => location.id === selectedLocation.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
     {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
     {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} reportingEnabled={communityReportingEnabled} onSubmitted={addSubmittedReport} />}
-  </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /></nav></div>;
+  </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /></nav></div><AccountPanel key={`${account?.email ?? "guest"}-${accountOpen}`} open={accountOpen} account={account} onClose={() => setAccountOpen(false)} onAccount={setAccount} /></>;
 }

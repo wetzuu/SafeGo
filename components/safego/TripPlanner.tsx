@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { isAreaDashboardLocation } from "@/lib/trips/pilot";
+import type { AccountProfile, SavedPlace } from "@/lib/account/types";
 
 interface TripEnvelope {
   data?: TripAnalysis;
@@ -33,12 +34,15 @@ export function TripPlanner({
   locations,
   onLocation,
   onTrip,
+  account,
 }: {
   locations: SafeGoLocation[];
   onLocation: (location: SafeGoLocation) => void;
   onTrip: (trip: TripAnalysis) => void;
+  account: AccountProfile | null;
 }) {
   const [stops, setStops] = useState([""]);
+  const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>([null]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preferSavedDemo, setPreferSavedDemo] = useState(false);
@@ -52,11 +56,12 @@ export function TripPlanner({
     setStops((current) => current.map((stop, stopIndex) =>
       stopIndex === index ? value : stop,
     ));
+    setSavedStops((current) => current.map((place, stopIndex) => stopIndex === index ? null : place));
     setPreferSavedDemo(false);
     setError("");
   }
 
-  async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean) {
+  async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean, resolved = savedStops) {
     if (activeRequest.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -70,6 +75,8 @@ export function TripPlanner({
           origin,
           destination,
           preferSavedDemo: useSavedDemo,
+          originCoordinates: resolved[0]?.coordinates ?? null,
+          destinationCoordinates: resolved[1]?.coordinates ?? null,
         }),
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
       });
@@ -108,13 +115,32 @@ export function TripPlanner({
   }
 
   function addDestination() {
-    setStops((current) => current.length === 1 ? [...current, ""] : current);
+    setStops((current) => current.length === 1 ? [...current, account?.home ?? ""] : current);
+    setSavedStops((current) => current.length === 1 ? [...current, account?.homePlace ?? null] : current);
+    setPreferSavedDemo(false);
+    setError("");
+  }
+
+  function applySavedPlace(place: SavedPlace | null) {
+    if (!place) return;
+    const value = place.label;
+    setStops((current) => {
+      if (current.length === 2) return [current[0], value];
+      if (current[0].trim()) return [current[0], value];
+      return [value];
+    });
+    setSavedStops((current) => {
+      if (current.length === 2) return [current[0], place];
+      if (stops[0].trim()) return [current[0], place];
+      return [place];
+    });
     setPreferSavedDemo(false);
     setError("");
   }
 
   function removeDestination() {
     setStops((current) => [current[0]]);
+    setSavedStops((current) => [current[0]]);
     setPreferSavedDemo(false);
     setError("");
   }
@@ -123,8 +149,9 @@ export function TripPlanner({
     const origin = "España Blvd., Sampaloc";
     const destination = "Lerma St., Sampaloc";
     setStops([origin, destination]);
+    setSavedStops([null, null]);
     setPreferSavedDemo(true);
-    await analyzeRoute(origin, destination, true);
+    await analyzeRoute(origin, destination, true, [null, null]);
   }
 
   return (
@@ -166,6 +193,10 @@ export function TripPlanner({
           <span aria-hidden="true">+</span> Add destination
         </button>
       )}
+      {account && (account.home || account.school) && <div className="saved-place-row" aria-label="Saved places">
+        {account.homePlace && <button type="button" onClick={() => applySavedPlace(account.homePlace)} disabled={loading}><span>⌂</span> Home</button>}
+        {account.schoolPlace && <button type="button" onClick={() => applySavedPlace(account.schoolPlace)} disabled={loading}><span>▣</span> School</button>}
+      </div>}
       <div className="trip-actions">
         <button className="submit-btn" type="submit" disabled={loading}>
           {loading ? "Checking your route…" : hasDestination ? "Check my trip" : "Check this area"}
