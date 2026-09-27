@@ -20,11 +20,23 @@ async function accountRequest(path: string, init?: RequestInit): Promise<Account
 }
 
 export async function loadAccountSession(): Promise<AccountProfile | null> {
-  try {
-    return await accountRequest("/api/auth/session");
-  } catch {
-    return null;
+  const retryDelays = [0, 1_500, 3_000, 6_000];
+  for (const delay of retryDelays) {
+    if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay));
+    try {
+      const response = await fetch("/api/auth/session", {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (response.status === 401) return null;
+      const payload = await response.json().catch(() => ({})) as AccountEnvelope;
+      if (response.ok && payload.data) return payload.data;
+    } catch {
+      // The Java API may still be starting. Try again with a short backoff.
+    }
   }
+  return null;
 }
 
 export function AccountPanel({ open, account, onClose, onAccount }: {

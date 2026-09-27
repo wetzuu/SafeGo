@@ -193,8 +193,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
 
   const refreshInFlight = useRef(false);
 
-  const refreshDashboard = useCallback(async () => {
-    if (refreshInFlight.current) return;
+  const refreshDashboard = useCallback(async (): Promise<boolean> => {
+    if (refreshInFlight.current) return false;
     refreshInFlight.current = true;
     setRefreshing(true);
     try {
@@ -210,8 +210,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       setSelectedLocation((current) => current
         ? envelope.data.locations.find((location) => location.id === current.id) ?? current
         : current);
+      return true;
     } catch {
       setApiUnavailable(true);
+      return false;
     } finally {
       refreshInFlight.current = false;
       setRefreshing(false);
@@ -224,10 +226,20 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refreshDashboard(), 0);
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    const retryDelays = [1_500, 3_000, 6_000];
+    const refreshWithRetry = async (attempt = 0) => {
+      const succeeded = await refreshDashboard();
+      if (!succeeded && !cancelled && attempt < retryDelays.length) {
+        retryTimer = window.setTimeout(() => void refreshWithRetry(attempt + 1), retryDelays[attempt]);
+      }
+    };
+    void refreshWithRetry();
     const refreshTimer = window.setInterval(() => void refreshDashboard(), 5 * 60 * 1000);
     return () => {
-      window.clearTimeout(initialRefresh);
+      cancelled = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       window.clearInterval(refreshTimer);
     };
   }, [refreshDashboard]);
