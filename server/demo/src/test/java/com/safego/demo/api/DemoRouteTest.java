@@ -14,6 +14,7 @@ class DemoRouteTest {
 
     private static final double[] ESPANA = {14.612, 120.9902};
     private static final double[] LERMA = {14.6049, 120.9888};
+    private static final double[] QUIAPO = {14.5995, 120.9842};
 
     private final TripAnalyzeController controller = new TripAnalyzeController(null);
 
@@ -46,5 +47,19 @@ class DemoRouteTest {
 
         TripAnalysis analysis = controller.assessTrip(origin, dest, forward, locations);
         assertEquals("sufficient", analysis.coverage().status());
+    }
+
+    @Test
+    void savedManilaDemoRoutesAreFullyCovered() {
+        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        double[][][] pairs = {{ESPANA, QUIAPO}, {QUIAPO, ESPANA}, {QUIAPO, LERMA}, {LERMA, QUIAPO}};
+        for (double[][] pair : pairs) {
+            TripAnalyzeController.RouteResult route = TripAnalyzeController.savedDemoRoute(pair[0], pair[1]);
+            assertNotNull(route);
+            assertEquals("saved-demo", route.source());
+            ResolvedPlace origin = new ResolvedPlace("A", pair[0], "preset", null, true);
+            ResolvedPlace dest = new ResolvedPlace("B", pair[1], "preset", null, true);
+            assertEquals("sufficient", controller.assessTrip(origin, dest, route, locations).coverage().status());
+        }
     }
 }

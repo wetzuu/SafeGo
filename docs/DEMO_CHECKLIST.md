@@ -21,17 +21,18 @@ working; it does not validate real-world safety accuracy.
 1. Close older SafeGo terminals so ports 3000 and 8080 are free.
 2. Run `npm run dev` and wait for `SafeGo is ready`.
 3. Refresh the dashboard and note whether weather is current or stored.
-4. Use the built-in España-to-Lerma example first. Do not depend on arbitrary
-   searches for the core presentation.
+4. Use the saved example trips first: España–Lerma, España–Quiapo and
+   Quiapo–Lerma (either direction). These work without internet routing. Do not
+   depend on arbitrary searches for the core presentation.
 5. Open one confirmed university announcement link before the presentation.
 6. Keep official government and school sources available in separate tabs.
 
 ## Offline fallback
 
 Run `npm run dev:offline`. This disables live weather and forces mock data while
-keeping the saved example route available. The Gradle and npm dependencies must
+keeping the saved example routes available. The Gradle and npm dependencies must
 already have been installed. Arbitrary locations still require public geocoding
-and routing, so demonstrate the built-in example.
+and routing, so demonstrate the saved example trips.
 
 ## Suggested five-minute flow
 

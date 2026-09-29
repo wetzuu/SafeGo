@@ -213,7 +213,7 @@ Resolves origin and destination, finds a road route, and scores each segment by 
 | --- | --- | --- |
 | `origin` | string | Place name or preset location ID. Max 160 chars. |
 | `destination` | string | Place name or preset location ID. Max 160 chars. Must differ from `origin`. |
-| `preferSavedDemo` | boolean | Optional. `true` uses the bundled España↔Lerma geometry instead of calling OSRM live. |
+| `preferSavedDemo` | boolean | Optional. `true` uses bundled geometry for España↔Lerma, España↔Quiapo or Quiapo↔Lerma instead of calling OSRM live. |
 | `originCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
 | `destinationCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
 
@@ -245,7 +245,7 @@ Anything else hits Nominatim (Philippines only).
   "overallRiskScore": 51,
   "rawRiskScore": 51,
   "safetyRule": "",
-  "coverageNote": "100.0% of this route is within the Manila–Makati pilot coverage estimate...",
+  "coverageNote": "100.0% of this route is within the Manila–Makati–Pasig pilot coverage estimate...",
   "generatedAt": "2026-09-20T12:39:31Z",
   "routingSource": "saved-demo",
   "coverage": {

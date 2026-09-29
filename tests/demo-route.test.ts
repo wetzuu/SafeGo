@@ -19,3 +19,12 @@ test("saved demo route supports both directions and remains within pilot coverag
   assert.equal(forward.routingSource, "saved-demo");
   assert.equal(analyzeRouteSegments(forward.routeCoordinates, LOCATIONS).coverage.status, "sufficient");
 });
+
+test("saved Manila demo routes cover España–Quiapo and Quiapo–Lerma in both directions", () => {
+  const QUIAPO: [number, number] = [14.5995, 120.9842];
+  for (const [origin, destination] of [[ESPANA, QUIAPO], [QUIAPO, ESPANA], [QUIAPO, LERMA], [LERMA, QUIAPO]]) {
+    const route = findSavedDemoRoute(origin, destination);
+    assert.ok(route);
+    assert.equal(analyzeRouteSegments(route.routeCoordinates, LOCATIONS).coverage.status, "sufficient");
+  }
+});

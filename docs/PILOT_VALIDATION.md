@@ -2,10 +2,11 @@
 
 ## Implemented pilot
 
-The initial pilot is the union of provisional 850-meter circles around España,
-Lerma, Quiapo and Mapúa Makati. It is not all of Manila or Makati and does not
+The pilot is the union of provisional 850-meter circles around España, Lerma,
+Quiapo, Mapúa Makati and Ortigas Center (Pasig). It is not all of Manila, Makati
+or Pasig and does not
 cover the roads between those areas automatically. The canonical IDs are in
-`lib/trips/pilot.ts`. Binondo, Katipunan and Ortigas remain repository fixtures
+`lib/trips/pilot.ts`. Binondo and Katipunan remain repository fixtures
 but are excluded from pilot search, map coverage and route scoring because their
 inputs were cloned from España.
 
@@ -22,7 +23,14 @@ Changes require reviewing the scenario results and updating the shared policy.
   can vary slightly by direction; it avoids claiming coverage beyond a circle.
 - Weight coverage by geometric length, not the number of vertices. Internal
   lengths are not travel-distance or arrival-time estimates.
-- Below 90% coverage, return `overallRiskScore: null`, `rawRiskScore: null`,
+- Calm-area exception (added 2026-09-29): below 90% coverage, if every pilot
+  point has Weather, Flood / roads and Official advisories all at or below 29
+  (Low band) and every route vertex is within 15 km of a pilot point, return
+  the highest of those factor scores as an area-wide Low estimate. Coverage
+  status stays `insufficient`, unknown segments stay gray, and the coverage
+  note says it is area-wide, not road-by-road. Any active signal disables it.
+  The 29 and 15 km limits are provisional product choices.
+- Otherwise, below 90% coverage, return `overallRiskScore: null`, `rawRiskScore: null`,
   `riskKey: "unknown"`, and `riskName: "INSUFFICIENT COVERAGE"` with HTTP 200.
 - Unknown segments have null scores and null basis IDs. Gray dashed route lines
   represent unknown information. They never contribute zero to an average.
@@ -88,7 +96,7 @@ Avoid explaining the score or legend before they attempt the tasks.
    routing may fail; log that separately from a comprehension failure.
 2. On `/validation`, choose “Calm covered route.” Ask whether they would treat
    the score as permission to travel and what other evidence they would check.
-3. Choose “Calm points with a long uncovered gap.” Ask why there is no overall
+3. Choose “Rain with a long uncovered gap.” Ask why there is no overall
    score, then have them find the gaps on the map and explain gray dashed lines.
 4. Choose “Known critical section and an unknown remainder.” Ask whether the
    missing overall score means no hazards exist. Have them locate the known

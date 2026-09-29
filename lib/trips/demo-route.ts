@@ -8,6 +8,7 @@
  */
 const ESPANA: [number, number] = [14.612, 120.9902];
 const LERMA: [number, number] = [14.6049, 120.9888];
+const QUIAPO: [number, number] = [14.5995, 120.9842];
 
 const ESPANA_TO_LERMA: Array<[number, number]> = [
   [14.612167, 120.990381],
@@ -55,6 +56,121 @@ const ROAD_NAMES = [
   "Padre Campa Street",
 ];
 
+const ESPANA_TO_QUIAPO: Array<[number, number]> = [
+  [14.612167, 120.990381],
+  [14.611941, 120.990603],
+  [14.611887, 120.990655],
+  [14.611788, 120.990755],
+  [14.611396, 120.991132],
+  [14.611344, 120.991183],
+  [14.610699, 120.991798],
+  [14.610463, 120.992028],
+  [14.61003, 120.992445],
+  [14.609809, 120.992658],
+  [14.609731, 120.992738],
+  [14.609644, 120.992646],
+  [14.609252, 120.992211],
+  [14.609009, 120.991942],
+  [14.608686, 120.991583],
+  [14.608642, 120.991534],
+  [14.608594, 120.991481],
+  [14.608497, 120.991373],
+  [14.608464, 120.991335],
+  [14.608451, 120.991321],
+  [14.608314, 120.991165],
+  [14.608217, 120.991053],
+  [14.607912, 120.990715],
+  [14.607038, 120.989769],
+  [14.606918, 120.989642],
+  [14.606783, 120.989506],
+  [14.60672, 120.989441],
+  [14.606665, 120.98938],
+  [14.606453, 120.989144],
+  [14.606221, 120.988888],
+  [14.60597, 120.988609],
+  [14.605872, 120.988499],
+  [14.605731, 120.988344],
+  [14.605499, 120.988042],
+  [14.605413, 120.987921],
+  [14.605351, 120.987726],
+  [14.605139, 120.986858],
+  [14.604856, 120.985706],
+  [14.604813, 120.985534],
+  [14.604797, 120.985485],
+  [14.604774, 120.98544],
+  [14.604744, 120.985398],
+  [14.604709, 120.985361],
+  [14.604662, 120.985321],
+  [14.604432, 120.985276],
+  [14.603392, 120.985056],
+  [14.603025, 120.984976],
+  [14.602903, 120.984949],
+  [14.60188, 120.984723],
+  [14.601507, 120.984648],
+  [14.601422, 120.98463],
+  [14.601074, 120.98456],
+  [14.60065, 120.984477],
+  [14.600317, 120.984409],
+  [14.599519, 120.98425],
+  [14.599528, 120.984206],
+];
+
+const ESPANA_TO_QUIAPO_ROADS = ["A. H. Lacson Avenue","España Boulevard","Lerma Street","Quezon Boulevard","P. Paterno Street"];
+
+const QUIAPO_TO_LERMA: Array<[number, number]> = [
+  [14.599528, 120.984206],
+  [14.59954, 120.984142],
+  [14.599624, 120.983729],
+  [14.599649, 120.983448],
+  [14.600061, 120.983463],
+  [14.600648, 120.983487],
+  [14.600945, 120.983501],
+  [14.601129, 120.983515],
+  [14.601539, 120.983547],
+  [14.60185, 120.983571],
+  [14.602428, 120.983615],
+  [14.602647, 120.983632],
+  [14.602749, 120.98364],
+  [14.603343, 120.983686],
+  [14.603429, 120.983695],
+  [14.603422, 120.98374],
+  [14.60332, 120.984398],
+  [14.603272, 120.98463],
+  [14.603181, 120.984871],
+  [14.60316, 120.984925],
+  [14.603045, 120.985155],
+  [14.602978, 120.985303],
+  [14.602864, 120.985536],
+  [14.602809, 120.985651],
+  [14.602642, 120.986019],
+  [14.602618, 120.98607],
+  [14.602171, 120.987022],
+  [14.602131, 120.987101],
+  [14.602095, 120.987179],
+  [14.602201, 120.987206],
+  [14.60226, 120.98722],
+  [14.602694, 120.98733],
+  [14.603193, 120.98746],
+  [14.603978, 120.987665],
+  [14.604214, 120.987726],
+  [14.604561, 120.987826],
+  [14.604728, 120.987869],
+  [14.605037, 120.987957],
+  [14.605159, 120.987989],
+  [14.605298, 120.988022],
+  [14.605641, 120.98843],
+  [14.605587, 120.988482],
+  [14.605074, 120.988988],
+];
+
+const QUIAPO_TO_LERMA_ROADS = ["P. Paterno Street","Evangelista Street","C. M. Recto Avenue","Nicanor Reyes Street","España Boulevard","Padre Campa Street"];
+
+const SAVED_ROUTES = [
+  { from: ESPANA, to: LERMA, coordinates: ESPANA_TO_LERMA, roadNames: ROAD_NAMES },
+  { from: ESPANA, to: QUIAPO, coordinates: ESPANA_TO_QUIAPO, roadNames: ESPANA_TO_QUIAPO_ROADS },
+  { from: QUIAPO, to: LERMA, coordinates: QUIAPO_TO_LERMA, roadNames: QUIAPO_TO_LERMA_ROADS },
+];
+
 function samePoint(first: [number, number], second: [number, number]) {
   return Math.abs(first[0] - second[0]) < 0.000001
     && Math.abs(first[1] - second[1]) < 0.000001;
@@ -64,14 +180,16 @@ export function findSavedDemoRoute(
   origin: [number, number],
   destination: [number, number],
 ) {
-  const forward = samePoint(origin, ESPANA) && samePoint(destination, LERMA);
-  const reverse = samePoint(origin, LERMA) && samePoint(destination, ESPANA);
-  if (!forward && !reverse) return null;
-
-  return {
-    routeCoordinates: (reverse ? ESPANA_TO_LERMA.slice().reverse() : ESPANA_TO_LERMA)
-      .map(([latitude, longitude]) => [latitude, longitude] as [number, number]),
-    roadNames: [...ROAD_NAMES],
-    routingSource: "saved-demo" as const,
-  };
+  for (const route of SAVED_ROUTES) {
+    const forward = samePoint(origin, route.from) && samePoint(destination, route.to);
+    const reverse = samePoint(origin, route.to) && samePoint(destination, route.from);
+    if (!forward && !reverse) continue;
+    return {
+      routeCoordinates: (reverse ? route.coordinates.slice().reverse() : route.coordinates)
+        .map(([latitude, longitude]) => [latitude, longitude] as [number, number]),
+      roadNames: [...route.roadNames],
+      routingSource: "saved-demo" as const,
+    };
+  }
+  return null;
 }
