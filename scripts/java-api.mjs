@@ -53,7 +53,7 @@ const java = join(javaHome, "bin", javaName);
 const childEnv = { ...process.env, JAVA_HOME: javaHome };
 console.log(`Starting SafeGo Java API with JDK 21: ${javaHome}`);
 const command = windows ? "cmd.exe" : "./gradlew";
-const args = windows ? ["/d", "/s", "/c", "gradlew.bat bootJar"] : ["bootJar"];
+const args = windows ? ["/d", "/s", "/c", ".\\gradlew.bat bootJar"] : ["bootJar"];
 const build = spawn(command, args, {
   cwd,
   stdio: "inherit",

@@ -93,10 +93,21 @@ class ValidationScenariosTest {
     }
 
     @Test
-    void curatedScenarioCalmPointsWithALongUncoveredGap() {
+    void curatedScenarioCalmPointsWithALongUncoveredGapIsAnAreaWideLowEstimate() {
         TripAnalysis trip = replayScenario(Map.of(), GAP_ROUTE);
-        assertEquals("unknown", trip.riskKey());
-        assertNull(trip.overallRiskScore());
+        assertEquals("low", trip.riskKey());
+        assertEquals(20, trip.overallRiskScore());
+        assertEquals("insufficient", trip.coverage().status());
+        assertTrue(trip.coverageNote().contains("area-wide estimate"));
+    }
+
+    @Test
+    void curatedScenarioRainOrAdvisoryKeepsTheUncoveredGapUnknown() {
+        for (String factor : List.of("Weather", "Flood / roads", "Official advisories")) {
+            TripAnalysis trip = replayScenario(Map.of(factor, 45), GAP_ROUTE);
+            assertEquals("unknown", trip.riskKey(), factor);
+            assertNull(trip.overallRiskScore(), factor);
+        }
     }
 
     @Test

@@ -26,12 +26,14 @@ export function TripDataNotice({ trip }: { trip: TripAnalysis }) {
 export function TripCoverage({ trip }: { trip: TripAnalysis }) {
   const { coverage } = trip;
   const hazardBand = knownHazardBand(trip);
+  const areaEstimate = coverage.status === "insufficient" && trip.overallRiskScore !== null;
   return <div className="card card-pad trip-coverage" aria-label="How much of the route SafeGo can check">
-    <h2>{coverage.status === "insufficient" ? "SafeGo can’t rate the whole trip" : "How much of this route SafeGo can check"}</h2>
+    <h2>{areaEstimate ? "Area-wide estimate" : coverage.status === "insufficient" ? "SafeGo can’t rate the whole trip" : "How much of this route SafeGo can check"}</h2>
     {trip.routingSource === "saved-demo" && <p className="trip-routing-note"><strong>Example route</strong> · the latest road route was unavailable, so SafeGo used its saved example.</p>}
     <p><strong>SafeGo has information for {coverage.coveredPercent}% of this route.</strong></p>
     <meter min={0} max={100} value={coverage.coveredPercent} aria-label="Percentage of route covered" />
-    <p>Gray sections have insufficient information. They are not rated low risk. {coverage.unknownMeters > 0 ? "Check current local road conditions for these gaps before deciding to travel." : "A low score is not a guarantee that a road is safe."}</p>
+    {areaEstimate && <p className="calculation-rule">{trip.coverageNote}</p>}
+    <p>Gray sections have no location-specific information. {areaEstimate ? "The Low rating comes from calm area-wide conditions, not from these sections." : "They are not rated low risk."} {coverage.unknownMeters > 0 ? "Check current local road conditions for these gaps before deciding to travel." : "A low score is not a guarantee that a road is safe."}</p>
     {coverage.status === "insufficient" && hazardBand && <p className="calculation-rule"><strong>{hazardBand} risk appears in the covered sections.</strong> A missing overall rating does not remove that warning. Review those sections on the map.</p>}
     <details><summary>What information was available?</summary>
       <p>SafeGo only rates route sections near supported areas. A trip needs information for most of its route before SafeGo shows one overall level.</p>

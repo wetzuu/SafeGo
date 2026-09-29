@@ -14,12 +14,12 @@ import java.util.stream.Collectors;
 public class TripAnalysisService {
 
     public static final String PILOT_ID = "manila-makati-v1";
-    public static final String PILOT_NAME = "Manila–Makati pilot";
+    public static final String PILOT_NAME = "Manila–Makati–Pasig pilot";
     public static final double PILOT_RADIUS_METERS = 850.0;
     public static final int PILOT_MIN_COVERAGE_PCT = 90;
     public static final double SAMPLE_LENGTH_METERS = 100.0;
     public static final List<String> PILOT_LOCATION_IDS =
-        List.of("espana", "lerma", "quiapo", "mapua-makati");
+        List.of("espana", "lerma", "quiapo", "mapua-makati", "ortigas-pasig");
 
     public TripAnalysis assessTrip(
             ResolvedPlace origin, ResolvedPlace dest, RouteResult route,
@@ -130,6 +130,12 @@ public class TripAnalysisService {
         Integer rawScore = sufficient ? (int) Math.round(weightedRisk / coveredDist) : null;
         Integer overallScore = rawScore;
         String safetyRule = "";
+        Integer calmScore = sufficient ? null : calmAreaScore(pilotLocations, coords);
+        boolean calmEstimate = calmScore != null;
+        if (calmEstimate) {
+            rawScore = calmScore;
+            overallScore = calmScore;
+        }
         if (overallScore != null && maxRisk >= 80 && overallScore < 80) {
             overallScore = 80;
             safetyRule = "Critical route floor applied because part of the route is covered by a Critical risk point.";
@@ -197,7 +203,11 @@ public class TripAnalysisService {
             );
         }).toList();
 
-        String coverageNote = String.format(
+        String coverageNote = calmEstimate ? String.format(
+            Locale.ENGLISH,
+            "Only %.1f%% of this route has location-specific data, but weather, flood/road and official advisory signals are all low across the %s. This is an area-wide estimate, not a road-by-road rating; check local conditions before travelling.",
+            coverage.coveredPercent(), PILOT_NAME
+        ) : String.format(
             Locale.ENGLISH,
             "%.1f%% of this route is within the %s coverage estimate. A rating requires at least %d%% coverage within %.0f meters of a pilot point. Gray sections have insufficient information; coverage does not establish that the underlying data is current or verified.",
             coverage.coveredPercent(), PILOT_NAME, PILOT_MIN_COVERAGE_PCT, PILOT_RADIUS_METERS
@@ -212,6 +222,36 @@ public class TripAnalysisService {
             coverageNote, Instant.now().toString(), route.source(),
             coverage, sources
         );
+    }
+
+    static final int CALM_FACTOR_MAX_SCORE = 29;
+    static final double CALM_AREA_MAX_KM = 15.0;
+    private static final Set<String> CALM_FACTORS = Set.of("Weather", "Flood / roads", "Official advisories");
+
+    /**
+     * For routes without enough location-specific coverage: if every pilot location shows
+     * calm weather, no flood/road issue and no advisory, and the whole route lies in the
+     * Metro Manila pilot area, return the highest of those factor scores (a Low rating).
+     * Returns null when anything is active or the area cannot be judged.
+     */
+    static Integer calmAreaScore(List<SafeGoLocation> pilotLocations, double[][] route) {
+        if (pilotLocations.isEmpty()) return null;
+        for (double[] pt : route) {
+            double nearestKm = pilotLocations.stream()
+                .mapToDouble(loc -> GeoUtils.distanceKm(pt, loc.coordinates())).min().orElse(Double.MAX_VALUE);
+            if (nearestKm > CALM_AREA_MAX_KM) return null;
+        }
+        int highest = 0;
+        for (SafeGoLocation loc : pilotLocations) {
+            long found = loc.factors().stream().filter(f -> CALM_FACTORS.contains(f.name())).count();
+            if (found < CALM_FACTORS.size()) return null;
+            for (RiskFactor f : loc.factors()) {
+                if (!CALM_FACTORS.contains(f.name())) continue;
+                if (f.score() > CALM_FACTOR_MAX_SCORE) return null;
+                highest = Math.max(highest, f.score());
+            }
+        }
+        return highest;
     }
 
     private static List<Advisory> dedupeAdvisories(List<Advisory> items) {

@@ -38,6 +38,29 @@ function midpoint(
   return [(first[0] + second[0]) / 2, (first[1] + second[1]) / 2];
 }
 
+const CALM_FACTORS = ["Weather", "Flood / roads", "Official advisories"];
+const CALM_FACTOR_MAX_SCORE = 29;
+const CALM_AREA_MAX_KM = 15;
+
+/**
+ * For routes without enough location-specific coverage: when every pilot location shows
+ * calm weather, no flood/road issue and no advisory, and the whole route lies in the
+ * pilot area, return the highest of those factor scores (a Low rating). Otherwise null.
+ */
+export function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[number, number]>) {
+  if (pilotLocations.length === 0) return null;
+  const inArea = route.every((point) =>
+    Math.min(...pilotLocations.map((location) => distanceKm(point, location.coordinates))) <= CALM_AREA_MAX_KM);
+  if (!inArea) return null;
+  let highest = 0;
+  for (const location of pilotLocations) {
+    const factors = location.factors.filter((factor) => CALM_FACTORS.includes(factor.name));
+    if (factors.length < CALM_FACTORS.length || factors.some((factor) => factor.score > CALM_FACTOR_MAX_SCORE)) return null;
+    highest = Math.max(highest, ...factors.map((factor) => factor.score));
+  }
+  return highest;
+}
+
 export function analyzeRouteSegments(
   routeCoordinates: Array<[number, number]>,
   locations: SafeGoLocation[],
@@ -139,7 +162,8 @@ export function analyzeRouteSegments(
     unknownMeters: totalDistance - coveredDistance,
     longestUnknownGapMeters,
   };
-  const rawRiskScore = sufficient ? Math.round(weightedRisk / coveredDistance) : null;
+  const calmScore = sufficient ? null : calmAreaScore(pilotLocations, routeCoordinates);
+  const rawRiskScore = sufficient ? Math.round(weightedRisk / coveredDistance) : calmScore;
   let overallRiskScore = rawRiskScore;
   let safetyRule = "";
   if (overallRiskScore !== null && maximumRisk >= 80 && overallRiskScore < 80) {
@@ -156,5 +180,6 @@ export function analyzeRouteSegments(
     overallRiskScore,
     safetyRule,
     coverage,
+    calmEstimate: calmScore !== null,
   };
 }

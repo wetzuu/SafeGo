@@ -48,7 +48,9 @@ export function assessTrip(
       coveredLocations.flatMap((location) => location.hazards),
       (hazard) => `${hazard.title}-${hazard.meta}`,
     ),
-    coverageNote: `${routeRisk.coverage.coveredPercent}% of this route is within the ${PILOT.name} coverage estimate. A rating requires at least ${PILOT.minimumCoveragePercent}% coverage within ${PILOT.radiusMeters} meters of a pilot point. Gray sections have insufficient information; coverage does not establish that the underlying data is current or verified.`,
+    coverageNote: routeRisk.calmEstimate
+      ? `Only ${routeRisk.coverage.coveredPercent}% of this route has location-specific data, but weather, flood/road and official advisory signals are all low across the ${PILOT.name}. This is an area-wide estimate, not a road-by-road rating; check local conditions before travelling.`
+      : `${routeRisk.coverage.coveredPercent}% of this route is within the ${PILOT.name} coverage estimate. A rating requires at least ${PILOT.minimumCoveragePercent}% coverage within ${PILOT.radiusMeters} meters of a pilot point. Gray sections have insufficient information; coverage does not establish that the underlying data is current or verified.`,
     generatedAt: new Date().toISOString(),
     routingSource: route.routingSource,
     coverage: routeRisk.coverage,
