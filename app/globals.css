@@ -1054,6 +1054,14 @@
     @apply rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
   }
 
+  .data-origin {
+    @apply ml-1.5 inline-block rounded-sm border border-mod bg-mod-soft px-1 py-px align-middle text-[8.5px] font-bold not-italic normal-case tracking-normal text-mod;
+  }
+
+  .data-origin.live {
+    @apply border-low bg-low-soft text-low;
+  }
+
   .advisory-demo-tag {
     @apply rounded-sm border border-mod bg-mod-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-mod;
   }

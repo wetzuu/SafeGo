@@ -18,7 +18,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
       {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
     </div>{trip.overallRiskScore !== null && <div className="gauge-wrap"><RiskGauge score={trip.overallRiskScore} /></div>}</div></div>
     <TripDataNotice trip={trip} />
-    <OverviewContextPanel location={contextLocation} trip={trip} onOpenMap={() => navigate("map")} onViewConditions={() => navigate("conditions")} />
+    <OverviewContextPanel location={contextLocation} trip={trip} sources={trip.sources} onOpenMap={() => navigate("map")} onViewConditions={() => navigate("conditions")} />
     <NearbyUniversities universities={universities} routeMode />
     {trip.roadNames.length > 0 && <div className="card route-roads"><strong>Roads on this route</strong><p>{trip.roadNames.join(", ")}</p></div>}
     <p className="overview-safety-note">SafeGo does not replace government, school, or emergency announcements.</p>

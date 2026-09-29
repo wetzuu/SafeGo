@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import type { SafeGoLocation } from "@/lib/safego/types";
+import type { SourceStatus } from "@/lib/data/contracts";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { Icon } from "./Icon";
@@ -180,14 +181,20 @@ function CompactRiskMap({
   );
 }
 
+function DataOrigin({ live, label }: { live: boolean; label: string }) {
+  return <em className={`data-origin${live ? " live" : ""}`}>{live ? label : "Demo"}</em>;
+}
+
 export function OverviewContextPanel({
   location,
   trip,
+  sources,
   onOpenMap,
   onViewConditions,
 }: {
   location?: SafeGoLocation;
   trip?: TripAnalysis | null;
+  sources: SourceStatus[];
   onOpenMap: () => void;
   onViewConditions: () => void;
 }) {
@@ -198,6 +205,9 @@ export function OverviewContextPanel({
     return condition ? [condition] : [];
   });
   const announcement = location?.advisories[0];
+  const sourceActive = (key: string) => sources.some((source) => source.key === key && source.status === "active");
+  const liveWeather = sourceActive("open-meteo");
+  const liveRoads = sourceActive("flood-road");
 
   return (
     <div className="overview-context-grid">
@@ -232,7 +242,7 @@ export function OverviewContextPanel({
         {weather && <div className="overview-weather-now">
           <div className="overview-weather-icon"><Icon name="weather" /></div>
           <div>
-            <span>Weather now</span>
+            <span>Weather now <DataOrigin live={liveWeather} label="Live · Open-Meteo" /></span>
             <strong>{weather.value}</strong>
             <p>{weather.detail}</p>
           </div>
@@ -240,7 +250,7 @@ export function OverviewContextPanel({
         <div className="overview-useful-conditions">
           {usefulConditions.map((condition) => <div className="overview-useful-condition" data-tone={condition.tone} key={condition.label}>
             <div className={`icon-badge ${condition.tone}`}><Icon name={condition.icon} /></div>
-            <div><span>{condition.label === "School status" ? "Nearby university status" : condition.label}</span><strong>{condition.value}</strong><p>{condition.detail}</p></div>
+            <div><span>{condition.label === "School status" ? "Nearby university status" : condition.label}{condition.label === "Road condition" && <> <DataOrigin live={liveRoads} label="Live feed" /></>}</span><strong>{condition.value}</strong><p>{condition.detail}</p></div>
           </div>)}
         </div>
         {announcement && <div className="overview-announcement-preview">
