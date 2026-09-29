@@ -11,4 +11,3 @@ backups
 .env.staging
 server/demo/.gradle
 server/demo/build
-prototype

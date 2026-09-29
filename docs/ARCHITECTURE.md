@@ -28,7 +28,6 @@ The browser never receives database credentials or provider configuration. The J
 | `db/migrations/` | Ordered PostgreSQL/PostGIS schema migrations |
 | `scripts/` | Database migration and seed commands |
 | `tests/` | Pure model and repository tests |
-| `prototype/` | Original static design reference; not used by Next.js at runtime |
 
 ## Data trust boundaries
 

@@ -8,14 +8,6 @@ SafeGo is informational only. It does not declare class suspensions. Follow offi
 
 ## Running
 
-### Prototype
-
-```bash
-npx http-server prototype
-```
-
-Open `http://localhost:8080` in your browser.
-
 ### App (Next.js + Java API)
 
 Install Node.js and Java 21. On Windows, start both services from the project root:
@@ -116,8 +108,6 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
 ## Application structure
 
-The Next.js app is independent from the original static prototype:
-
 - `components/safego/` contains the React interface and interactive map.
 - `lib/safego/locations.ts` is the current mock-data source.
 - `lib/safego/risk-model.ts` contains the versioned risk calculation.
@@ -126,7 +116,6 @@ The Next.js app is independent from the original static prototype:
 - `lib/data/` retains the earlier TypeScript implementation as a reference for parity checks; it is not an active API runtime.
 - `db/migrations/` contains the PostgreSQL/PostGIS schema.
 - `scripts/db-migrate.ts` and `scripts/db-seed.ts` set up local or hosted databases.
-- `prototype/` remains available as the original design reference only.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, and pre-push checklist.
 

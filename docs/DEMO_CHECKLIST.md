@@ -42,7 +42,11 @@ and routing, so demonstrate the saved example trips.
 4. Open nearby-university status and a confirmed post, when available.
 5. Add a destination or load the example trip.
 6. Point out colored covered sections and gray unknown sections.
-7. End with the source explanation and SafeGo's official-announcement warning.
+7. Optional: on Reports, submit a sample observation and show that it appears as
+   UNVERIFIED and does not change the score. This needs
+   `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`
+   in `.env.local`. No real moderation queue exists yet, so keep this local.
+8. End with the source explanation and SafeGo's official-announcement warning.
 
 ## If something fails
 
