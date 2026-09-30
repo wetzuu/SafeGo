@@ -104,9 +104,9 @@ public class OperationalFeedService {
             int highest = items.stream().mapToInt(i -> i.path("severityScore").asInt()).max().orElse(0);
             String name = official ? "Official advisories" : "Flood / roads";
             String description = items.isEmpty()
-                ? official ? "No active advisory for this canonical location in the configured official feed."
+                ? official ? "No active official advisory (PAGASA alerts or a configured official feed) covers this location."
                            : "No active observation for this canonical location in the configured flood/road feed."
-                : items.size() + (official ? " active configured official advisories; highest normalized severity "
+                : items.size() + (official ? " active official advisories; highest normalized severity "
                                            : " active verified-source observations; highest normalized severity ")
                   + highest + "/100.";
             RiskFactor factor = new RiskFactor(name, highest, bandKey(highest), bandLabel(highest), description,

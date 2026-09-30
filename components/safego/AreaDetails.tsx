@@ -1,5 +1,6 @@
 import { riskGradient } from "@/lib/safego/risk-model";
 import type { AreaAnalysis } from "@/lib/safego/area-analysis";
+import type { AreaAdvisory } from "@/lib/safego/area-alerts";
 import type { AreaProperties, AreaScore } from "@/lib/safego/area-scoring";
 import type { AreaWeather } from "@/lib/safego/area-weather";
 import type { SafeGoLocation } from "@/lib/safego/types";
@@ -17,9 +18,11 @@ export interface AreaInfo {
   weatherLabel: string;
   /** What the map paints for the active layer; null means not rated. */
   displayScore: number | null;
-  /** The painted score is a weather-only estimate rather than a SafeGo rating. */
+  /** The painted score is a partial estimate rather than a SafeGo rating. */
   estimated: boolean;
   analysis: AreaAnalysis;
+  /** Active PAGASA alerts covering the area; null when alerts are unavailable. */
+  advisory: AreaAdvisory | null;
   nearest: { location: SafeGoLocation; distanceMeters: number } | null;
 }
 
@@ -57,6 +60,7 @@ export function AreaDetails({
   weatherStatus,
   coverageRadiusMeters,
   locationDataIsDemo,
+  liveAlerts,
   onClose,
   onOpenLocation,
 }: {
@@ -65,10 +69,12 @@ export function AreaDetails({
   weatherStatus: "live" | "loading" | "unavailable" | "off";
   coverageRadiusMeters: number;
   locationDataIsDemo: boolean;
+  /** PAGASA alerts are live, so official-advisory factors are real rather than demo data. */
+  liveAlerts: boolean;
   onClose: () => void;
   onOpenLocation?: (location: SafeGoLocation) => void;
 }) {
-  const { properties, analysis, measuredDistanceMeters, weather, nearest, displayScore, estimated } = info;
+  const { properties, analysis, advisory, measuredDistanceMeters, weather, nearest, displayScore, estimated } = info;
   const linkedLocation = analysis.source ?? nearest?.location ?? null;
 
   return (
@@ -80,7 +86,7 @@ export function AreaDetails({
           </div>
           <h3 className="text-base font-bold text-ink truncate mt-0.5">{properties.name}</h3>
           <div className="text-xs text-ink-soft mt-0.5">
-            {layerLabel} {displayScore === null ? "not rated" : estimated ? "estimate (weather only)" : "score"}
+            {layerLabel} {displayScore === null ? "not rated" : estimated ? "partial estimate" : "score"}
           </div>
         </div>
         <div className="flex items-start gap-2 shrink-0">
@@ -103,10 +109,11 @@ export function AreaDetails({
             {analysis.kind === "rated" && analysis.source ? (
               <>Full SafeGo rating from <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? `, ${formatDistance(measuredDistanceMeters)} from this area` : ", inside this area"}.</>
-            ) : analysis.kind === "weather-estimate" ? (
-              <>Weather-only estimate. No SafeGo location is within {formatDistance(coverageRadiusMeters)}
+            ) : analysis.kind === "partial-estimate" ? (
+              <>Partial estimate from live {[weather && "weather", advisory && "PAGASA alerts"].filter(Boolean).join(" and ")}.
+                No SafeGo location is within {formatDistance(coverageRadiusMeters)}
                 {nearest ? ` (nearest: ${shortPlaceName(nearest.location.name)}, ${formatDistance(nearest.distanceMeters)})` : ""},
-                so flooding, road conditions and announcements are not checked here.</>
+                so street flooding, road conditions and community reports are not checked here.</>
             ) : (
               <>Not rated. No SafeGo location is within {formatDistance(coverageRadiusMeters)} and live weather is not available. Not rated does not mean safe.</>
             )}
@@ -116,8 +123,8 @@ export function AreaDetails({
         {analysis.score !== null && analysis.riskKey && analysis.riskName && (
           <div className="flex items-center justify-between gap-2 bg-surface rounded-xl p-2.5 border border-hairline">
             <span className="text-ink-soft font-semibold">{analysis.kind === "rated" ? "Overall travel risk" : "Estimated risk"}</span>
-            <span className={`pill ${analysis.riskKey} text-xs font-bold${analysis.kind === "weather-estimate" ? " opacity-75" : ""}`}>
-              <span className="dot" />{analysis.score}/100 · {riskLevelLabel(analysis.riskName)}{analysis.kind === "weather-estimate" ? " (partial)" : ""}
+            <span className={`pill ${analysis.riskKey} text-xs font-bold${analysis.kind === "partial-estimate" ? " opacity-75" : ""}`}>
+              <span className="dot" />{analysis.score}/100 · {riskLevelLabel(analysis.riskName)}{analysis.kind === "partial-estimate" ? " (partial)" : ""}
             </span>
           </div>
         )}
@@ -130,7 +137,11 @@ export function AreaDetails({
                 <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
                 <span className="flex items-center gap-1.5">
                   {factor.source === "live-weather" && <span className="text-[9px] font-bold uppercase text-low">Live</span>}
-                  {factor.source === "location" && locationDataIsDemo && factor.name !== "Weather" && (
+                  {(factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts)) && (
+                    <span className="text-[9px] font-bold uppercase text-low">PAGASA</span>
+                  )}
+                  {factor.source === "location" && locationDataIsDemo && factor.name !== "Weather"
+                    && !(factor.name === "Official advisories" && liveAlerts) && (
                     <span className="text-[9px] font-bold uppercase text-mod">Demo</span>
                   )}
                   <strong className={`font-mono ${factor.score === null ? "text-ink-soft font-normal" : "text-ink"}`}>
@@ -139,6 +150,33 @@ export function AreaDetails({
                 </span>
               </div>
             ))}
+          </dd>
+        </div>
+
+        <div>
+          <dt className={SECTION_LABEL}>Official alerts</dt>
+          <dd className="text-ink">
+            {advisory ? (
+              advisory.alerts.length ? (
+                <ul className="space-y-1.5">
+                  {advisory.alerts.map((alert) => (
+                    <li key={alert.id} className="rounded-lg border border-hairline bg-surface px-2 py-1.5">
+                      <a className="font-semibold text-brand hover:underline" href={alert.sourceUrl} target="_blank" rel="noreferrer">
+                        {alert.headline}
+                      </a>
+                      <span className="block text-ink-soft">
+                        {alert.severity} · {alert.urgency} · until {formatTime(alert.expiresAt)} · score {alert.severityScore}/100
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-ink-soft">No active PAGASA alert covers this area.</span>
+              )
+            ) : (
+              <span className="text-ink-soft">{liveAlerts ? "Loading PAGASA alerts…" : "PAGASA alerts are unavailable right now."}</span>
+            )}
+            <span className="block text-[10px] text-ink-soft mt-1">Source: PAGASA public alerts (CC BY 4.0).</span>
           </dd>
         </div>
 
@@ -166,7 +204,7 @@ export function AreaDetails({
                     Rain meets PAGASA&apos;s {weather.pagasaLevel} rainfall threshold (model estimate, not an official warning).
                   </div>
                 )}
-                {analysis.kind === "weather-estimate" && weather.pastDayMm >= HEAVY_DAY_RAIN_MM && (
+                {analysis.kind === "partial-estimate" && weather.pastDayMm >= HEAVY_DAY_RAIN_MM && (
                   <div className="mt-1.5 rounded-lg px-2 py-1 bg-mod-soft text-mod font-semibold">
                     Heavy rain in the last 24 h. Streets here may still be flooded; SafeGo has no flood data for this area.
                   </div>

@@ -1,6 +1,8 @@
 package com.safego.demo.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.safego.demo.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,18 +19,22 @@ public class DashboardService {
     private final String backend;
     private final WeatherService weatherService;
     private final OperationalFeedService feedService;
+    private final PagasaCapService pagasaService;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     private DashboardSnapshot cached;
     private long expiresAt;
 
+    /** For tests and tools: never calls PAGASA, so results stay repeatable. */
     public DashboardService() {
-        this(new WeatherService(), new OperationalFeedService());
+        this(new WeatherService(), new OperationalFeedService(), PagasaCapService.disabled());
     }
 
     @Autowired
-    public DashboardService(WeatherService weatherService, OperationalFeedService feedService) {
+    public DashboardService(WeatherService weatherService, OperationalFeedService feedService, PagasaCapService pagasaService) {
         this.weatherService = weatherService;
         this.feedService = feedService;
+        this.pagasaService = pagasaService;
 
         String mode = System.getenv().getOrDefault("SAFEGO_DATA_MODE", "auto").trim().toLowerCase(Locale.ROOT);
         String url = System.getenv("DATABASE_URL");
@@ -63,7 +69,7 @@ public class DashboardService {
         List<SourceStatus> sources = new ArrayList<>(
             database == null ? MockRepository.listSourceStatuses() : database.listSourceStatuses()
         );
-        sources.removeIf(source -> List.of("official-advisories", "flood-road", "open-meteo").contains(source.key()));
+        sources.removeIf(source -> List.of("official-advisories", "flood-road", "open-meteo", PagasaCapService.SOURCE_KEY).contains(source.key()));
 
         OperationalFeedService.FeedResult official = feedService.readFeed(
             "official-advisories", "Configured official advisory feed",
@@ -74,10 +80,18 @@ public class DashboardService {
             "SAFEGO_FLOOD_ROAD_FEED_URL", "SAFEGO_FLOOD_ROAD_FEED_TOKEN", false
         );
 
+        PagasaCapService.Result pagasa = pagasaService.activeAlerts();
+
         sources.add(official.status());
+        sources.add(pagasa.status());
         sources.add(floodRoad.status());
-        if ("active".equals(official.status().status())) {
-            locations = feedService.applyFeed(locations, official.items(), true);
+        boolean officialActive = "active".equals(official.status().status());
+        boolean pagasaActive = "active".equals(pagasa.status().status());
+        if (officialActive || pagasaActive) {
+            List<JsonNode> advisories = new ArrayList<>();
+            if (officialActive) advisories.addAll(official.items());
+            if (pagasaActive) advisories.addAll(pagasaAdvisories(pagasa.alerts(), locations));
+            locations = feedService.applyFeed(locations, advisories, true);
         }
         if ("active".equals(floodRoad.status().status())) {
             locations = feedService.applyFeed(locations, floodRoad.items(), false);
@@ -105,6 +119,35 @@ public class DashboardService {
         cached = new DashboardSnapshot(List.copyOf(locations), List.copyOf(sources), weatherUpdatedAt);
         expiresAt = System.currentTimeMillis() + CACHE_MS;
         return cached;
+    }
+
+    /** PAGASA alerts as normalized official-advisory items, attached to the locations their polygons cover. */
+    List<JsonNode> pagasaAdvisories(List<PagasaCapService.CapAlert> alerts, List<SafeGoLocation> locations) {
+        List<JsonNode> items = new ArrayList<>();
+        for (PagasaCapService.CapAlert alert : alerts) {
+            List<String> covered = locations.stream()
+                .filter(location -> PagasaCapService.covers(alert, location.coordinates()[0], location.coordinates()[1]))
+                .map(SafeGoLocation::id)
+                .toList();
+            if (covered.isEmpty() || alert.sent() == null) continue;
+            ObjectNode item = mapper.createObjectNode();
+            item.put("id", "pagasa-" + alert.id());
+            item.set("locationIds", mapper.valueToTree(covered));
+            item.put("sourceName", "PAGASA");
+            item.put("sourceKind", "weather");
+            item.put("title", alert.headline());
+            item.put("description", alert.description());
+            item.put("severityScore", PagasaCapService.severityScore(alert));
+            item.put("issuedAt", alert.sent().toString());
+            item.put("expiresAt", alert.expires().toString());
+            item.put("sourceUrl", alert.sourceUrl());
+            items.add(item);
+        }
+        return items;
+    }
+
+    public PagasaCapService.Result pagasaAlerts() {
+        return pagasaService.activeAlerts();
     }
 
     public synchronized void invalidate() {

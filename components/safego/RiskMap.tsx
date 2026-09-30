@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
-import { distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
+import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
 import { fetchAreaWeather, weatherGroupKey, weatherSamplePoints, type AreaWeather } from "@/lib/safego/area-weather";
 import { analyzeArea } from "@/lib/safego/area-analysis";
+import { alertsCovering, fetchActiveAlerts, type ActiveAlert } from "@/lib/safego/area-alerts";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
@@ -117,6 +118,8 @@ export interface RiskMapProps {
   liveWeather?: boolean;
   /** SafeGo's location factors come from built-in demo data rather than live feeds. */
   locationDataIsDemo?: boolean;
+  /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
+  liveAlerts?: boolean;
 }
 
 export function RiskMap({
@@ -131,6 +134,7 @@ export function RiskMap({
   onViewAnnouncements,
   liveWeather = false,
   locationDataIsDemo = false,
+  liveAlerts = false,
 }: RiskMapProps) {
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -158,6 +162,8 @@ export function RiskMap({
   const selectionContext = `${trip?.generatedAt ?? "area"}:${effectiveSelected?.id ?? ""}`;
   const selectedAreaIndex = areaSelection?.context === selectionContext ? areaSelection.index : null;
   const liveAreaWeather = liveWeather ? areaWeather : null;
+  const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[] | null>(null);
+  const liveActiveAlerts = liveAlerts ? activeAlerts : null;
   const weatherStatus = !liveWeather ? "off" : liveAreaWeather ? "live" : weatherFailed ? "unavailable" : "loading";
   const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
 
@@ -174,14 +180,17 @@ export function RiskMap({
       const weather = liveAreaWeather?.get(key) ?? null;
       const nearest = nearestPoint(geometry, locations);
       const overallMeasured = activeLayer === "overall" ? measured : scoreArea(geometry, overallPoints, APPROXIMATE_COVERAGE_RADIUS_METERS);
-      const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather);
-      // Weather is the one factor SafeGo can read everywhere. The overall layer shows weather-only
-      // estimates for uncovered areas; the other layers only rate covered areas.
+      const advisory = liveActiveAlerts ? alertsCovering(areaCenter(geometry), liveActiveAlerts) : null;
+      const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather, advisory);
+      // Weather and PAGASA alerts are the factors SafeGo can read everywhere. The overall layer shows
+      // partial estimates for uncovered areas; the flood, university and community layers only rate covered areas.
       const displayScore = activeLayer === "Weather" && weather
         ? Math.max(measured?.score ?? 0, weather.score)
-        : activeLayer === "overall"
-          ? analysis.score
-          : measured?.score ?? null;
+        : activeLayer === "Official advisories" && advisory
+          ? Math.max(measured?.score ?? 0, advisory.score)
+          : activeLayer === "overall"
+            ? analysis.score
+            : measured?.score ?? null;
       return {
         properties,
         measured,
@@ -190,12 +199,13 @@ export function RiskMap({
         weather,
         weatherLabel: weatherLabels.get(key) ?? properties.city,
         displayScore,
-        estimated: activeLayer === "overall" && analysis.kind === "weather-estimate",
+        estimated: activeLayer === "overall" && analysis.kind === "partial-estimate",
         analysis,
+        advisory,
         nearest: nearest ? { location: nearest.point, distanceMeters: nearest.distanceMeters } : null,
       };
     });
-  }, [activeLayer, areas, liveAreaWeather, locations, weatherPoints]);
+  }, [activeLayer, areas, liveActiveAlerts, liveAreaWeather, locations, weatherPoints]);
   const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
   const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null && !info.estimated).length;
   const estimatedAreaCount = areaInfos.filter((info) => info.estimated).length;
@@ -354,6 +364,24 @@ export function RiskMap({
   }, [liveWeather, weatherPoints]);
 
   useEffect(() => {
+    if (!liveAlerts) return;
+    let cancelled = false;
+    const load = () => fetchActiveAlerts()
+      .then((alerts) => {
+        if (!cancelled) setActiveAlerts(alerts);
+      })
+      .catch(() => {
+        // Keep the last good list; the area panel shows alerts as unavailable until one loads.
+      });
+    void load();
+    const timer = window.setInterval(() => void load(), 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [liveAlerts]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !areas || !areaRendererRef.current) return;
     let cancelled = false;
@@ -368,7 +396,7 @@ export function RiskMap({
       // Leaflet hands these options to each polygon, which accepts a renderer; the typings omit it.
       const options: GeoJSONOptions & { renderer: Renderer } = {
         renderer,
-        attribution: "Areas: PSA/NAMRIA 2023; Manila districts © OpenStreetMap",
+        attribution: "Areas: PSA/NAMRIA 2023; Manila districts © OpenStreetMap; alerts: PAGASA (CC BY 4.0)",
         style: (feature) => {
           const index = feature ? indexByFeature.get(feature) : undefined;
           const info = index === undefined ? undefined : areaInfos[index];
@@ -395,10 +423,14 @@ export function RiskMap({
           const detail = info.displayScore === null
             ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
             : info.estimated
-              ? `Weather-only estimate: ${info.displayScore}/100. Flood, roads and announcements not checked.`
+              ? `Partial estimate: ${info.displayScore}/100 from live weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
               : info.measured && info.measuredSource && info.measured.score >= info.displayScore
               ? `${activeLayerLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
-              : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (live model for ${info.weatherLabel}).`;
+              : activeLayer === "Official advisories"
+                ? info.advisory?.alerts.length
+                  ? `PAGASA: ${info.advisory.alerts.map((alert) => alert.headline).join("; ")} (${info.displayScore}/100).`
+                  : "No active PAGASA alert covers this area."
+                : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (live model for ${info.weatherLabel}).`;
           layer.bindTooltip(makeTooltip(title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
           layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
           layer.on("mouseout", () => areaLayer?.resetStyle(layer));
@@ -413,7 +445,7 @@ export function RiskMap({
       cancelled = true;
       if (areaLayer) map.removeLayer(areaLayer);
     };
-  }, [activeLayerLabel, areaInfos, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
+  }, [activeLayer, activeLayerLabel, areaInfos, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -557,6 +589,7 @@ export function RiskMap({
                 weatherStatus={weatherStatus}
                 coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
                 locationDataIsDemo={locationDataIsDemo}
+                liveAlerts={liveAlerts}
                 onClose={() => setAreaSelection(null)}
                 onOpenLocation={onSelectLocation && ((location) => {
                   setAreaSelection(null);
@@ -715,7 +748,7 @@ export function RiskMap({
         {activeLayer === "overall" && estimatedAreaCount > 0 && (
           <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
             <span className="h-3 w-6 border border-dashed border-ink-soft/60" style={{ background: classColor(0), opacity: ESTIMATE_FILL_OPACITY + 0.2 }} />
-            Pale, dashed: weather-only estimate (partial)
+            Pale, dashed: partial estimate (live weather and PAGASA alerts)
           </div>
         )}
         {hasUnratedSections && (
@@ -729,8 +762,10 @@ export function RiskMap({
             <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
             {activeLayer === "Weather" && liveAreaWeather
               ? " (live weather covers every area)."
+              : activeLayer === "Official advisories" && liveActiveAlerts
+                ? " (PAGASA alerts are checked for every area)."
               : estimatedAreaCount > 0
-                ? <>; <strong>{estimatedAreaCount}</strong> more have a weather-only estimate.</>
+                ? <>; <strong>{estimatedAreaCount}</strong> more have a partial estimate.</>
                 : "."}
           </p>
         )}
@@ -741,7 +776,11 @@ export function RiskMap({
               : weatherStatus === "off"
                 ? "Live weather is off while SafeGo shows demo conditions, so only SafeGo locations are rated."
                 : "Live weather is loading or unavailable; only SafeGo locations are rated."
-            : `Areas within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m of a SafeGo location take its highest score. Barangays; districts in Manila. Click an area for details.`}
+            : activeLayer === "Official advisories"
+              ? liveActiveAlerts
+                ? `${liveActiveAlerts.length ? `${liveActiveAlerts.length} active PAGASA alert${liveActiveAlerts.length === 1 ? "" : "s"} touch Metro Manila.` : "No active PAGASA alert touches Metro Manila right now."} Areas take the highest alert severity covering them.`
+                : "PAGASA alerts are loading or unavailable; only SafeGo locations are rated."
+              : `Areas within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m of a SafeGo location take its highest score. Barangays; districts in Manila. Click an area for details.`}
         </p>
       </div>
     </div>

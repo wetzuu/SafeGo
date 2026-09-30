@@ -197,6 +197,28 @@ Location weather factors use the same rainfall-aware scoring as `/api/areas/weat
 
 ---
 
+## GET /api/alerts/active
+
+Active PAGASA public alerts (CAP) that touch Metro Manila, with only their Metro Manila-relevant polygons. See `docs/SOURCE_FEEDS.md` for filtering and the severity mapping.
+
+**Response `data`:**
+
+```json
+{
+  "alerts": [{
+    "id": "54a8fb14-…", "event": "General Flood Advisory", "headline": "General Flood Advisory - NCR",
+    "description": "…", "severity": "Moderate", "severityScore": 45, "urgency": "Expected", "certainty": "Likely",
+    "issuedAt": "2026-09-30T…Z", "expiresAt": "2026-09-30T…Z", "sourceUrl": "https://publicalert.pagasa.dost.gov.ph/…",
+    "areas": [{ "description": "Metro Manila", "polygons": [[[14.5, 120.95], [14.5, 121.1], "…"]] }]
+  }],
+  "source": { /* SourceStatus for pagasa-cap; alerts is empty unless status is "active" */ }
+}
+```
+
+Polygon points are `[latitude, longitude]`. An empty `alerts` array with an active source means PAGASA has no active alert covering Metro Manila.
+
+---
+
 ## POST /api/areas/weather
 
 Live, rainfall-aware weather for the map's Metro Manila area sample points (one per city, one per Manila district). Readings are cached for ten minutes.

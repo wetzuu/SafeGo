@@ -13,16 +13,16 @@ export interface AreaFactorReading {
   name: FactorName;
   /** null means SafeGo has no reading for this area, which is not the same as zero. */
   score: number | null;
-  source: "location" | "live-weather" | "none";
+  source: "location" | "live-weather" | "live-alerts" | "none";
 }
 
 export interface AreaAnalysis {
   /**
    * rated: covered by a SafeGo location, so it carries that location's full rating.
-   * weather-estimate: only live weather is known; a partial estimate, not a rating.
+   * partial-estimate: only live weather and/or PAGASA alerts are known; an estimate, not a rating.
    * unrated: nothing is known.
    */
-  kind: "rated" | "weather-estimate" | "unrated";
+  kind: "rated" | "partial-estimate" | "unrated";
   score: number | null;
   riskKey: RiskKey | null;
   riskName: string | null;
@@ -30,7 +30,12 @@ export interface AreaAnalysis {
   factors: AreaFactorReading[];
 }
 
-export function analyzeArea(source: SafeGoLocation | null, weather: { score: number } | null): AreaAnalysis {
+export function analyzeArea(
+  source: SafeGoLocation | null,
+  weather: { score: number } | null,
+  /** Highest active PAGASA alert severity covering the area (0 when none); null when alerts are unavailable. */
+  advisory: { score: number } | null = null,
+): AreaAnalysis {
   if (source) {
     return {
       kind: "rated",
@@ -48,12 +53,16 @@ export function analyzeArea(source: SafeGoLocation | null, weather: { score: num
   const factors: AreaFactorReading[] = AREA_FACTORS.map((name) =>
     name === "Weather" && weather
       ? { name, score: weather.score, source: "live-weather" }
-      : { name, score: null, source: "none" });
+      : name === "Official advisories" && advisory
+        ? { name, score: advisory.score, source: "live-alerts" }
+        : { name, score: null, source: "none" });
 
-  if (!weather) return { kind: "unrated", score: null, riskKey: null, riskName: null, source: null, factors };
+  const known = [weather?.score, advisory?.score].filter((score): score is number => score !== undefined);
+  if (!known.length) return { kind: "unrated", score: null, riskKey: null, riskName: null, source: null, factors };
 
-  // Only weather is known, so the estimate is the weather score itself. It is labelled as an
-  // estimate everywhere because it cannot see flooding, road closures or announcements.
-  const band = riskBand(weather.score);
-  return { kind: "weather-estimate", score: weather.score, riskKey: band.key, riskName: band.name, source: null, factors };
+  // Only the live factors are known, so the estimate is the highest of them. It is labelled as an
+  // estimate everywhere because it cannot see street flooding, road closures or community reports.
+  const score = Math.max(...known);
+  const band = riskBand(score);
+  return { kind: "partial-estimate", score, riskKey: band.key, riskName: band.name, source: null, factors };
 }

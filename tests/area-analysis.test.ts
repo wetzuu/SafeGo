@@ -14,9 +14,9 @@ test("areas covered by a SafeGo location carry that location's full rating", () 
   assert.ok(analysis.factors.every((factor) => factor.source === "location"));
 });
 
-test("uncovered areas with live weather get a weather-only estimate", () => {
+test("uncovered areas with live weather get a partial estimate", () => {
   const analysis = analyzeArea(null, { score: 45 });
-  assert.equal(analysis.kind, "weather-estimate");
+  assert.equal(analysis.kind, "partial-estimate");
   assert.equal(analysis.score, 45);
   assert.equal(analysis.riskKey, "mod");
   assert.deepEqual(analysis.factors.find((factor) => factor.name === "Weather"), { name: "Weather", score: 45, source: "live-weather" });
@@ -41,4 +41,18 @@ test("riskBand matches the model's band thresholds", () => {
   assert.equal(riskBand(30).key, "mod");
   assert.equal(riskBand(60).key, "high");
   assert.equal(riskBand(80).key, "crit");
+});
+
+test("PAGASA alerts join weather in the partial estimate, taking the higher score", () => {
+  const analysis = analyzeArea(null, { score: 5 }, { score: 45 });
+  assert.equal(analysis.kind, "partial-estimate");
+  assert.equal(analysis.score, 45);
+  assert.deepEqual(analysis.factors.find((factor) => factor.name === "Official advisories"), { name: "Official advisories", score: 45, source: "live-alerts" });
+  assert.equal(analysis.factors.find((factor) => factor.name === "Flood / roads")?.score, null);
+});
+
+test("no active PAGASA alert is a real zero, not missing data", () => {
+  const analysis = analyzeArea(null, null, { score: 0 });
+  assert.equal(analysis.kind, "partial-estimate");
+  assert.equal(analysis.factors.find((factor) => factor.name === "Official advisories")?.score, 0);
 });
