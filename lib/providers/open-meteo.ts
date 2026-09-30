@@ -10,6 +10,8 @@ const OPEN_METEO_ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 
 interface OpenMeteoCurrent {
   time: string;
+  /** Seconds covered by the precipitation value, usually 900 (15 minutes). */
+  interval?: number;
   temperature_2m: number;
   relative_humidity_2m: number;
   precipitation: number;
@@ -89,7 +91,8 @@ export async function fetchOpenMeteoWeather(
     const condition = weatherCodeLabel(current.weather_code);
     const score = scoreWeatherConditions({
       weatherCode: current.weather_code,
-      precipitationMillimeters: current.precipitation,
+      // Current precipitation covers only the last `interval` seconds; the thresholds expect mm per hour.
+      precipitationMillimeters: (current.precipitation * 3600) / Math.max(60, current.interval ?? 3600),
       windGustKph: current.wind_gusts_10m,
     });
 

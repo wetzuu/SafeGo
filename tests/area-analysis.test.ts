@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { analyzeArea } from "../lib/safego/area-analysis.ts";
+import { LOCATIONS } from "../lib/safego/locations.ts";
+import { riskBand } from "../lib/safego/risk-model.ts";
+
+const location = LOCATIONS[0];
+
+test("areas covered by a SafeGo location carry that location's full rating", () => {
+  const analysis = analyzeArea(location, { score: 90 });
+  assert.equal(analysis.kind, "rated");
+  assert.equal(analysis.score, location.risk.percentage);
+  assert.equal(analysis.source?.id, location.id);
+  assert.ok(analysis.factors.every((factor) => factor.source === "location"));
+});
+
+test("uncovered areas with live weather get a weather-only estimate", () => {
+  const analysis = analyzeArea(null, { score: 45 });
+  assert.equal(analysis.kind, "weather-estimate");
+  assert.equal(analysis.score, 45);
+  assert.equal(analysis.riskKey, "mod");
+  assert.deepEqual(analysis.factors.find((factor) => factor.name === "Weather"), { name: "Weather", score: 45, source: "live-weather" });
+});
+
+test("factors without data are null, never zero", () => {
+  const analysis = analyzeArea(null, { score: 5 });
+  for (const factor of analysis.factors.filter((candidate) => candidate.name !== "Weather")) {
+    assert.equal(factor.score, null);
+    assert.equal(factor.source, "none");
+  }
+});
+
+test("areas with neither coverage nor weather stay unrated", () => {
+  const analysis = analyzeArea(null, null);
+  assert.equal(analysis.kind, "unrated");
+  assert.equal(analysis.score, null);
+});
+
+test("riskBand matches the model's band thresholds", () => {
+  assert.equal(riskBand(29).key, "low");
+  assert.equal(riskBand(30).key, "mod");
+  assert.equal(riskBand(60).key, "high");
+  assert.equal(riskBand(80).key, "crit");
+});

@@ -193,6 +193,38 @@ Combined snapshot for the UI: all locations plus source statuses.
 
 `weatherUpdatedAt` is an ISO timestamp when Open-Meteo succeeds, or `null` when disabled or unavailable. `GET /api/dashboard?refresh=true` bypasses the one-minute snapshot cache; the UI uses this for Refresh.
 
+Location weather factors use the same rainfall-aware scoring as `/api/areas/weather` below.
+
+---
+
+## POST /api/areas/weather
+
+Live, rainfall-aware weather for the map's Metro Manila area sample points (one per city, one per Manila district). Readings are cached for ten minutes.
+
+**Request:**
+
+```json
+{ "points": [{ "key": "Quezon City", "latitude": 14.65, "longitude": 121.05 }] }
+```
+
+At most 60 points, each inside Metro Manila (latitude 14.30–14.85, longitude 120.85–121.20); otherwise `400 invalid_points`.
+
+**Response `data`:**
+
+```json
+{
+  "readings": [{
+    "key": "Quezon City", "score": 5, "driver": "sky", "condition": "Partly cloudy",
+    "temperatureCelsius": 27.4, "windGustKph": 15.5,
+    "currentRateMmPerHour": 0, "lastHourMm": 0, "pastThreeHoursMm": 0, "pastDayMm": 1.0, "nextThreeHoursMm": 0,
+    "pagasaLevel": null, "observedAt": "2026-09-30T23:30:00+08:00"
+  }],
+  "source": { /* SourceStatus for open-meteo; readings is empty unless status is "active" */ }
+}
+```
+
+`score` is the highest of: current sky, current rain rate (Open-Meteo's 15-minute value converted to mm/h), wind gusts, the last hour's rain, the last three hours' total (more than 65 mm scores 90, PAGASA's red threshold), and forecast rain in the next three hours. `driver` names which one set it. `pagasaLevel` (`yellow`/`orange`/`red`) says which PAGASA rainfall threshold the *observed* rain meets; it is a model estimate, not an official PAGASA warning. With `SAFEGO_WEATHER_PROVIDER=disabled`, `source.status` is `disabled` and `readings` is empty.
+
 ---
 
 ## POST /api/trips/analyze

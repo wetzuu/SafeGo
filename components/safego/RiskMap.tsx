@@ -5,6 +5,7 @@ import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as Leafle
 import { riskGradient } from "@/lib/safego/risk-model";
 import { distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
 import { fetchAreaWeather, weatherGroupKey, weatherSamplePoints, type AreaWeather } from "@/lib/safego/area-weather";
+import { analyzeArea } from "@/lib/safego/area-analysis";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
@@ -25,6 +26,7 @@ const MAP_LAYERS: MapLayer[] = [
 const APPROXIMATE_COVERAGE_RADIUS_METERS = PILOT.radiusMeters;
 const UNRATED_AREA_COLOR = "#94a3b8";
 const AREA_BORDER_COLOR = "#334155";
+const ESTIMATE_FILL_OPACITY = 0.3;
 
 // Flat colours per 10-point class, taken from the middle of each class on the shared risk gradient.
 function classColor(riskClass: number) {
@@ -113,6 +115,8 @@ export interface RiskMapProps {
   onViewAnnouncements?: () => void;
   /** Fetch live weather for every area; off while SafeGo shows demo conditions. */
   liveWeather?: boolean;
+  /** SafeGo's location factors come from built-in demo data rather than live feeds. */
+  locationDataIsDemo?: boolean;
 }
 
 export function RiskMap({
@@ -126,6 +130,7 @@ export function RiskMap({
   onViewRiskDetails,
   onViewAnnouncements,
   liveWeather = false,
+  locationDataIsDemo = false,
 }: RiskMapProps) {
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -159,6 +164,7 @@ export function RiskMap({
   const areaInfos: AreaInfo[] = useMemo(() => {
     if (!areas) return [];
     const points = locations.map((location) => ({ id: location.id, coordinates: location.coordinates, score: layerScore(location, activeLayer) }));
+    const overallPoints = locations.map((location) => ({ id: location.id, coordinates: location.coordinates, score: location.risk.percentage }));
     const byId = new Map(locations.map((location) => [location.id, location]));
     const weatherLabels = new Map(weatherPoints.map((point) => [point.key, point.label]));
     return areas.features.map(({ geometry, properties }) => {
@@ -167,24 +173,32 @@ export function RiskMap({
       const key = weatherGroupKey(properties);
       const weather = liveAreaWeather?.get(key) ?? null;
       const nearest = nearestPoint(geometry, locations);
-      // Weather is the one factor SafeGo can read everywhere; other layers only rate covered areas.
+      const overallMeasured = activeLayer === "overall" ? measured : scoreArea(geometry, overallPoints, APPROXIMATE_COVERAGE_RADIUS_METERS);
+      const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather);
+      // Weather is the one factor SafeGo can read everywhere. The overall layer shows weather-only
+      // estimates for uncovered areas; the other layers only rate covered areas.
       const displayScore = activeLayer === "Weather" && weather
         ? Math.max(measured?.score ?? 0, weather.score)
-        : measured?.score ?? null;
+        : activeLayer === "overall"
+          ? analysis.score
+          : measured?.score ?? null;
       return {
         properties,
         measured,
         measuredSource,
-        measuredDistanceMeters: measuredSource ? distanceToArea(geometry, measuredSource.coordinates) : null,
+        measuredDistanceMeters: analysis.source ? distanceToArea(geometry, analysis.source.coordinates) : null,
         weather,
         weatherLabel: weatherLabels.get(key) ?? properties.city,
         displayScore,
+        estimated: activeLayer === "overall" && analysis.kind === "weather-estimate",
+        analysis,
         nearest: nearest ? { location: nearest.point, distanceMeters: nearest.distanceMeters } : null,
       };
     });
   }, [activeLayer, areas, liveAreaWeather, locations, weatherPoints]);
   const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
-  const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null).length;
+  const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null && !info.estimated).length;
+  const estimatedAreaCount = areaInfos.filter((info) => info.estimated).length;
 
   const bounds: Array<[number, number]> = useMemo(
     () => trip?.routeCoordinates.length
@@ -361,7 +375,10 @@ export function RiskMap({
           if (!info) return {};
           const fill = info.displayScore === null ? UNRATED_AREA_COLOR : classColor(scoreClass(info.displayScore));
           if (index === selectedAreaIndex) {
-            return { fillColor: fill, fillOpacity: info.displayScore === null ? 0.45 : 0.78, color: "#1a1a1a", weight: 2.6, opacity: 1 };
+            return { fillColor: fill, fillOpacity: info.displayScore === null ? 0.45 : info.estimated ? 0.4 : 0.78, color: "#1a1a1a", weight: 2.6, opacity: 1 };
+          }
+          if (info.estimated) {
+            return { fillColor: fill, fillOpacity: ESTIMATE_FILL_OPACITY, color: AREA_BORDER_COLOR, weight: 0.7, opacity: 0.45, dashArray: "3 3" };
           }
           if (info.displayScore === null) {
             return { fillColor: fill, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
@@ -377,7 +394,9 @@ export function RiskMap({
           const title = level === "district" ? `${name} district, Manila` : `${name}, ${city}`;
           const detail = info.displayScore === null
             ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
-            : info.measured && info.measuredSource && info.measured.score >= info.displayScore
+            : info.estimated
+              ? `Weather-only estimate: ${info.displayScore}/100. Flood, roads and announcements not checked.`
+              : info.measured && info.measuredSource && info.measured.score >= info.displayScore
               ? `${activeLayerLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
               : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (live model for ${info.weatherLabel}).`;
           layer.bindTooltip(makeTooltip(title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
@@ -537,6 +556,7 @@ export function RiskMap({
                 layerLabel={activeLayerLabel}
                 weatherStatus={weatherStatus}
                 coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
+                locationDataIsDemo={locationDataIsDemo}
                 onClose={() => setAreaSelection(null)}
                 onOpenLocation={onSelectLocation && ((location) => {
                   setAreaSelection(null);
@@ -692,6 +712,12 @@ export function RiskMap({
           <span className="h-3 w-6 border border-hairline" style={{ background: UNRATED_AREA_COLOR, opacity: 0.45 }} />
           Not rated: no SafeGo data nearby (not safe)
         </div>
+        {activeLayer === "overall" && estimatedAreaCount > 0 && (
+          <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
+            <span className="h-3 w-6 border border-dashed border-ink-soft/60" style={{ background: classColor(0), opacity: ESTIMATE_FILL_OPACITY + 0.2 }} />
+            Pale, dashed: weather-only estimate (partial)
+          </div>
+        )}
         {hasUnratedSections && (
           <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
             <span className="w-6 border-t-[3px] border-dashed" style={{ borderColor: UNKNOWN_ROUTE_COLOR }} />
@@ -701,7 +727,11 @@ export function RiskMap({
         {areaInfos.length > 0 && (
           <p className="mt-1.5 text-[10px] leading-snug text-ink">
             <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
-            {activeLayer === "Weather" && liveAreaWeather ? " (live weather covers every area)." : "."}
+            {activeLayer === "Weather" && liveAreaWeather
+              ? " (live weather covers every area)."
+              : estimatedAreaCount > 0
+                ? <>; <strong>{estimatedAreaCount}</strong> more have a weather-only estimate.</>
+                : "."}
           </p>
         )}
         <p className="mt-1 text-[10px] leading-snug text-ink-soft">

@@ -377,6 +377,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
               liveWeather={!apiUnavailable && sources.some((source) => source.key === "open-meteo" && source.status === "active")}
+              locationDataIsDemo={dataBackend === "mock"}
             />
           ) : (
             <div className="main-col h-screen overflow-y-auto" ref={detailScrollRef}>

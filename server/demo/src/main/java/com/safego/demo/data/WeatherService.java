@@ -12,7 +12,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -24,6 +24,17 @@ public class WeatherService {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
     private static final String WEATHER_FIELDS =
         "temperature_2m,relative_humidity_2m,precipitation,rain,showers,weather_code,wind_speed_10m,wind_gusts_10m";
+    // Rain over the past day and the next three hours, so scoring can see accumulation and what's coming.
+    private static final String HOURLY_RAIN = "&hourly=precipitation&past_hours=24&forecast_hours=4";
+
+    /** Weather at one point: the rainfall-aware assessment plus the raw readings shown to people. */
+    public record Reading(
+        RainfallScoring.Assessment assessment,
+        double temperatureCelsius,
+        double windSpeedKph,
+        double windGustKph,
+        String observedAt
+    ) {}
 
     private final ObjectMapper mapper;
 
@@ -35,43 +46,59 @@ public class WeatherService {
         this.mapper = mapper;
     }
 
-    public List<SafeGoLocation> fetchAndApplyWeather(List<SafeGoLocation> locations) throws Exception {
-        if (locations.isEmpty()) return locations;
+    /** Rainfall-aware readings for each coordinate ([latitude, longitude]), in the same order. */
+    public List<Reading> fetchReadings(List<double[]> coordinates) throws Exception {
+        if (coordinates.isEmpty()) return List.of();
 
-        String latitudes = String.join(",", locations.stream().map(l -> String.valueOf(l.coordinates()[0])).toList());
-        String longitudes = String.join(",", locations.stream().map(l -> String.valueOf(l.coordinates()[1])).toList());
+        String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
+        String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
         String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
-            + "&current=" + URLEncoder.encode(WEATHER_FIELDS, StandardCharsets.UTF_8) + "&timezone=Asia%2FManila";
+            + "&current=" + URLEncoder.encode(WEATHER_FIELDS, StandardCharsets.UTF_8) + HOURLY_RAIN + "&timezone=Asia%2FManila";
 
         JsonNode payload = request(url);
         List<JsonNode> observations = new ArrayList<>();
         if (payload.isArray()) payload.forEach(observations::add);
         else observations.add(payload);
 
-        if (observations.size() != locations.size()) {
+        if (observations.size() != coordinates.size()) {
             throw new IllegalStateException("Open-Meteo returned an unexpected number of locations.");
         }
 
-        List<SafeGoLocation> result = new ArrayList<>();
-        for (int index = 0; index < locations.size(); index++) {
-            JsonNode current = observations.get(index).path("current");
-            for (String field : List.of("weather_code", "temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m", "wind_gusts_10m")) {
+        List<Reading> readings = new ArrayList<>();
+        for (JsonNode observation : observations) {
+            JsonNode current = observation.path("current");
+            for (String field : List.of("weather_code", "temperature_2m", "precipitation", "wind_speed_10m", "wind_gusts_10m")) {
                 if (!current.path(field).isNumber()) {
                     throw new IllegalStateException("Open-Meteo response is missing current weather fields.");
                 }
             }
+            String time = current.path("time").asText();
+            readings.add(new Reading(
+                RainfallScoring.assess(current, observation.path("hourly")),
+                current.path("temperature_2m").asDouble(),
+                current.path("wind_speed_10m").asDouble(),
+                current.path("wind_gusts_10m").asDouble(),
+                time.length() == 16 ? time + ":00+08:00" : time + "+08:00"
+            ));
+        }
+        return readings;
+    }
 
-            int code = current.path("weather_code").asInt();
-            double rain = current.path("precipitation").asDouble();
-            double gust = current.path("wind_gusts_10m").asDouble();
-            double wind = current.path("wind_speed_10m").asDouble();
-            double temp = current.path("temperature_2m").asDouble();
+    public List<SafeGoLocation> fetchAndApplyWeather(List<SafeGoLocation> locations) throws Exception {
+        if (locations.isEmpty()) return locations;
 
-            String condition = weatherLabel(code);
-            int score = scoreWeather(code, rain, gust);
-            String description = String.format(Locale.ENGLISH,
-                "%s, %.1f mm precipitation, winds %d km/h with gusts to %d km/h. Weather estimate from Open-Meteo.",
-                condition, rain, Math.round(wind), Math.round(gust));
+        List<Reading> readings = fetchReadings(locations.stream().map(SafeGoLocation::coordinates).toList());
+
+        List<SafeGoLocation> result = new ArrayList<>();
+        for (int index = 0; index < locations.size(); index++) {
+            Reading reading = readings.get(index);
+            RainfallScoring.Assessment assessment = reading.assessment();
+            double gust = reading.windGustKph();
+            double temp = reading.temperatureCelsius();
+
+            String condition = assessment.condition();
+            int score = assessment.score();
+            String description = RainfallScoring.describe(assessment, reading.windSpeedKph(), gust);
 
             SafeGoLocation location = locations.get(index);
             RiskFactor factor = new RiskFactor(
@@ -80,12 +107,11 @@ public class WeatherService {
 
             List<Stat> stats = location.stats().stream().map(s -> s.label().equals("Weather")
                 ? new Stat(s.label(), condition + ", " + Math.round(temp) + "°C",
-                    String.format(Locale.ENGLISH, "%.1f mm · gusts %d km/h", rain, Math.round(gust)), s.icon(), s.tone())
+                    String.format(Locale.ENGLISH, "%.1f mm last 3 h · gusts %d km/h", assessment.pastThreeHoursMm(), Math.round(gust)), s.icon(), s.tone())
                 : s).toList();
 
             String summary = "The latest weather estimate is included in this result. Other factors use the most recent information available to SafeGo.";
-            String observed = current.path("time").asText();
-            String updated = TIME.format(LocalDateTime.parse(observed).atZone(MANILA));
+            String updated = TIME.format(OffsetDateTime.parse(reading.observedAt()).atZoneSameInstant(MANILA));
 
             result.add(copy(location, updated, summary, stats, replace(location.factors(), factor)));
         }
@@ -127,15 +153,15 @@ public class WeatherService {
         return "Unknown conditions";
     }
 
-    private static int rainScore(double value) {
+    static int rainScore(double value) {
         return value >= 15 ? 90 : value >= 7.5 ? 70 : value >= 2.5 ? 45 : value >= .5 ? 25 : value >= .1 ? 10 : 0;
     }
 
-    private static int gustScore(double value) {
+    static int gustScore(double value) {
         return value >= 100 ? 95 : value >= 75 ? 75 : value >= 50 ? 55 : value >= 35 ? 35 : value >= 20 ? 15 : 0;
     }
 
-    private static int codeScore(int code) {
+    static int codeScore(int code) {
         if (code == 96 || code == 99) return 95;
         if (code == 95) return 80;
         if (List.of(65, 67, 82).contains(code)) return 70;

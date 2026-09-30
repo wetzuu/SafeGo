@@ -1,20 +1,25 @@
 import { riskGradient } from "@/lib/safego/risk-model";
+import type { AreaAnalysis } from "@/lib/safego/area-analysis";
 import type { AreaProperties, AreaScore } from "@/lib/safego/area-scoring";
 import type { AreaWeather } from "@/lib/safego/area-weather";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
-import { riskLevelLabel, shortPlaceName } from "./labels";
+import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
 
 export interface AreaInfo {
   properties: AreaProperties;
   /** Score from SafeGo locations within the coverage radius, for the active layer. */
   measured: AreaScore | null;
   measuredSource: SafeGoLocation | null;
+  /** Distance to the location behind the area's overall analysis, when it has one. */
   measuredDistanceMeters: number | null;
   weather: AreaWeather | null;
   weatherLabel: string;
   /** What the map paints for the active layer; null means not rated. */
   displayScore: number | null;
+  /** The painted score is a weather-only estimate rather than a SafeGo rating. */
+  estimated: boolean;
+  analysis: AreaAnalysis;
   nearest: { location: SafeGoLocation; distanceMeters: number } | null;
 }
 
@@ -26,11 +31,32 @@ function formatTime(iso: string) {
   return new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(iso));
 }
 
+const SCORE_DRIVERS: Record<AreaWeather["driver"], string> = {
+  sky: "current sky conditions",
+  "current-rain": "rain falling now",
+  wind: "wind gusts",
+  "past-hour": "rain in the last hour",
+  "three-hour-total": "rain over the last 3 hours",
+  forecast: "rain forecast in the next 3 hours",
+};
+
+const PAGASA_STYLES: Record<NonNullable<AreaWeather["pagasaLevel"]>, string> = {
+  yellow: "bg-mod-soft text-mod",
+  orange: "bg-high-soft text-high",
+  red: "bg-crit-soft text-crit",
+};
+
+/** A day's rain beyond this often leaves low-lying Metro Manila streets flooded after it stops. */
+const HEAVY_DAY_RAIN_MM = 50;
+
+const SECTION_LABEL ="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-0.5";
+
 export function AreaDetails({
   info,
   layerLabel,
   weatherStatus,
   coverageRadiusMeters,
+  locationDataIsDemo,
   onClose,
   onOpenLocation,
 }: {
@@ -38,12 +64,12 @@ export function AreaDetails({
   layerLabel: string;
   weatherStatus: "live" | "loading" | "unavailable" | "off";
   coverageRadiusMeters: number;
+  locationDataIsDemo: boolean;
   onClose: () => void;
   onOpenLocation?: (location: SafeGoLocation) => void;
 }) {
-  const { properties, measured, measuredSource, measuredDistanceMeters, weather, nearest, displayScore } = info;
-  const linkedLocation = measuredSource ?? nearest?.location ?? null;
-  const overall = measuredSource?.risk;
+  const { properties, analysis, measuredDistanceMeters, weather, nearest, displayScore, estimated } = info;
+  const linkedLocation = analysis.source ?? nearest?.location ?? null;
 
   return (
     <>
@@ -53,11 +79,13 @@ export function AreaDetails({
             {properties.level === "district" ? "District · City of Manila" : `Barangay · ${properties.city}`}
           </div>
           <h3 className="text-base font-bold text-ink truncate mt-0.5">{properties.name}</h3>
-          <div className="text-xs text-ink-soft mt-0.5">{layerLabel} {displayScore === null ? "not rated" : "score"}</div>
+          <div className="text-xs text-ink-soft mt-0.5">
+            {layerLabel} {displayScore === null ? "not rated" : estimated ? "estimate (weather only)" : "score"}
+          </div>
         </div>
         <div className="flex items-start gap-2 shrink-0">
           <div
-            className="size-11 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-sm"
+            className={`size-11 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-sm${estimated ? " opacity-70 ring-2 ring-offset-1 ring-ink-soft/30" : ""}`}
             style={{ backgroundColor: displayScore === null ? UNKNOWN_ROUTE_COLOR : riskGradient(displayScore) }}
           >
             {displayScore ?? "–"}
@@ -70,36 +98,81 @@ export function AreaDetails({
 
       <dl className="space-y-2.5 text-xs">
         <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-0.5">SafeGo coverage</dt>
+          <dt className={SECTION_LABEL}>Analysis</dt>
           <dd className="text-ink">
-            {measured && measuredSource ? (
-              <>Rated from <strong>{shortPlaceName(measuredSource.name)}</strong>
+            {analysis.kind === "rated" && analysis.source ? (
+              <>Full SafeGo rating from <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? `, ${formatDistance(measuredDistanceMeters)} from this area` : ", inside this area"}.</>
-            ) : nearest ? (
-              <>Not rated. The nearest SafeGo location is <strong>{shortPlaceName(nearest.location.name)}</strong>, {formatDistance(nearest.distanceMeters)} away; areas are rated within {formatDistance(coverageRadiusMeters)}. Not rated does not mean safe.</>
+            ) : analysis.kind === "weather-estimate" ? (
+              <>Weather-only estimate. No SafeGo location is within {formatDistance(coverageRadiusMeters)}
+                {nearest ? ` (nearest: ${shortPlaceName(nearest.location.name)}, ${formatDistance(nearest.distanceMeters)})` : ""},
+                so flooding, road conditions and announcements are not checked here.</>
             ) : (
-              <>Not rated: SafeGo has no locations to compare. Not rated does not mean safe.</>
+              <>Not rated. No SafeGo location is within {formatDistance(coverageRadiusMeters)} and live weather is not available. Not rated does not mean safe.</>
             )}
           </dd>
         </div>
 
-        {overall && (
+        {analysis.score !== null && analysis.riskKey && analysis.riskName && (
           <div className="flex items-center justify-between gap-2 bg-surface rounded-xl p-2.5 border border-hairline">
-            <span className="text-ink-soft font-semibold">Overall travel risk</span>
-            <span className={`pill ${overall.key} text-xs font-bold`}>
-              <span className="dot" />{overall.percentage}/100 · {riskLevelLabel(overall.name)}
+            <span className="text-ink-soft font-semibold">{analysis.kind === "rated" ? "Overall travel risk" : "Estimated risk"}</span>
+            <span className={`pill ${analysis.riskKey} text-xs font-bold${analysis.kind === "weather-estimate" ? " opacity-75" : ""}`}>
+              <span className="dot" />{analysis.score}/100 · {riskLevelLabel(analysis.riskName)}{analysis.kind === "weather-estimate" ? " (partial)" : ""}
             </span>
           </div>
         )}
 
         <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-0.5">Weather now</dt>
+          <dt className={SECTION_LABEL}>Factors</dt>
+          <dd>
+            {analysis.factors.map((factor) => (
+              <div key={factor.name} className="flex items-center justify-between gap-2 py-1 border-b border-hairline/60 last:border-b-0">
+                <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
+                <span className="flex items-center gap-1.5">
+                  {factor.source === "live-weather" && <span className="text-[9px] font-bold uppercase text-low">Live</span>}
+                  {factor.source === "location" && locationDataIsDemo && factor.name !== "Weather" && (
+                    <span className="text-[9px] font-bold uppercase text-mod">Demo</span>
+                  )}
+                  <strong className={`font-mono ${factor.score === null ? "text-ink-soft font-normal" : "text-ink"}`}>
+                    {factor.score ?? "No data"}
+                  </strong>
+                </span>
+              </div>
+            ))}
+          </dd>
+        </div>
+
+        <div>
+          <dt className={SECTION_LABEL}>Weather now</dt>
           <dd className="text-ink">
             {weather ? (
               <>
-                <strong>{weather.condition}</strong> · {Math.round(weather.temperatureCelsius)}°C · {weather.precipitationMillimeters.toFixed(1)} mm rain · gusts {Math.round(weather.windGustKph)} km/h
-                <span className="block text-ink-soft mt-0.5">
-                  Weather score {weather.score}/100. Open-Meteo model for {info.weatherLabel}, {formatTime(weather.observedAt)}.
+                <strong>{weather.condition}</strong> · {Math.round(weather.temperatureCelsius)}°C · gusts {Math.round(weather.windGustKph)} km/h
+                <div className="grid grid-cols-4 gap-1 mt-1.5 text-center">
+                  {[
+                    ["Now", `${weather.currentRateMmPerHour.toFixed(1)}`, "mm/h"],
+                    ["Last 3 h", `${weather.pastThreeHoursMm.toFixed(1)}`, "mm"],
+                    ["Last 24 h", `${weather.pastDayMm.toFixed(1)}`, "mm"],
+                    ["Next 3 h", `${weather.nextThreeHoursMm.toFixed(1)}`, "mm"],
+                  ].map(([label, value, unit]) => (
+                    <div key={label} className="rounded-lg bg-surface border border-hairline py-1">
+                      <div className="text-[9px] uppercase tracking-wide text-ink-soft">{label}</div>
+                      <div className="font-mono font-bold text-ink">{value}<span className="text-[9px] font-normal text-ink-soft"> {unit}</span></div>
+                    </div>
+                  ))}
+                </div>
+                {weather.pagasaLevel && (
+                  <div className={`mt-1.5 rounded-lg px-2 py-1 font-semibold ${PAGASA_STYLES[weather.pagasaLevel]}`}>
+                    Rain meets PAGASA&apos;s {weather.pagasaLevel} rainfall threshold (model estimate, not an official warning).
+                  </div>
+                )}
+                {analysis.kind === "weather-estimate" && weather.pastDayMm >= HEAVY_DAY_RAIN_MM && (
+                  <div className="mt-1.5 rounded-lg px-2 py-1 bg-mod-soft text-mod font-semibold">
+                    Heavy rain in the last 24 h. Streets here may still be flooded; SafeGo has no flood data for this area.
+                  </div>
+                )}
+                <span className="block text-ink-soft mt-1">
+                  Weather score {weather.score}/100, set by {SCORE_DRIVERS[weather.driver]}. Open-Meteo model for {info.weatherLabel}, {formatTime(weather.observedAt)}, via SafeGo.
                 </span>
               </>
             ) : weatherStatus === "loading" ? (
@@ -113,7 +186,7 @@ export function AreaDetails({
         </div>
 
         <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-0.5">Area</dt>
+          <dt className={SECTION_LABEL}>Area</dt>
           <dd className="text-ink">
             {properties.areaKm2.toFixed(2)} km²{properties.level === "barangay" ? ` · ${properties.city}` : ""}
             {properties.psgc && <span className="text-ink-soft font-mono"> · PSGC {properties.psgc}</span>}
@@ -127,7 +200,7 @@ export function AreaDetails({
           className="mt-3 w-full py-2 bg-brand text-white text-xs font-semibold rounded-xl hover:bg-brand-hover transition-colors shadow-sm"
           onClick={() => onOpenLocation(linkedLocation)}
         >
-          {measuredSource ? "Open" : "Go to nearest:"} {shortPlaceName(linkedLocation.name)}
+          {analysis.source ? "Open" : "Go to nearest:"} {shortPlaceName(linkedLocation.name)}
         </button>
       )}
     </>

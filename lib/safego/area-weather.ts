@@ -1,15 +1,22 @@
-import { scoreWeatherConditions, weatherCodeLabel } from "../providers/weather-scoring.ts";
 import { areaCenter, type AreaCollection, type AreaProperties } from "./area-scoring.ts";
 
-const OPEN_METEO_ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 const CACHE_MS = 10 * 60 * 1000;
 
+/** One reading from SafeGo's /api/areas/weather, scored by the backend from Open-Meteo data. */
 export interface AreaWeather {
   score: number;
+  /** What set the score: sky, current-rain, wind, past-hour, three-hour-total or forecast. */
+  driver: "sky" | "current-rain" | "wind" | "past-hour" | "three-hour-total" | "forecast";
   condition: string;
   temperatureCelsius: number;
-  precipitationMillimeters: number;
   windGustKph: number;
+  currentRateMmPerHour: number;
+  lastHourMm: number;
+  pastThreeHoursMm: number;
+  pastDayMm: number;
+  nextThreeHoursMm: number;
+  /** The PAGASA rainfall threshold observed rain meets (a model estimate, not an official warning). */
+  pagasaLevel: "yellow" | "orange" | "red" | null;
   observedAt: string;
 }
 
@@ -50,50 +57,31 @@ export function weatherSamplePoints(collection: AreaCollection): WeatherSamplePo
   }));
 }
 
-interface OpenMeteoCurrent {
-  time: string;
-  temperature_2m: number;
-  precipitation: number;
-  weather_code: number;
-  wind_gusts_10m: number;
+interface AreaWeatherEnvelope {
+  data?: { readings: Array<AreaWeather & { key: string }>; source: { status: string; errorMessage: string | null } };
+  error?: { message?: string };
 }
 
 let cached: { expiresAt: number; value: Map<string, AreaWeather> } | null = null;
 
-/** Current modelled weather per sample point, keyed by weatherGroupKey. Cached for ten minutes. */
+/** Live weather per sample point from SafeGo's API, keyed by weatherGroupKey. Cached for ten minutes. */
 export async function fetchAreaWeather(points: WeatherSamplePoint[]): Promise<Map<string, AreaWeather>> {
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const parameters = new URLSearchParams({
-    latitude: points.map((point) => point.coordinates[0].toFixed(4)).join(","),
-    longitude: points.map((point) => point.coordinates[1].toFixed(4)).join(","),
-    current: "temperature_2m,precipitation,weather_code,wind_gusts_10m",
-    timezone: "Asia/Manila",
+  const response = await fetch("/api/areas/weather", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      points: points.map((point) => ({ key: point.key, latitude: point.coordinates[0], longitude: point.coordinates[1] })),
+    }),
+    signal: AbortSignal.timeout(20_000),
   });
-  const response = await fetch(`${OPEN_METEO_ENDPOINT}?${parameters}`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error(`Open-Meteo returned HTTP ${response.status}.`);
-  const payload = (await response.json()) as { current: OpenMeteoCurrent } | Array<{ current: OpenMeteoCurrent }>;
-  const results = Array.isArray(payload) ? payload : [payload];
-  if (results.length !== points.length) throw new Error("Open-Meteo returned an unexpected number of points.");
+  const envelope = (await response.json().catch(() => null)) as AreaWeatherEnvelope | null;
+  if (!response.ok || !envelope?.data) throw new Error(envelope?.error?.message ?? `Area weather returned HTTP ${response.status}.`);
+  if (envelope.data.source.status !== "active") {
+    throw new Error(envelope.data.source.errorMessage ?? `Weather source is ${envelope.data.source.status}.`);
+  }
 
-  const value = new Map<string, AreaWeather>();
-  results.forEach(({ current }, index) => {
-    if (!current || ![current.weather_code, current.temperature_2m, current.precipitation, current.wind_gusts_10m].every(Number.isFinite)) return;
-    value.set(points[index].key, {
-      score: scoreWeatherConditions({
-        weatherCode: current.weather_code,
-        precipitationMillimeters: current.precipitation,
-        windGustKph: current.wind_gusts_10m,
-      }),
-      condition: weatherCodeLabel(current.weather_code),
-      temperatureCelsius: current.temperature_2m,
-      precipitationMillimeters: current.precipitation,
-      windGustKph: current.wind_gusts_10m,
-      observedAt: `${current.time}${current.time.length === 16 ? ":00" : ""}+08:00`,
-    });
-  });
+  const value = new Map(envelope.data.readings.map(({ key, ...reading }) => [key, reading]));
   cached = { expiresAt: Date.now() + CACHE_MS, value };
   return value;
 }

@@ -27,6 +27,12 @@ const RISK_BANDS: Array<{
   { maximum: 100, key: "crit", name: "CRITICAL RISK", rank: "Level 4 of 4" },
 ];
 
+/** The risk band a 0–100 score falls in, e.g. { key: "mod", name: "MODERATE RISK" }. */
+export function riskBand(score: number) {
+  const band = RISK_BANDS.find((candidate) => score <= candidate.maximum) ?? RISK_BANDS[RISK_BANDS.length - 1];
+  return { key: band.key, name: band.name };
+}
+
 function factorScore(factors: RiskFactor[], name: FactorName) {
   return factors.find((factor) => factor.name === name)?.score ?? 0;
 }
