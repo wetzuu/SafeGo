@@ -8,7 +8,23 @@ SafeGo is informational only. It does not declare class suspensions. Follow offi
 
 ## Running
 
-### App (Next.js + Java API)
+### Presenting (one command)
+
+```bash
+npm install
+npm run presentation
+```
+
+Or double-click **`Start SafeGo.cmd`** on Windows. This builds the production web app when needed, starts it with the Java API, waits until both are ready and opens `http://localhost:3000`. Press Ctrl+C in that window to stop.
+
+- `npm run doctor`: checks Node, JDK 21, packages, builds, ports and internet access to the live sources.
+- `npm run stop` (or **`Stop SafeGo.cmd`**): frees ports 3000 and 8080 when an older SafeGo is still running.
+- `npm run presentation:offline`: no live weather or PAGASA alerts, for venues without reliable internet.
+- `npm run presentation:build`: build everything ahead of time.
+
+See [`docs/DEMO_CHECKLIST.md`](docs/DEMO_CHECKLIST.md) for the pre-presentation checklist and a suggested demo flow.
+
+### Developing (Next.js + Java API)
 
 Install Node.js and Java 21. On Windows, start both services from the project root:
 
@@ -37,13 +53,7 @@ fallback checklist. API readiness is available at `GET /api/health`.
 
 For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows stored demo data but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.
 
-For a production-style local demo, verify the build, then keep the API and UI running in separate terminals:
-
-```bash
-npm run check:demo
-```
-
-Run `npm run dev:api` in one terminal and `npm run demo` in another. `npm run demo` builds first and then serves the production build on port 3000.
+Before a presentation, run `npm run check:demo` (lint, types, tests, production build, Java tests and risk validation), then start with `npm run presentation` as described above. `npm run demo` is an alias for `npm run presentation`.
 
 The default `.env.example` configuration uses `SAFEGO_DATA_MODE=mock` for a stable demo. If the variable is omitted, `auto` mode uses PostgreSQL only when `DATABASE_URL` is configured and otherwise falls back to the built-in dataset.
 

@@ -364,6 +364,8 @@ export function RiskMap({
       markerLayerRef.current = null;
       areaRendererRef.current = null;
     };
+    // Create the Leaflet map once; later bound changes are handled by the fit effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Smoothly zoom/pan to route bounds whenever trip or previewRoute or selectedLocation changes

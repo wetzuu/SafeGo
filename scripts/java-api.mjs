@@ -69,6 +69,11 @@ if (!javaHome) {
   process.exit(1);
 }
 const java = join(javaHome, "bin", javaName);
+// Used by npm run doctor: report the JDK that would be used, without building or starting anything.
+if (process.argv.includes("--check")) {
+  console.log(javaHome);
+  process.exit(0);
+}
 const childEnv = { ...process.env, JAVA_HOME: javaHome };
 console.log(`Starting SafeGo Java API with JDK 21: ${javaHome}`);
 const command = windows ? "cmd.exe" : "./gradlew";

@@ -3,58 +3,74 @@
 Use this before a presentation or supervised test. It checks that the demo is
 working; it does not validate real-world safety accuracy.
 
+## Quick start (the day of the presentation)
+
+1. Double-click **`Start SafeGo.cmd`** in the project folder, or run
+   `npm run presentation`.
+2. Wait for **`SafeGo is ready: http://localhost:3000`**. The browser opens by itself.
+3. Keep that window open. Press **Ctrl+C** in it (or close it) to stop SafeGo.
+
+If it says a port is in use, double-click **`Stop SafeGo.cmd`** (or run
+`npm run stop`), then start again. `npm run stop` only stops SafeGo's own Node
+and Java processes on ports 3000 and 8080; anything else is reported and left
+alone.
+
+`npm run presentation` runs the **production** build (faster, no developer
+overlay). It rebuilds automatically when the code changed since the last build.
+
 ## The day before
 
-1. Install Node.js 24 and JDK 21.
-2. From the project root, run `npm install`.
-3. Run `npm run check:demo` while internet access is available.
-4. Run `npm run dev` once so Gradle and Java dependencies are cached.
-5. Open `http://localhost:3000` and confirm `/api/health` returns `ready`.
-6. Load the built-in example trip and confirm the overview, map, factors,
-   announcements, conditions and nearby-university sections open.
-7. Confirm the map legend distinguishes Low, Moderate, High, Critical and
-   Unknown. Unknown sections must remain gray and dashed.
-8. Check the layout at a desktop width and a narrow phone width.
+1. Install Node.js 24 and JDK 21, then run `npm install` in the project folder.
+2. Run `npm run check:demo` while online: lint, types, tests, production build,
+   Java tests and risk validation must all pass.
+3. Run `npm run presentation:build` so the first start on the day is quick.
+4. Run `npm run doctor`. Every line should be `OK`; `FIX` lines say what to do.
+   `WARN` lines mean a live source is unreachable on this network.
+5. Start SafeGo once (step 1 above) and walk through the suggested flow below.
+6. Check the layout at a desktop width and a narrow phone width.
 
 ## Immediately before presenting
 
-1. Close older SafeGo terminals so ports 3000 and 8080 are free.
-2. Run `npm run dev` and wait for `SafeGo is ready`.
-3. Refresh the dashboard and note whether weather is current or stored.
-4. Use the saved example trips first: España–Lerma, España–Quiapo and
-   Quiapo–Lerma (either direction). These work without internet routing. Do not
-   depend on arbitrary searches for the core presentation.
-5. Open one confirmed university announcement link before the presentation.
-6. Keep official government and school sources available in separate tabs.
+1. Run `npm run doctor` on the venue network.
+2. Start SafeGo (quick start above) and note whether the sidebar says
+   **Live weather**. Live data comes from Open-Meteo and PAGASA; flood/road,
+   community and university values are demo data and are shown as
+   "Demo · not counted".
+3. Use the saved example trips first: España–Lerma, España–Quiapo and
+   Quiapo–Lerma (either direction). These work without internet routing.
+4. Keep official government and school sources open in separate tabs.
 
 ## Offline fallback
 
-Run `npm run dev:offline`. This disables live weather and forces mock data while
-keeping the saved example routes available. The Gradle and npm dependencies must
-already have been installed. Arbitrary locations still require public geocoding
-and routing, so demonstrate the saved example trips.
+If the venue internet is unreliable, run
+`npm run presentation:offline`. Live weather and PAGASA alerts are turned off,
+every rating shows as **not rated** (SafeGo never presents demo data as live),
+and the saved example trips still work. Map tiles and arbitrary place searches
+need internet. Build beforehand (`npm run presentation:build`) so no downloads
+are needed.
 
 ## Suggested five-minute flow
 
-1. Search or choose a supported area.
-2. Explain the current/stored data banner and overall risk summary.
-3. Open the map and switch one or two layers.
-4. Open nearby-university status and a confirmed post, when available.
-5. Add a destination or load the example trip.
-6. Point out colored covered sections and gray unknown sections.
-7. Optional: on Reports, submit a sample observation and show that it appears as
-   UNVERIFIED and does not change the score. This needs
-   `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`
-   in `.env.local`. No real moderation queue exists yet, so keep this local.
-8. End with the source explanation and SafeGo's official-announcement warning.
+1. Point out the sidebar data status: what is live and what is demo.
+2. On the map, click a barangay: its analysis, live weather, rain in the last
+   3 and 24 hours, and PAGASA alerts. Explain "partial" and "Demo · not counted".
+3. Switch layers: Weather covers every area live; Announcements shows PAGASA
+   alerts for every area.
+4. Drag the **time slider** at the bottom back a few days (or press play) to
+   show how weather, alerts and risk changed. Use **Back to live** to return.
+5. Load the example trip, or plan a trip between two places in Metro Manila.
+   Point out solid sections (near SafeGo locations), lighter dashed sections
+   (area estimates) and gray sections (not enough data).
+6. Open "Why this result" to show the factor breakdown.
+7. End with SafeGo's reminder that it does not replace official announcements.
 
 ## If something fails
 
-- Port warning: close the old SafeGo process, then restart.
-- Java warning: select JDK 21 with `JAVA_HOME` or `SAFEGO_JAVA_HOME`.
-- Weather unavailable: continue only after the UI says it is showing stored
-  conditions; do not call the snapshot live.
-- Map tiles unavailable: explain the connection issue and use the dashboard
-  values, but do not imply the blank map proves a route is safe.
-- Arbitrary route failure: return to the built-in example rather than inventing
-  a route or score.
+- **Port in use:** `Stop SafeGo.cmd` / `npm run stop`, then start again.
+- **Java error:** install JDK 21 and set `JAVA_HOME` (or `SAFEGO_JAVA_HOME`).
+  `npm run doctor` shows which JDK is found.
+- **Weather unavailable:** the sidebar says so; do not call stored values live.
+  Switch to `npm run presentation:offline` if the internet is down.
+- **Map tiles missing:** a connection problem; area shading and scores still work.
+- **Trip search fails:** use a saved example trip rather than inventing a route.
+- **Anything else:** stop, run `npm run doctor`, and restart.
