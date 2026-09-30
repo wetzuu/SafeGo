@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Polygon } from "geojson";
-import { areaContains, distanceMeters, scoreArea, scoreClass } from "../lib/safego/area-scoring.ts";
+import { areaContains, distanceMeters, distanceToArea, nearestPoint, scoreArea, scoreClass } from "../lib/safego/area-scoring.ts";
 
 // A square of roughly 1.1 km around Quiapo, as [longitude, latitude] positions.
 const square: Polygon = {
@@ -46,4 +46,26 @@ test("scoreClass buckets scores into ten 10-point classes", () => {
   assert.equal(scoreClass(29), 2);
   assert.equal(scoreClass(60), 6);
   assert.equal(scoreClass(100), 9);
+});
+
+test("distanceToArea measures to the nearest edge, not the centre", () => {
+  assert.equal(distanceToArea(square, [14.595, 120.985]), 0);
+  // About 0.005° (≈ 555 m) north of the top edge, but ≈ 1.1 km from the centre.
+  const north = distanceToArea(square, [14.605, 120.985]);
+  assert.ok(north > 500 && north < 610, `expected ≈555 m, got ${north}`);
+});
+
+test("scoreArea covers large areas whose edge, not centre, is within the radius", () => {
+  const nearEdge: [number, number] = [14.605, 120.985];
+  assert.ok(distanceMeters([14.595, 120.985], nearEdge) > 850);
+  assert.equal(scoreArea(square, [{ id: "edge", coordinates: nearEdge, score: 62 }], 850)?.score, 62);
+});
+
+test("nearestPoint reports the closest point and its distance", () => {
+  const nearest = nearestPoint(square, [
+    { id: "far", coordinates: [14.70, 121.10] as [number, number] },
+    { id: "close", coordinates: [14.605, 120.985] as [number, number] },
+  ]);
+  assert.equal(nearest?.point.id, "close");
+  assert.ok((nearest?.distanceMeters ?? Infinity) < 610);
 });

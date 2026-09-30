@@ -18,7 +18,7 @@ const NCR_DISTRICTS = ["1303900000", "1307400000", "1307500000", "1307600000"];
 const MANILA_PSGC = 1380600000;
 const MANILA_DISTRICTS = [
   "Binondo", "Ermita", "Intramuros", "Malate", "Paco", "Pandacan", "Port Area",
-  "Quiapo", "Sampaloc", "San Andres", "San Miguel", "San Nicolas", "Santa Ana", "Santa Cruz", "Tondo",
+  "Quiapo", "Sampaloc", "San Andres", "San Miguel", "San Nicolas", "Santa Ana", "Santa Cruz", "Santa Mesa", "Tondo",
 ];
 
 async function getJson(url) {
@@ -28,6 +28,23 @@ async function getJson(url) {
 }
 
 const round = (value) => Math.round(value * 1e5) / 1e5;
+
+// Planar shoelace area on a local equirectangular projection; accurate enough for city districts.
+function areaKm2(geometry) {
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const ringArea = (ring) => {
+    const latitude = ring[0][1] * Math.PI / 180;
+    const kmPerDegree = 111.32;
+    let sum = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [x1, y1] = ring[j];
+      const [x2, y2] = ring[i];
+      sum += (x1 * Math.cos(latitude) * kmPerDegree) * (y2 * kmPerDegree) - (x2 * Math.cos(latitude) * kmPerDegree) * (y1 * kmPerDegree);
+    }
+    return Math.abs(sum) / 2;
+  };
+  return polygons.reduce((total, [outer, ...holes]) => total + ringArea(outer) - holes.reduce((sum, hole) => sum + ringArea(hole), 0), 0);
+}
 
 function roundGeometry(geometry) {
   if (!geometry) return null;
@@ -51,7 +68,14 @@ async function psaBarangays() {
     for (const feature of barangays.features ?? []) {
       const geometry = roundGeometry(feature.geometry);
       if (!geometry) continue;
-      areas.push({ name: feature.properties.adm4_en, city: cityNames.get(psgc), level: "barangay", geometry });
+      areas.push({
+        name: feature.properties.adm4_en,
+        city: cityNames.get(psgc),
+        level: "barangay",
+        psgc: String(feature.properties.adm4_psgc),
+        areaKm2: Math.round(areaKm2(geometry) * 100) / 100,
+        geometry,
+      });
     }
     console.log(`${cityNames.get(psgc)}: ${barangays.features?.length ?? 0} barangays`);
   }
@@ -73,14 +97,14 @@ async function manilaDistricts() {
     });
     const results = await getJson(`https://nominatim.openstreetmap.org/search?${query}`);
     const match = results.find((result) =>
-      result.category === "boundary" && result.type === "administrative" && / Manila,/.test(result.display_name));
+      result.category === "boundary" && result.type === "administrative" && /, Manila, Capital District,/.test(result.display_name));
     const geometry = match && roundGeometry(match.geojson);
     if (!geometry) {
       console.warn(`Manila district not found: ${district}`);
       continue;
     }
-    areas.push({ name: district, city: "City of Manila", level: "district", geometry });
-    console.log(`Manila: ${district}`);
+    areas.push({ name: district, city: "City of Manila", level: "district", psgc: null, areaKm2: Math.round(areaKm2(geometry) * 100) / 100, geometry });
+    console.log(`Manila: ${district} <- ${match.display_name}`);
   }
   return areas;
 }

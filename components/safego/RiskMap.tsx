@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
-import { scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
+import { distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
+import { fetchAreaWeather, weatherGroupKey, weatherSamplePoints, type AreaWeather } from "@/lib/safego/area-weather";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { TripDataNotice } from "./TripCoverage";
+import { AreaDetails, type AreaInfo } from "./AreaDetails";
 import { Icon } from "./Icon";
 import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
 
@@ -109,6 +111,8 @@ export interface RiskMapProps {
   onViewDashboard?: () => void;
   onViewRiskDetails?: () => void;
   onViewAnnouncements?: () => void;
+  /** Fetch live weather for every area; off while SafeGo shows demo conditions. */
+  liveWeather?: boolean;
 }
 
 export function RiskMap({
@@ -121,6 +125,7 @@ export function RiskMap({
   onViewDashboard,
   onViewRiskDetails,
   onViewAnnouncements,
+  liveWeather = false,
 }: RiskMapProps) {
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -141,6 +146,46 @@ export function RiskMap({
   ).length ?? 0;
   const unverifiedCount = (effectiveSelected?.reports.length ?? 0) - verifiedCount;
   const advisories = trip ? trip.advisories : (effectiveSelected?.advisories ?? []);
+  const [areaWeather, setAreaWeather] = useState<Map<string, AreaWeather> | null>(null);
+  const [weatherFailed, setWeatherFailed] = useState(false);
+  // An area selection belongs to the trip and location it was made in; picking something else clears it.
+  const [areaSelection, setAreaSelection] = useState<{ index: number; context: string } | null>(null);
+  const selectionContext = `${trip?.generatedAt ?? "area"}:${effectiveSelected?.id ?? ""}`;
+  const selectedAreaIndex = areaSelection?.context === selectionContext ? areaSelection.index : null;
+  const liveAreaWeather = liveWeather ? areaWeather : null;
+  const weatherStatus = !liveWeather ? "off" : liveAreaWeather ? "live" : weatherFailed ? "unavailable" : "loading";
+  const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
+
+  const areaInfos: AreaInfo[] = useMemo(() => {
+    if (!areas) return [];
+    const points = locations.map((location) => ({ id: location.id, coordinates: location.coordinates, score: layerScore(location, activeLayer) }));
+    const byId = new Map(locations.map((location) => [location.id, location]));
+    const weatherLabels = new Map(weatherPoints.map((point) => [point.key, point.label]));
+    return areas.features.map(({ geometry, properties }) => {
+      const measured = scoreArea(geometry, points, APPROXIMATE_COVERAGE_RADIUS_METERS);
+      const measuredSource = measured ? byId.get(measured.sourceId) ?? null : null;
+      const key = weatherGroupKey(properties);
+      const weather = liveAreaWeather?.get(key) ?? null;
+      const nearest = nearestPoint(geometry, locations);
+      // Weather is the one factor SafeGo can read everywhere; other layers only rate covered areas.
+      const displayScore = activeLayer === "Weather" && weather
+        ? Math.max(measured?.score ?? 0, weather.score)
+        : measured?.score ?? null;
+      return {
+        properties,
+        measured,
+        measuredSource,
+        measuredDistanceMeters: measuredSource ? distanceToArea(geometry, measuredSource.coordinates) : null,
+        weather,
+        weatherLabel: weatherLabels.get(key) ?? properties.city,
+        displayScore,
+        nearest: nearest ? { location: nearest.point, distanceMeters: nearest.distanceMeters } : null,
+      };
+    });
+  }, [activeLayer, areas, liveAreaWeather, locations, weatherPoints]);
+  const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
+  const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null).length;
+
   const bounds: Array<[number, number]> = useMemo(
     () => trip?.routeCoordinates.length
       ? trip.routeCoordinates
@@ -275,47 +320,70 @@ export function RiskMap({
   }, [activeLayer, activeLayerLabel, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
 
   useEffect(() => {
+    if (!liveWeather || !weatherPoints.length) return;
+    let cancelled = false;
+    const load = () => fetchAreaWeather(weatherPoints)
+      .then((value) => {
+        if (cancelled) return;
+        setAreaWeather(value);
+        setWeatherFailed(false);
+      })
+      .catch(() => {
+        if (!cancelled) setWeatherFailed(true);
+      });
+    void load();
+    const timer = window.setInterval(() => void load(), 10 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [liveWeather, weatherPoints]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !areas || !areaRendererRef.current) return;
     let cancelled = false;
     let areaLayer: GeoJSONLayer | null = null;
     const renderer = areaRendererRef.current;
+    const indexByFeature = new Map<object, number>(areas.features.map((feature, index) => [feature, index]));
 
     async function renderAreas() {
       const L = await import("leaflet");
       if (cancelled || !map) return;
-      const points = locations.map((location) => ({
-        id: location.id,
-        coordinates: location.coordinates,
-        score: layerScore(location, activeLayer),
-      }));
-      const byId = new Map(locations.map((location) => [location.id, location]));
 
       // Leaflet hands these options to each polygon, which accepts a renderer; the typings omit it.
       const options: GeoJSONOptions & { renderer: Renderer } = {
         renderer,
         attribution: "Areas: PSA/NAMRIA 2023; Manila districts © OpenStreetMap",
         style: (feature) => {
-          const area = feature && scoreArea(feature.geometry as AreaCollection["features"][number]["geometry"], points, APPROXIMATE_COVERAGE_RADIUS_METERS);
-          const selected = area?.sourceId === effectiveSelected?.id;
-          return area
-            ? { fillColor: classColor(scoreClass(area.score)), fillOpacity: 0.68, color: selected ? "#1a1a1a" : AREA_BORDER_COLOR, weight: selected ? 1.8 : 0.7, opacity: selected ? 0.9 : 0.55 }
-            : { fillColor: UNRATED_AREA_COLOR, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
+          const index = feature ? indexByFeature.get(feature) : undefined;
+          const info = index === undefined ? undefined : areaInfos[index];
+          if (!info) return {};
+          const fill = info.displayScore === null ? UNRATED_AREA_COLOR : classColor(scoreClass(info.displayScore));
+          if (index === selectedAreaIndex) {
+            return { fillColor: fill, fillOpacity: info.displayScore === null ? 0.45 : 0.78, color: "#1a1a1a", weight: 2.6, opacity: 1 };
+          }
+          if (info.displayScore === null) {
+            return { fillColor: fill, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
+          }
+          const fromSelected = selectedAreaIndex === null && info.measured?.sourceId === effectiveSelected?.id;
+          return { fillColor: fill, fillOpacity: 0.68, color: fromSelected ? "#1a1a1a" : AREA_BORDER_COLOR, weight: fromSelected ? 1.8 : 0.7, opacity: fromSelected ? 0.9 : 0.55 };
         },
         onEachFeature: (feature, layer) => {
-          const { name, city, level } = feature.properties as AreaCollection["features"][number]["properties"];
-          const area = scoreArea(feature.geometry as AreaCollection["features"][number]["geometry"], points, APPROXIMATE_COVERAGE_RADIUS_METERS);
-          const source = area ? byId.get(area.sourceId) : undefined;
+          const index = indexByFeature.get(feature);
+          const info = index === undefined ? undefined : areaInfos[index];
+          if (!info || index === undefined) return;
+          const { name, city, level } = info.properties;
           const title = level === "district" ? `${name} district, Manila` : `${name}, ${city}`;
-          layer.bindTooltip(
-            makeTooltip(title, area && source
-              ? `${activeLayerLabel}: ${area.score}/100, from ${shortPlaceName(source.name)}.`
-              : "No SafeGo data nearby. Not rated, which does not mean safe."),
-            { sticky: true, direction: "top", opacity: 0.96 },
-          );
+          const detail = info.displayScore === null
+            ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
+            : info.measured && info.measuredSource && info.measured.score >= info.displayScore
+              ? `${activeLayerLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
+              : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (live model for ${info.weatherLabel}).`;
+          layer.bindTooltip(makeTooltip(title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
           layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
           layer.on("mouseout", () => areaLayer?.resetStyle(layer));
-          if (source && onSelectLocation) layer.on("click", () => onSelectLocation(source));
+          layer.on("click", () => setAreaSelection({ index, context: selectionContext }));
         },
       };
       areaLayer = L.geoJSON(areas, options).addTo(map);
@@ -326,7 +394,7 @@ export function RiskMap({
       cancelled = true;
       if (areaLayer) map.removeLayer(areaLayer);
     };
-  }, [activeLayer, activeLayerLabel, areas, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
+  }, [activeLayerLabel, areaInfos, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -461,8 +529,22 @@ export function RiskMap({
             className="pointer-events-auto mt-auto w-full sm:w-[350px] sm:self-end max-h-[40vh] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-hairline p-4 lg:absolute lg:top-16 lg:right-4 lg:mt-0 lg:max-h-[calc(100%-6rem)]"
             ref={cardRef}
             aria-live="polite"
-            aria-label={trip ? "Route risk" : "Location risk"}
+            aria-label={selectedAreaInfo ? "Area details" : trip ? "Route risk" : "Location risk"}
           >
+            {selectedAreaInfo ? (
+              <AreaDetails
+                info={selectedAreaInfo}
+                layerLabel={activeLayerLabel}
+                weatherStatus={weatherStatus}
+                coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
+                onClose={() => setAreaSelection(null)}
+                onOpenLocation={onSelectLocation && ((location) => {
+                  setAreaSelection(null);
+                  onSelectLocation(location);
+                })}
+              />
+            ) : (
+            <>
             <div className="flex items-start justify-between gap-3 border-b border-hairline pb-3 mb-3">
               <div className="min-w-0">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft truncate">
@@ -557,6 +639,8 @@ export function RiskMap({
                 </button>
               )}
             </div>
+            </>
+            )}
           </aside>
         )}
       </div>
@@ -614,8 +698,20 @@ export function RiskMap({
             Route section without data (not rated safe)
           </div>
         )}
-        <p className="mt-1.5 text-[10px] leading-snug text-ink-soft">
-          Each barangay (Manila: district) shows the highest score within 850 m. Areas cover Metro Manila.
+        {areaInfos.length > 0 && (
+          <p className="mt-1.5 text-[10px] leading-snug text-ink">
+            <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
+            {activeLayer === "Weather" && liveAreaWeather ? " (live weather covers every area)." : "."}
+          </p>
+        )}
+        <p className="mt-1 text-[10px] leading-snug text-ink-soft">
+          {activeLayer === "Weather"
+            ? weatherStatus === "live"
+              ? "Open-Meteo model weather per city (per district in Manila), plus SafeGo readings where higher."
+              : weatherStatus === "off"
+                ? "Live weather is off while SafeGo shows demo conditions, so only SafeGo locations are rated."
+                : "Live weather is loading or unavailable; only SafeGo locations are rated."
+            : `Areas within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m of a SafeGo location take its highest score. Barangays; districts in Manila. Click an area for details.`}
         </p>
       </div>
     </div>
