@@ -56,3 +56,21 @@ test("no active PAGASA alert is a real zero, not missing data", () => {
   assert.equal(analysis.kind, "partial-estimate");
   assert.equal(analysis.factors.find((factor) => factor.name === "Official advisories")?.score, 0);
 });
+
+test("areas near a partially rated location are partial estimates with demo factors marked", async () => {
+  const { honestLocation } = await import("../lib/safego/honest-risk.ts");
+  const partial = honestLocation(location, new Set(["Weather", "Official advisories"]));
+  const analysis = analyzeArea(partial, { score: 5 }, { score: 0 });
+  assert.equal(analysis.kind, "partial-estimate");
+  assert.equal(analysis.score, Math.max(partial.risk.percentage, 5, 0));
+  assert.equal(analysis.factors.find((factor) => factor.name === "Flood / roads")?.source, "demo");
+  assert.equal(analysis.factors.find((factor) => factor.name === "Weather")?.source, "location");
+});
+
+test("areas near an unrated location fall back to their own live data", async () => {
+  const { honestLocation } = await import("../lib/safego/honest-risk.ts");
+  const analysis = analyzeArea(honestLocation(location, new Set()), { score: 20 });
+  assert.equal(analysis.kind, "partial-estimate");
+  assert.equal(analysis.source, null);
+  assert.equal(analysis.score, 20);
+});

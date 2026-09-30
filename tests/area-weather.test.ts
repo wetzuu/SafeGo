@@ -29,3 +29,9 @@ test("a city's sample point is the average of its areas' centres", () => {
   assert.ok(Math.abs(quezon.coordinates[1] - 121.015) < 0.002);
   assert.ok(Math.abs(quezon.coordinates[0] - 14.604) < 0.002);
 });
+
+test("past day labels read Yesterday, then short dates", async () => {
+  const { pastDayLabel } = await import("../lib/safego/area-weather.ts");
+  assert.equal(pastDayLabel("2026-09-30", 1), "Yesterday");
+  assert.equal(pastDayLabel("2026-09-27", 4), "Sun, Sep 27");
+});

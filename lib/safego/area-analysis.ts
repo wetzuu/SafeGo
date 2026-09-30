@@ -13,7 +13,8 @@ export interface AreaFactorReading {
   name: FactorName;
   /** null means SafeGo has no reading for this area, which is not the same as zero. */
   score: number | null;
-  source: "location" | "live-weather" | "live-alerts" | "none";
+  /** "demo": a placeholder value shown for context but never counted in the score. */
+  source: "location" | "live-weather" | "live-alerts" | "demo" | "none";
 }
 
 export interface AreaAnalysis {
@@ -36,6 +37,19 @@ export function analyzeArea(
   /** Highest active PAGASA alert severity covering the area (0 when none); null when alerts are unavailable. */
   advisory: { score: number } | null = null,
 ): AreaAnalysis {
+  if (source && source.risk.basis === "none") source = null;
+  if (source && source.risk.basis === "partial") {
+    // The nearby location only has live factors counted, so this area is a partial estimate too.
+    const counted = new Set(source.risk.countedFactors ?? []);
+    const factors: AreaFactorReading[] = AREA_FACTORS.map((name) => {
+      const factor = source!.factors.find((candidate) => candidate.name === name);
+      if (!factor) return { name, score: null, source: "none" };
+      return { name, score: factor.score, source: counted.has(name) ? "location" : "demo" };
+    });
+    const score = Math.max(source.risk.percentage, weather?.score ?? 0, advisory?.score ?? 0);
+    const band = riskBand(score);
+    return { kind: "partial-estimate", score, riskKey: band.key, riskName: band.name, source, factors };
+  }
   if (source) {
     return {
       kind: "rated",

@@ -2,7 +2,7 @@ import { riskGradient } from "@/lib/safego/risk-model";
 import type { AreaAnalysis } from "@/lib/safego/area-analysis";
 import type { AreaAdvisory } from "@/lib/safego/area-alerts";
 import type { AreaProperties, AreaScore } from "@/lib/safego/area-scoring";
-import type { AreaWeather } from "@/lib/safego/area-weather";
+import { pastDayLabel, type AreaWeather, type DayWeather } from "@/lib/safego/area-weather";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
@@ -15,6 +15,10 @@ export interface AreaInfo {
   /** Distance to the location behind the area's overall analysis, when it has one. */
   measuredDistanceMeters: number | null;
   weather: AreaWeather | null;
+  /** The last four complete days here, newest first; null until history loads. */
+  history: DayWeather[] | null;
+  /** The past day shown on the map, when a past day is selected. */
+  pastDay: DayWeather | null;
   weatherLabel: string;
   /** What the map paints for the active layer; null means not rated. */
   displayScore: number | null;
@@ -57,18 +61,19 @@ const SECTION_LABEL ="text-[10px] font-bold uppercase tracking-wider text-ink-so
 export function AreaDetails({
   info,
   layerLabel,
+  timeLabel = null,
   weatherStatus,
   coverageRadiusMeters,
-  locationDataIsDemo,
   liveAlerts,
   onClose,
   onOpenLocation,
 }: {
   info: AreaInfo;
   layerLabel: string;
+  /** Set when the map is rewound: the moment being shown, e.g. "Mon, Sep 29, 3:00 PM". */
+  timeLabel?: string | null;
   weatherStatus: "live" | "loading" | "unavailable" | "off";
   coverageRadiusMeters: number;
-  locationDataIsDemo: boolean;
   /** PAGASA alerts are live, so official-advisory factors are real rather than demo data. */
   liveAlerts: boolean;
   onClose: () => void;
@@ -109,6 +114,11 @@ export function AreaDetails({
             {analysis.kind === "rated" && analysis.source ? (
               <>Full SafeGo rating from <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? `, ${formatDistance(measuredDistanceMeters)} from this area` : ", inside this area"}.</>
+            ) : analysis.kind === "partial-estimate" && analysis.source ? (
+              <>Partial estimate: live factors from <strong>{shortPlaceName(analysis.source.name)}</strong>
+                {measuredDistanceMeters ? ` (${formatDistance(measuredDistanceMeters)} away)` : " (inside this area)"}
+                {weather || advisory ? " plus this area's live weather and PAGASA alerts" : ""}. Demo factors are shown below but not counted,
+                so street flooding and road conditions are not checked.</>
             ) : analysis.kind === "partial-estimate" ? (
               <>Partial estimate from live {[weather && "weather", advisory && "PAGASA alerts"].filter(Boolean).join(" and ")}.
                 No SafeGo location is within {formatDistance(coverageRadiusMeters)}
@@ -136,15 +146,14 @@ export function AreaDetails({
               <div key={factor.name} className="flex items-center justify-between gap-2 py-1 border-b border-hairline/60 last:border-b-0">
                 <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
                 <span className="flex items-center gap-1.5">
-                  {factor.source === "live-weather" && <span className="text-[9px] font-bold uppercase text-low">Live</span>}
-                  {(factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts)) && (
+                  {factor.source === "demo" ? (
+                    <span className="text-[9px] font-bold uppercase text-mod">Demo · not counted</span>
+                  ) : (factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts)) ? (
                     <span className="text-[9px] font-bold uppercase text-low">PAGASA</span>
-                  )}
-                  {factor.source === "location" && locationDataIsDemo && factor.name !== "Weather"
-                    && !(factor.name === "Official advisories" && liveAlerts) && (
-                    <span className="text-[9px] font-bold uppercase text-mod">Demo</span>
-                  )}
-                  <strong className={`font-mono ${factor.score === null ? "text-ink-soft font-normal" : "text-ink"}`}>
+                  ) : factor.source === "live-weather" || factor.source === "location" ? (
+                    <span className="text-[9px] font-bold uppercase text-low">{timeLabel ? "Recorded" : "Live"}</span>
+                  ) : null}
+                  <strong className={`font-mono ${factor.score === null ? "text-ink-soft font-normal" : factor.source === "demo" ? "text-ink-soft line-through decoration-ink-soft/50" : "text-ink"}`}>
                     {factor.score ?? "No data"}
                   </strong>
                 </span>
@@ -154,7 +163,7 @@ export function AreaDetails({
         </div>
 
         <div>
-          <dt className={SECTION_LABEL}>Official alerts</dt>
+          <dt className={SECTION_LABEL}>{timeLabel ? `Official alerts at ${timeLabel}` : "Official alerts"}</dt>
           <dd className="text-ink">
             {advisory ? (
               advisory.alerts.length ? (
@@ -171,7 +180,7 @@ export function AreaDetails({
                   ))}
                 </ul>
               ) : (
-                <span className="text-ink-soft">No active PAGASA alert covers this area.</span>
+                <span className="text-ink-soft">{timeLabel ? "No PAGASA alert covered this area then." : "No active PAGASA alert covers this area."}</span>
               )
             ) : (
               <span className="text-ink-soft">{liveAlerts ? "Loading PAGASA alerts…" : "PAGASA alerts are unavailable right now."}</span>
@@ -181,7 +190,7 @@ export function AreaDetails({
         </div>
 
         <div>
-          <dt className={SECTION_LABEL}>Weather now</dt>
+          <dt className={SECTION_LABEL}>{timeLabel ? `Weather at ${timeLabel}` : "Weather now"}</dt>
           <dd className="text-ink">
             {weather ? (
               <>
@@ -220,6 +229,51 @@ export function AreaDetails({
             ) : (
               <span className="text-ink-soft">Live weather is unavailable right now.</span>
             )}
+          </dd>
+        </div>
+
+        <div>
+          <dt className={SECTION_LABEL}>Past 4 days</dt>
+          <dd>
+            {info.history?.length ? (
+              <ul className="space-y-1">
+                {info.history.map((day, index) => (
+                  <li
+                    key={day.date}
+                    className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${
+                      info.pastDay?.date === day.date ? "border-ink bg-surface" : "border-hairline"
+                    }`}
+                  >
+                    <span
+                      className="size-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+                      style={{ backgroundColor: riskGradient(day.score) }}
+                    >
+                      {day.score}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-ink">
+                        {pastDayLabel(day.date, index + 1)} · {day.condition}
+                      </span>
+                      <span className="block text-[11px] text-ink-soft">
+                        {day.rainMm.toFixed(1)} mm rain (peak {day.peakHourMm.toFixed(1)} mm/h) · {Math.round(day.temperatureMinCelsius)}–{Math.round(day.temperatureMaxCelsius)}°C · gusts {Math.round(day.gustMaxKph)} km/h
+                      </span>
+                    </span>
+                    {day.pagasaLevel && (
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${PAGASA_STYLES[day.pagasaLevel]}`}>
+                        {day.pagasaLevel}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-ink-soft">
+                {weatherStatus === "off" ? "Weather history is off while SafeGo shows demo conditions." : "Weather history is loading or unavailable."}
+              </span>
+            )}
+            <span className="block text-[10px] text-ink-soft mt-1">
+              Open-Meteo model weather for {info.weatherLabel}. Each day is scored by its worst conditions (e.g. one thunderstorm hour), with today&apos;s rules. PAGASA levels are model estimates, not official warnings.
+            </span>
           </dd>
         </div>
 

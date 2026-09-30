@@ -84,6 +84,72 @@ class RainfallScoringTest {
         assertEquals(16.0, a.pastDayMm());
     }
 
+    /** Open-Meteo past_days shape: daily arrays plus 24 hourly values per day. */
+    private static JsonNode[] pastDays(String[] dates, int[] codes, double[][] hourlyRain) {
+        List<String> times = new ArrayList<>();
+        List<Double> rain = new ArrayList<>();
+        List<Double> sums = new ArrayList<>();
+        for (int d = 0; d < dates.length; d++) {
+            double sum = 0;
+            for (int h = 0; h < 24; h++) {
+                times.add(String.format("%sT%02d:00", dates[d], h));
+                double value = h < hourlyRain[d].length ? hourlyRain[d][h] : 0;
+                rain.add(value);
+                sum += value;
+            }
+            sums.add(sum);
+        }
+        List<Integer> codeList = new ArrayList<>();
+        for (int code : codes) codeList.add(code);
+        List<Double> filler = new ArrayList<>(java.util.Collections.nCopies(dates.length, 20.0));
+        JsonNode daily = MAPPER.valueToTree(Map.of("time", List.of(dates), "weather_code", codeList,
+            "precipitation_sum", sums, "temperature_2m_max", filler, "temperature_2m_min", filler,
+            "wind_gusts_10m_max", new ArrayList<>(java.util.Collections.nCopies(dates.length, 10.0))));
+        JsonNode hourly = MAPPER.valueToTree(Map.of("time", times, "precipitation", rain));
+        return new JsonNode[] {daily, hourly};
+    }
+
+    @Test
+    void pastDaysAreScoredNewestFirstAndExcludeToday() {
+        String[] dates = {"2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"};
+        var data = pastDays(dates, new int[] {1, 1, 1, 1, 1, 95}, new double[6][0]);
+        var days = RainfallScoring.assessPastDays(data[0], data[1], "2026-10-01", 4);
+        assertEquals(List.of("2026-09-30", "2026-09-29", "2026-09-28", "2026-09-27"),
+            days.stream().map(RainfallScoring.DayAssessment::date).toList(), "today is excluded; at most 4 days");
+        assertEquals(5, days.get(0).score());
+    }
+
+    @Test
+    void aDayWithHeavyThreeHourRainMeetsPagasaRed() {
+        double[][] rain = new double[2][];
+        rain[0] = new double[] {0, 0, 25, 25, 20};
+        rain[1] = new double[0];
+        var data = pastDays(new String[] {"2026-09-29", "2026-10-01"}, new int[] {63, 1}, rain);
+        var day = RainfallScoring.assessPastDays(data[0], data[1], "2026-10-01", 4).get(0);
+        assertEquals(70.0, day.peakThreeHoursMm());
+        assertEquals(90, day.score());
+        assertEquals("red", day.pagasaLevel());
+        assertEquals(70.0, day.rainMm());
+    }
+
+    @Test
+    void hoursAreScoredUpToNowWithThreeHourTotals() {
+        List<String> times = List.of("2026-09-29T14:00", "2026-09-29T15:00", "2026-09-29T16:00", "2026-09-29T17:00");
+        JsonNode hourly = MAPPER.valueToTree(Map.of(
+            "time", times,
+            "weather_code", List.of(3, 95, 63, 3),
+            "precipitation", List.of(30.0, 25.0, 12.0, 0.0),
+            "wind_gusts_10m", List.of(10.0, 40.0, 10.0, 10.0),
+            "temperature_2m", List.of(30.0, 28.0, 27.0, 27.0)));
+        var hours = RainfallScoring.assessHours(hourly, "2026-09-29T16:00");
+        assertEquals(3, hours.size(), "hours after now are left out");
+        assertEquals("orange", hours.get(1).pagasaLevel());
+        assertEquals(67.0, hours.get(2).threeHourMm(), "12 mm alone scores 70; the 3-hour total pushes it to 90");
+        assertEquals(90, hours.get(2).score());
+        assertEquals("three-hour-total", hours.get(2).driver());
+        assertEquals("red", hours.get(2).pagasaLevel());
+    }
+
     @Test
     void areaPointsOutsideMetroManilaAreRejected() {
         assertThrows(IllegalArgumentException.class,

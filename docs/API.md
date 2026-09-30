@@ -197,6 +197,20 @@ Location weather factors use the same rainfall-aware scoring as `/api/areas/weat
 
 ---
 
+## Map time slider (last 4 days)
+
+The map can be rewound hour by hour for up to four days. A rewound view uses only recorded data (Open-Meteo weather and the PAGASA alerts in force then), scored with the same rules as now; demo factors are never counted.
+
+### POST /api/areas/weather/timeline
+
+Same request and Metro Manila limits as `POST /api/areas/weather`. Returns `data.timelines: [{ key, hours: [...] }]`, oldest first up to the current hour. Each hour: `time` (Manila local, `yyyy-MM-ddTHH:mm`, covering the hour ending then), `score`, `driver` (`sky`, `wind`, `past-hour`, `three-hour-total`), `condition`, `rainMm`, `threeHourMm`, `temperatureCelsius`, `gustKph`, `pagasaLevel`. Cached for 15 minutes.
+
+### GET /api/alerts/timeline
+
+Returns `data.hours: [{ time, alertIds }]` (hour starts in UTC for the last 4 days) listing the PAGASA alerts in force over Metro Manila during each hour, plus `data.alerts` (same shape as `/api/alerts/active`) for every alert that appears. "In force" applies the active-alert rules at that hour: issued by then, not expired, not cancelled or all-clear, and not superseded by an alert issued by then.
+
+---
+
 ## GET /api/alerts/active
 
 Active PAGASA public alerts (CAP) that touch Metro Manila, with only their Metro Manila-relevant polygons. See `docs/SOURCE_FEEDS.md` for filtering and the severity mapping.

@@ -62,6 +62,8 @@ public class PagasaCapService {
     private final String feedUrl;
     private final Map<String, CapAlert> documents = new ConcurrentHashMap<>();
     private Result cached;
+    /** Every alert in the latest feed, active or not, for looking back in time. */
+    private List<CapAlert> recent = List.of();
     private long cachedUntil;
 
     public PagasaCapService() {
@@ -99,6 +101,7 @@ public class PagasaCapService {
                 }
                 alerts.add(alert);
             }
+            recent = List.copyOf(alerts);
             cached = new Result(active(alerts, Instant.now()), new SourceStatus(SOURCE_KEY, SOURCE_NAME, "official", "active",
                 Instant.now().toString(), null, null));
         } catch (Exception e) {
@@ -109,12 +112,22 @@ public class PagasaCapService {
         return cached;
     }
 
-    /** Alerts still in force at {@code now}, with superseded, cancelled and all-clear messages removed. */
+    /** Every alert in the feed with the source status, refreshing the feed if needed. */
+    public synchronized Result recentAlerts() {
+        Result current = activeAlerts();
+        return new Result(recent, current.status());
+    }
+
+    /**
+     * Alerts in force at {@code now}: issued by then, not expired, not cancelled or all-clear, and not
+     * superseded by a newer alert issued by then. Works for any past moment covered by the feed.
+     */
     public static List<CapAlert> active(List<CapAlert> alerts, Instant now) {
+        List<CapAlert> issued = alerts.stream().filter(alert -> alert.sent() == null || !alert.sent().isAfter(now)).toList();
         Set<String> superseded = new HashSet<>();
-        for (CapAlert alert : alerts) superseded.addAll(alert.references());
+        for (CapAlert alert : issued) superseded.addAll(alert.references());
         Map<String, CapAlert> unique = new LinkedHashMap<>();
-        for (CapAlert alert : alerts) {
+        for (CapAlert alert : issued) {
             if (superseded.contains(alert.id())) continue;
             if (!"Actual".equals(alert.status()) || !"Public".equals(alert.scope())) continue;
             if ("Cancel".equals(alert.msgType()) || "Past".equals(alert.urgency()) || "AllClear".equals(alert.responseType())) continue;

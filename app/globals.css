@@ -806,6 +806,16 @@
     @apply scale-110;
   }
 
+  /* Partial ratings (live factors only) get a dashed ring; unrated markers are muted. */
+  .map-marker.partial-basis {
+    outline: 2px dashed rgb(26 26 26 / 55%);
+    outline-offset: 2px;
+  }
+
+  .map-marker.unrated {
+    @apply opacity-70;
+  }
+
   .leaflet-tooltip {
     @apply rounded-box border-0 bg-ink px-2.5 py-2 text-[11.5px] text-white shadow-lg;
   }

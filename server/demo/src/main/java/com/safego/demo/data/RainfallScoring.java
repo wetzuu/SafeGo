@@ -90,6 +90,127 @@ public final class RainfallScoring {
             round(pastThree), round(pastDay), round(nextThree), round(nextMax), level);
     }
 
+    /** One past day's weather, scored with the same rules as today's reading. */
+    public record DayAssessment(
+        String date,
+        int score,
+        /** What set the score: "sky", "wind", "peak-hour" or "three-hour-total". */
+        String driver,
+        String condition,
+        double rainMm,
+        double peakHourMm,
+        double peakThreeHoursMm,
+        double temperatureMaxCelsius,
+        double temperatureMinCelsius,
+        double gustMaxKph,
+        /** The PAGASA rainfall threshold the day's rain met; null if none. */
+        String pagasaLevel
+    ) {}
+
+    /**
+     * Scores each complete day before {@code today} (at most {@code maxDays}, newest first) from
+     * Open-Meteo "daily" (weather_code, precipitation_sum, temperature_2m_max/min, wind_gusts_10m_max)
+     * and "hourly" precipitation requested with past_days.
+     */
+    public static List<DayAssessment> assessPastDays(JsonNode daily, JsonNode hourly, String today, int maxDays) {
+        List<String> hourTimes = new ArrayList<>();
+        List<Double> hourRain = new ArrayList<>();
+        hourly.path("time").forEach(node -> hourTimes.add(node.asText()));
+        hourly.path("precipitation").forEach(node -> hourRain.add(node.isNumber() ? node.asDouble() : 0));
+
+        List<DayAssessment> days = new ArrayList<>();
+        JsonNode dates = daily.path("time");
+        for (int i = dates.size() - 1; i >= 0 && days.size() < maxDays; i--) {
+            String date = dates.get(i).asText();
+            if (date.compareTo(today) >= 0) continue;
+
+            List<Double> rain = new ArrayList<>();
+            for (int h = 0; h < hourTimes.size(); h++) {
+                if (hourTimes.get(h).startsWith(date)) rain.add(h < hourRain.size() ? hourRain.get(h) : 0);
+            }
+            double peakHour = max(rain, 0, rain.size());
+            double peakThree = 0;
+            for (int h = 0; h < rain.size(); h++) peakThree = Math.max(peakThree, sum(rain, h - 2, h + 1));
+
+            int code = daily.path("weather_code").path(i).asInt();
+            double gust = daily.path("wind_gusts_10m_max").path(i).asDouble();
+            int sky = WeatherService.codeScore(code);
+            int wind = WeatherService.gustScore(gust);
+            int hourScore = WeatherService.rainScore(peakHour);
+            int threeHourScore = peakThree > RED_THREE_HOUR_MM ? 90 : 0;
+
+            int score = sky;
+            String driver = "sky";
+            if (wind > score) { score = wind; driver = "wind"; }
+            if (hourScore > score) { score = hourScore; driver = "peak-hour"; }
+            if (threeHourScore > score) { score = threeHourScore; driver = "three-hour-total"; }
+
+            String level = peakHour > 30 || peakThree > RED_THREE_HOUR_MM ? "red"
+                : peakHour >= 15 ? "orange"
+                : peakHour >= 7.5 ? "yellow"
+                : null;
+
+            days.add(new DayAssessment(date, score, driver, WeatherService.weatherLabel(code),
+                round(daily.path("precipitation_sum").path(i).asDouble()), round(peakHour), round(peakThree),
+                round(daily.path("temperature_2m_max").path(i).asDouble()),
+                round(daily.path("temperature_2m_min").path(i).asDouble()), round(gust), level));
+        }
+        return days;
+    }
+
+    /** Weather in one past hour, scored with today's rules (without the forecast part: it already happened). */
+    public record HourAssessment(
+        String time,
+        int score,
+        /** What set the score: "sky", "wind", "past-hour" or "three-hour-total". */
+        String driver,
+        String condition,
+        double rainMm,
+        double threeHourMm,
+        double temperatureCelsius,
+        double gustKph,
+        /** The PAGASA rainfall threshold the hour's rain met; null if none. */
+        String pagasaLevel
+    ) {}
+
+    /**
+     * Scores every hour up to and including {@code nowHour} ("yyyy-MM-ddTHH:00") from Open-Meteo "hourly"
+     * weather_code, precipitation, wind_gusts_10m and temperature_2m (each value covers the preceding hour).
+     */
+    public static List<HourAssessment> assessHours(JsonNode hourly, String nowHour) {
+        List<String> times = new ArrayList<>();
+        List<Double> rain = new ArrayList<>();
+        hourly.path("time").forEach(node -> times.add(node.asText()));
+        hourly.path("precipitation").forEach(node -> rain.add(node.isNumber() ? node.asDouble() : 0));
+
+        List<HourAssessment> hours = new ArrayList<>();
+        for (int i = 0; i < times.size(); i++) {
+            String time = times.get(i);
+            if (time.compareTo(nowHour) > 0) break;
+            int code = hourly.path("weather_code").path(i).asInt();
+            double gust = hourly.path("wind_gusts_10m").path(i).asDouble();
+            double hourRain = i < rain.size() ? rain.get(i) : 0;
+            double three = sum(rain, i - 2, i + 1);
+
+            int score = WeatherService.codeScore(code);
+            String driver = "sky";
+            int wind = WeatherService.gustScore(gust);
+            int rainScore = WeatherService.rainScore(hourRain);
+            int threeScore = three > RED_THREE_HOUR_MM ? 90 : 0;
+            if (wind > score) { score = wind; driver = "wind"; }
+            if (rainScore > score) { score = rainScore; driver = "past-hour"; }
+            if (threeScore > score) { score = threeScore; driver = "three-hour-total"; }
+
+            String level = hourRain > 30 || three > RED_THREE_HOUR_MM ? "red"
+                : hourRain >= 15 ? "orange"
+                : hourRain >= 7.5 ? "yellow"
+                : null;
+            hours.add(new HourAssessment(time, score, driver, WeatherService.weatherLabel(code), round(hourRain), round(three),
+                round(hourly.path("temperature_2m").path(i).asDouble()), round(gust), level));
+        }
+        return hours;
+    }
+
     /** A plain-language summary, e.g. for a location's weather factor description. */
     public static String describe(Assessment assessment, double windKph, double gustKph) {
         return String.format(Locale.ENGLISH,

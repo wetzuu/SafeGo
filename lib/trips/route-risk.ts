@@ -54,7 +54,10 @@ export function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[nu
   if (!inArea) return null;
   let highest = 0;
   for (const location of pilotLocations) {
-    const factors = location.factors.filter((factor) => CALM_FACTORS.includes(factor.name));
+    // Only live factors can vouch for calm conditions; demo placeholders never count.
+    const counted = location.risk.countedFactors;
+    const factors = location.factors.filter((factor) =>
+      CALM_FACTORS.includes(factor.name) && (!counted || counted.includes(factor.name)));
     if (factors.length < CALM_FACTORS.length || factors.some((factor) => factor.score > CALM_FACTOR_MAX_SCORE)) return null;
     highest = Math.max(highest, ...factors.map((factor) => factor.score));
   }
@@ -109,7 +112,8 @@ export function analyzeRouteSegments(
     const segmentDistanceMeters = distanceKm(start, end) * 1000;
     // Distance from the start plus full edge length conservatively bounds the
     // whole edge, not just its midpoint. Never claim coverage past the circle.
-    const covered = Boolean(nearest &&
+    // A location that is not rated (no live data) covers nothing.
+    const covered = Boolean(nearest && nearest.location.risk.basis !== "none" &&
       distanceKm(start, nearest.location.coordinates) * 1000 + segmentDistanceMeters <= PILOT.radiusMeters);
     const score = covered ? nearest.location.risk.percentage : null;
 

@@ -4,7 +4,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
-import { fetchAreaWeather, weatherGroupKey, weatherSamplePoints, type AreaWeather } from "@/lib/safego/area-weather";
+import {
+  fetchAreaWeather,
+  fetchAreaWeatherHistory,
+  weatherGroupKey,
+  weatherSamplePoints,
+  type AreaWeather,
+  type DayWeather,
+} from "@/lib/safego/area-weather";
+import {
+  alertsAt,
+  currentHour,
+  fetchAlertsTimeline,
+  fetchWeatherTimeline,
+  HOUR_MS,
+  locationAt,
+  timelineLabel,
+  TIMELINE_HOURS,
+  weatherAt,
+  type AlertsTimeline,
+  type HourWeather,
+} from "@/lib/safego/timeline";
+import { assessTrip } from "@/lib/trips/trip-assessment";
+import { TimeSlider } from "./TimeSlider";
 import { analyzeArea } from "@/lib/safego/area-analysis";
 import { alertsCovering, fetchActiveAlerts, type ActiveAlert } from "@/lib/safego/area-alerts";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
@@ -81,9 +103,15 @@ function makeTooltip(title: string, detail: string) {
   return wrapper;
 }
 
-function layerScore(location: SafeGoLocation, layer: MapLayerKey) {
-  if (layer === "overall") return location.risk.percentage;
-  return location.factors.find((factor) => factor.name === layer)?.score ?? 0;
+/** A location's score for a map layer, or null when it is not rated or the factor is demo data. */
+function layerScore(location: SafeGoLocation, layer: MapLayerKey): number | null {
+  if (layer === "overall") return location.risk.basis === "none" ? null : location.risk.percentage;
+  if (location.risk.countedFactors && !location.risk.countedFactors.includes(layer)) return null;
+  return location.factors.find((factor) => factor.name === layer)?.score ?? null;
+}
+
+function isCounted(location: SafeGoLocation, factor: string) {
+  return !location.risk.countedFactors || location.risk.countedFactors.some((name) => name === factor);
 }
 
 function evidenceClass(location: SafeGoLocation) {
@@ -116,16 +144,14 @@ export interface RiskMapProps {
   onViewAnnouncements?: () => void;
   /** Fetch live weather for every area; off while SafeGo shows demo conditions. */
   liveWeather?: boolean;
-  /** SafeGo's location factors come from built-in demo data rather than live feeds. */
-  locationDataIsDemo?: boolean;
   /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
   liveAlerts?: boolean;
 }
 
 export function RiskMap({
-  locations,
-  selectedLocation,
-  trip,
+  locations: liveLocations,
+  selectedLocation: liveSelected,
+  trip: liveTrip,
   previewRoute,
   leftFloatingPanel,
   onSelectLocation,
@@ -133,7 +159,6 @@ export function RiskMap({
   onViewRiskDetails,
   onViewAnnouncements,
   liveWeather = false,
-  locationDataIsDemo = false,
   liveAlerts = false,
 }: RiskMapProps) {
   const mapElementRef = useRef<HTMLDivElement>(null);
@@ -146,41 +171,90 @@ export function RiskMap({
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [tileStatus, setTileStatus] = useState<"loading" | "ready" | "degraded">("loading");
+
+  // Time slider: null = live. Past views use recorded weather and PAGASA alerts for that hour.
+  const [timeCursor, setTimeCursor] = useState<number | null>(null);
+  const [weatherTimeline, setWeatherTimeline] = useState<Map<string, HourWeather[]> | null>(null);
+  const [alertsTimeline, setAlertsTimeline] = useState<AlertsTimeline | null>(null);
+  const [timelineFailed, setTimelineFailed] = useState(false);
+  const [timelineEnd, setTimelineEnd] = useState(() => currentHour());
+  const timelineStart = timelineEnd - TIMELINE_HOURS * HOUR_MS;
+  const at = timeCursor !== null && weatherTimeline && liveWeather ? timeCursor : null;
+  const atLabel = at === null ? null : timelineLabel(at);
+  const pastAlerts = at === null || !liveAlerts ? null : alertsAt(alertsTimeline, at);
+  const locations = useMemo(() => at === null || !weatherTimeline
+    ? liveLocations
+    : liveLocations.map((location) => locationAt(
+      location,
+      weatherAt(weatherTimeline.get(`location:${location.id}`), at),
+      pastAlerts ? alertsCovering(location.coordinates, pastAlerts) : null,
+      timelineLabel(at),
+    )), [at, liveLocations, pastAlerts, weatherTimeline]);
+  const selectedLocation = liveSelected ? locations.find((location) => location.id === liveSelected.id) ?? liveSelected : liveSelected;
+  const trip = useMemo(() => liveTrip && at !== null
+    ? assessTrip(liveTrip, { locations, sources: liveTrip.sources, weatherUpdatedAt: null })
+    : liveTrip, [at, liveTrip, locations]);
+
   const activeLayerLabel =
     MAP_LAYERS.find((layer) => layer.key === activeLayer)?.label ?? "Overall risk";
   const effectiveSelected = selectedLocation ?? locations[0];
-  const selectedScore = effectiveSelected ? layerScore(effectiveSelected, activeLayer) : 0;
+  const selectedScore = effectiveSelected ? layerScore(effectiveSelected, activeLayer) : null;
   const verifiedCount = effectiveSelected?.reports.filter(
     (report) => report.status === "verified",
   ).length ?? 0;
   const unverifiedCount = (effectiveSelected?.reports.length ?? 0) - verifiedCount;
   const advisories = trip ? trip.advisories : (effectiveSelected?.advisories ?? []);
   const [areaWeather, setAreaWeather] = useState<Map<string, AreaWeather> | null>(null);
+  const [areaHistory, setAreaHistory] = useState<Map<string, DayWeather[]> | null>(null);
   const [weatherFailed, setWeatherFailed] = useState(false);
   // An area selection belongs to the trip and location it was made in; picking something else clears it.
   const [areaSelection, setAreaSelection] = useState<{ index: number; context: string } | null>(null);
-  const selectionContext = `${trip?.generatedAt ?? "area"}:${effectiveSelected?.id ?? ""}`;
+  const selectionContext = `${liveTrip?.generatedAt ?? "area"}:${effectiveSelected?.id ?? ""}`;
   const selectedAreaIndex = areaSelection?.context === selectionContext ? areaSelection.index : null;
   const liveAreaWeather = liveWeather ? areaWeather : null;
   const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[] | null>(null);
   const liveActiveAlerts = liveAlerts ? activeAlerts : null;
+  // What the area shading uses: live readings now, recorded ones when rewound.
+  const areaAlerts = at === null ? liveActiveAlerts : pastAlerts;
+  const cursorDate = at === null ? null : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(at));
   const weatherStatus = !liveWeather ? "off" : liveAreaWeather ? "live" : weatherFailed ? "unavailable" : "loading";
   const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
+  const timelinePoints = useMemo(() => [
+    ...weatherPoints,
+    ...liveLocations.map((location) => ({ key: `location:${location.id}`, label: location.name, coordinates: location.coordinates })),
+  ], [liveLocations, weatherPoints]);
+  const areaWeatherAt = useMemo(() => {
+    if (at === null) return liveAreaWeather;
+    const readings = new Map<string, AreaWeather>();
+    for (const point of weatherPoints) {
+      const reading = weatherAt(weatherTimeline?.get(point.key), at);
+      if (reading) readings.set(point.key, reading);
+    }
+    return readings;
+  }, [at, liveAreaWeather, weatherPoints, weatherTimeline]);
 
   const areaInfos: AreaInfo[] = useMemo(() => {
     if (!areas) return [];
-    const points = locations.map((location) => ({ id: location.id, coordinates: location.coordinates, score: layerScore(location, activeLayer) }));
-    const overallPoints = locations.map((location) => ({ id: location.id, coordinates: location.coordinates, score: location.risk.percentage }));
+    const points = locations.flatMap((location) => {
+      const score = layerScore(location, activeLayer);
+      return score === null ? [] : [{ id: location.id, coordinates: location.coordinates, score }];
+    });
+    const overallPoints = locations.flatMap((location) => {
+      const score = layerScore(location, "overall");
+      return score === null ? [] : [{ id: location.id, coordinates: location.coordinates, score }];
+    });
     const byId = new Map(locations.map((location) => [location.id, location]));
     const weatherLabels = new Map(weatherPoints.map((point) => [point.key, point.label]));
     return areas.features.map(({ geometry, properties }) => {
       const measured = scoreArea(geometry, points, APPROXIMATE_COVERAGE_RADIUS_METERS);
       const measuredSource = measured ? byId.get(measured.sourceId) ?? null : null;
       const key = weatherGroupKey(properties);
-      const weather = liveAreaWeather?.get(key) ?? null;
+      const weather = areaWeatherAt?.get(key) ?? null;
+      const history = liveWeather ? areaHistory?.get(key) ?? null : null;
+      const pastDay = cursorDate ? history?.find((day) => day.date === cursorDate) ?? null : null;
       const nearest = nearestPoint(geometry, locations);
       const overallMeasured = activeLayer === "overall" ? measured : scoreArea(geometry, overallPoints, APPROXIMATE_COVERAGE_RADIUS_METERS);
-      const advisory = liveActiveAlerts ? alertsCovering(areaCenter(geometry), liveActiveAlerts) : null;
+      const advisory = areaAlerts ? alertsCovering(areaCenter(geometry), areaAlerts) : null;
       const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather, advisory);
       // Weather and PAGASA alerts are the factors SafeGo can read everywhere. The overall layer shows
       // partial estimates for uncovered areas; the flood, university and community layers only rate covered areas.
@@ -197,6 +271,8 @@ export function RiskMap({
         measuredSource,
         measuredDistanceMeters: analysis.source ? distanceToArea(geometry, analysis.source.coordinates) : null,
         weather,
+        history,
+        pastDay,
         weatherLabel: weatherLabels.get(key) ?? properties.city,
         displayScore,
         estimated: activeLayer === "overall" && analysis.kind === "partial-estimate",
@@ -205,22 +281,22 @@ export function RiskMap({
         nearest: nearest ? { location: nearest.point, distanceMeters: nearest.distanceMeters } : null,
       };
     });
-  }, [activeLayer, areas, liveActiveAlerts, liveAreaWeather, locations, weatherPoints]);
+  }, [activeLayer, areaAlerts, areaHistory, areaWeatherAt, areas, cursorDate, liveWeather, locations, weatherPoints]);
   const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
   const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null && !info.estimated).length;
   const estimatedAreaCount = areaInfos.filter((info) => info.estimated).length;
 
   const bounds: Array<[number, number]> = useMemo(
-    () => trip?.routeCoordinates.length
-      ? trip.routeCoordinates
+    () => liveTrip?.routeCoordinates.length
+      ? liveTrip.routeCoordinates
       : previewRoute?.routeCoordinates.length
         ? previewRoute.routeCoordinates
-        : selectedLocation
-          ? [selectedLocation.coordinates]
-          : locations.length > 0
-            ? locations.map((location) => location.coordinates)
+        : liveSelected
+          ? [liveSelected.coordinates]
+          : liveLocations.length > 0
+            ? liveLocations.map((location) => location.coordinates)
             : [[14.5995, 120.9842], [14.6120, 121.0614]],
-    [locations, trip, previewRoute, selectedLocation],
+    [liveLocations, liveTrip, previewRoute, liveSelected],
   );
 
   useEffect(() => {
@@ -312,10 +388,14 @@ export function RiskMap({
       locations.forEach((location) => {
         const score = layerScore(location, activeLayer);
         const selected = location.id === effectiveSelected?.id;
-        const color = riskGradient(score);
+        const color = score === null ? UNKNOWN_ROUTE_COLOR : riskGradient(score);
+        const partial = score !== null && activeLayer === "overall" && location.risk.basis === "partial";
+        const reading = score === null
+          ? "not rated (no live data for this layer)"
+          : `${score} out of 100${partial ? ", partial rating" : ""}`;
         const icon = L.divIcon({
           className: "safego-leaflet-icon",
-          html: `<span class="map-marker leaflet-marker ${evidenceClass(location)}${selected ? " selected" : ""}" style="--marker-color:${color}"><span class="map-marker-score">${score}</span></span>`,
+          html: `<span class="map-marker leaflet-marker ${evidenceClass(location)}${selected ? " selected" : ""}${partial ? " partial-basis" : ""}${score === null ? " unrated" : ""}" style="--marker-color:${color}"><span class="map-marker-score">${score ?? "–"}</span></span>`,
           iconSize: [36, 36],
           iconAnchor: [18, 18],
           tooltipAnchor: [0, -20],
@@ -323,13 +403,13 @@ export function RiskMap({
         const marker = L.marker(location.coordinates, {
           icon,
           keyboard: true,
-          title: `${location.name}, ${score} out of 100`,
-          alt: `${location.name}, ${score} out of 100`,
+          title: `${location.name}, ${reading}`,
+          alt: `${location.name}, ${reading}`,
           riseOnHover: true,
         });
 
         marker.bindTooltip(
-          makeTooltip(location.name, `${score}/100. ${activeLayerLabel}.`),
+          makeTooltip(atLabel ? `${location.name} · ${atLabel}` : location.name, score === null ? `${activeLayerLabel}: not rated (no live data).` : `${activeLayerLabel}: ${score}/100${partial ? " (partial: live factors only)" : ""}.`),
           { direction: "top", opacity: 0.96 },
         );
         if (onSelectLocation) marker.on("click", () => onSelectLocation(location));
@@ -341,7 +421,7 @@ export function RiskMap({
     return () => {
       cancelled = true;
     };
-  }, [activeLayer, activeLayerLabel, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
+  }, [activeLayer, activeLayerLabel, atLabel, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
 
   useEffect(() => {
     if (!liveWeather || !weatherPoints.length) return;
@@ -362,6 +442,53 @@ export function RiskMap({
       window.clearInterval(timer);
     };
   }, [liveWeather, weatherPoints]);
+
+  useEffect(() => {
+    if (!liveWeather || !weatherPoints.length) return;
+    let cancelled = false;
+    fetchAreaWeatherHistory(weatherPoints)
+      .then((history) => {
+        if (!cancelled) setAreaHistory(history);
+      })
+      .catch(() => {
+        // Past days are optional; the day picker stays hidden until history loads.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveWeather, weatherPoints]);
+
+  useEffect(() => {
+    if (!liveWeather || !areas || !timelinePoints.length) return;
+    let cancelled = false;
+    const load = () => {
+      fetchWeatherTimeline(timelinePoints)
+        .then((value) => {
+          if (cancelled) return;
+          setWeatherTimeline(value);
+          setTimelineEnd(currentHour());
+          setTimelineFailed(false);
+        })
+        .catch(() => {
+          if (!cancelled) setTimelineFailed(true);
+        });
+      if (liveAlerts) {
+        fetchAlertsTimeline()
+          .then((value) => {
+            if (!cancelled) setAlertsTimeline(value);
+          })
+          .catch(() => {
+            // Without alert history, rewound views count weather only and say so.
+          });
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 15 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [areas, liveAlerts, liveWeather, timelinePoints]);
 
   useEffect(() => {
     if (!liveAlerts) return;
@@ -423,15 +550,15 @@ export function RiskMap({
           const detail = info.displayScore === null
             ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
             : info.estimated
-              ? `Partial estimate: ${info.displayScore}/100 from live weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
+              ? `Partial estimate: ${info.displayScore}/100 from ${atLabel ? "recorded" : "live"} weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
               : info.measured && info.measuredSource && info.measured.score >= info.displayScore
               ? `${activeLayerLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
               : activeLayer === "Official advisories"
                 ? info.advisory?.alerts.length
                   ? `PAGASA: ${info.advisory.alerts.map((alert) => alert.headline).join("; ")} (${info.displayScore}/100).`
-                  : "No active PAGASA alert covers this area."
-                : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (live model for ${info.weatherLabel}).`;
-          layer.bindTooltip(makeTooltip(title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
+                  : atLabel ? "No PAGASA alert covered this area then." : "No active PAGASA alert covers this area."
+                : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (${atLabel ? "recorded" : "live"} model for ${info.weatherLabel}).`;
+          layer.bindTooltip(makeTooltip(atLabel ? `${title} · ${atLabel}` : title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
           layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
           layer.on("mouseout", () => areaLayer?.resetStyle(layer));
           layer.on("click", () => setAreaSelection({ index, context: selectionContext }));
@@ -445,7 +572,7 @@ export function RiskMap({
       cancelled = true;
       if (areaLayer) map.removeLayer(areaLayer);
     };
-  }, [activeLayer, activeLayerLabel, areaInfos, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
+  }, [activeLayer, activeLayerLabel, areaInfos, atLabel, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -519,8 +646,16 @@ export function RiskMap({
     };
   }, [mapReady, trip, previewRoute]);
 
-  const overallScore = trip ? trip.overallRiskScore : effectiveSelected?.risk.percentage ?? null;
-  const overallKey = trip ? trip.riskKey : effectiveSelected?.risk.key;
+  const showTimeline = liveWeather;
+  const overallScore = trip ? trip.overallRiskScore : effectiveSelected ? layerScore(effectiveSelected, "overall") : null;
+  const overallKey = trip ? trip.riskKey : overallScore === null ? "unknown" : effectiveSelected?.risk.key;
+  // With no trip, the card describes one location; its basis says how much of the score is live.
+  const notLive = effectiveSelected?.factors.filter((factor) => !isCounted(effectiveSelected, factor.name)).map((factor) => displayFactorName(factor.name)) ?? [];
+  const notLiveCount = notLive.length;
+  const notLiveLabel = notLive.length <= 1 ? notLive.join("") : `${notLive.slice(0, -1).join(", ")} and ${notLive.at(-1)}`;
+  const overallBasis = trip
+    ? (trip.corridorLocations.some((location) => location.risk.basis === "partial") ? "partial" : trip.corridorLocations[0]?.risk.basis)
+    : effectiveSelected?.risk.basis;
   const overallName = trip ? trip.riskName : effectiveSelected?.risk.name ?? "";
   const headlineScore = activeLayer === "overall" ? overallScore : selectedScore;
   const latestAdvisory = advisories[0];
@@ -574,21 +709,41 @@ export function RiskMap({
           </div>
         )}
 
+        {showTimeline && (
+          <div className="mt-auto shrink-0 w-full lg:absolute lg:bottom-4 lg:left-4 lg:right-4 lg:mt-0 lg:w-auto">
+            <TimeSlider
+              start={timelineStart}
+              end={timelineEnd}
+              value={at}
+              onChange={setTimeCursor}
+              status={weatherTimeline ? "ready" : timelineFailed ? "unavailable" : "loading"}
+            />
+          </div>
+        )}
+
         {/* Location / route risk card */}
         {effectiveSelected && (
           <aside
-            className="pointer-events-auto mt-auto w-full sm:w-[350px] sm:self-end max-h-[40vh] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-hairline p-4 lg:absolute lg:top-16 lg:right-4 lg:mt-0 lg:max-h-[calc(100%-6rem)]"
+            className={`pointer-events-auto ${showTimeline ? "" : "mt-auto "}w-full sm:w-[350px] sm:self-end max-h-[40vh] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-hairline p-4 lg:absolute lg:top-16 lg:right-4 lg:mt-0 ${showTimeline ? "lg:max-h-[calc(100%-12rem)]" : "lg:max-h-[calc(100%-6rem)]"}`}
             ref={cardRef}
             aria-live="polite"
             aria-label={selectedAreaInfo ? "Area details" : trip ? "Route risk" : "Location risk"}
           >
+            {atLabel && (
+              <div className="-mx-4 -mt-4 mb-3 rounded-t-2xl bg-ink text-white px-4 py-2 text-xs flex items-center justify-between gap-2">
+                <span><strong>Viewing {atLabel}</strong><span className="block text-[10px] text-white/70">Recorded weather and PAGASA alerts. Detail pages show live conditions.</span></span>
+                <button type="button" className="shrink-0 rounded-full bg-white/15 hover:bg-white/25 px-2.5 py-1 font-semibold" onClick={() => setTimeCursor(null)}>
+                  Live
+                </button>
+              </div>
+            )}
             {selectedAreaInfo ? (
               <AreaDetails
                 info={selectedAreaInfo}
                 layerLabel={activeLayerLabel}
+                timeLabel={atLabel}
                 weatherStatus={weatherStatus}
                 coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
-                locationDataIsDemo={locationDataIsDemo}
                 liveAlerts={liveAlerts}
                 onClose={() => setAreaSelection(null)}
                 onOpenLocation={onSelectLocation && ((location) => {
@@ -623,11 +778,21 @@ export function RiskMap({
 
             <div className="flex items-center justify-between gap-2 bg-surface rounded-xl p-2.5 mb-3 border border-hairline">
               <span className="text-xs text-ink-soft font-semibold">{trip ? "Overall route risk" : "Overall travel risk"}</span>
-              <span className={`pill ${overallKey} text-xs font-bold`}>
+              <span className={`pill ${overallKey} text-xs font-bold${overallBasis === "partial" ? " opacity-80" : ""}`}>
                 <span className="dot" />
-                {overallScore !== null ? `${overallScore}/100 · ` : ""}{riskLevelLabel(overallName)}
+                {overallScore !== null ? `${overallScore}/100 · ` : ""}{riskLevelLabel(overallName)}{overallBasis === "partial" && overallScore !== null ? " (partial)" : ""}
               </span>
             </div>
+            {overallBasis === "partial" && (
+              <p className="text-[11px] leading-snug text-mod bg-mod-soft rounded-lg px-2 py-1.5 mb-3">
+                Partial: only live factors are counted. {notLiveLabel} {notLiveCount === 1 ? "is" : "are"} demo data and not counted, so this is not a full travel rating.
+              </p>
+            )}
+            {overallBasis === "none" && !trip && (
+              <p className="text-[11px] leading-snug text-ink-soft bg-surface rounded-lg px-2 py-1.5 mb-3">
+                Not rated: no live data is available right now. Not rated does not mean safe.
+              </p>
+            )}
 
             {trip && <TripDataNotice trip={trip} />}
             {trip?.safetyRule && (
@@ -640,12 +805,20 @@ export function RiskMap({
               <div className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-1">
                 {trip ? `Conditions near ${shortPlaceName(effectiveSelected.name)}` : "What SafeGo considered"}
               </div>
-              {effectiveSelected.factors.map((factor) => (
-                <div key={factor.name} className="flex items-center justify-between text-xs py-1 border-b border-hairline/60 last:border-b-0">
-                  <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
-                  <strong className="font-mono text-ink">{factor.score}</strong>
-                </div>
-              ))}
+              {effectiveSelected.factors.map((factor) => {
+                const counted = isCounted(effectiveSelected, factor.name);
+                return (
+                  <div key={factor.name} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-hairline/60 last:border-b-0">
+                    <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
+                    <span className="flex items-center gap-1.5">
+                      {effectiveSelected.risk.countedFactors && (counted
+                        ? <span className="text-[9px] font-bold uppercase text-low">{atLabel ? "Recorded" : "Live"}</span>
+                        : <span className="text-[9px] font-bold uppercase text-mod">Demo · not counted</span>)}
+                      <strong className={`font-mono ${counted ? "text-ink" : "text-ink-soft line-through decoration-ink-soft/50"}`}>{factor.score}</strong>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex items-center justify-between gap-2 text-[11px] text-ink-soft pt-2 border-t border-hairline mb-3">
@@ -698,9 +871,11 @@ export function RiskMap({
         )}
       </div>
 
-      {latestAdvisory && (
+      {/* Announcement banner and legend share one column on the left, above the time slider. */}
+      <div className={`hidden lg:flex flex-col items-start gap-3 absolute ${showTimeline ? "bottom-28" : "bottom-6"} left-6 z-[1000]`}>
+      {latestAdvisory && at === null && (
         <aside
-          className="hidden lg:block absolute bottom-6 left-6 z-[1000] w-[420px] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-brand/30 p-3.5"
+          className={`w-[420px] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-brand/30 p-3.5`}
           aria-label="Latest announcement"
         >
           <div className="flex items-start gap-3">
@@ -730,8 +905,8 @@ export function RiskMap({
         </aside>
       )}
 
-      <div className="hidden lg:block absolute bottom-6 right-4 z-[1000] w-64 bg-white/90 backdrop-blur-md border border-hairline rounded-xl shadow-md p-2.5 text-[11px]">
-        <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area</div>
+      <div className={`w-64 bg-white/90 backdrop-blur-md border border-hairline rounded-xl shadow-md p-2.5 text-[11px]`}>
+        <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area{atLabel ? ` · ${atLabel}` : ""}</div>
         <div className="grid grid-cols-10 gap-px">
           {Array.from({ length: SCORE_CLASS_COUNT }, (_, riskClass) => (
             <span key={riskClass} className="h-3" style={{ background: classColor(riskClass) }} title={`${riskClass * 10}–${riskClass === SCORE_CLASS_COUNT - 1 ? 100 : riskClass * 10 + 9}`} />
@@ -759,18 +934,24 @@ export function RiskMap({
         )}
         {areaInfos.length > 0 && (
           <p className="mt-1.5 text-[10px] leading-snug text-ink">
-            <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
-            {activeLayer === "Weather" && liveAreaWeather
-              ? " (live weather covers every area)."
-              : activeLayer === "Official advisories" && liveActiveAlerts
-                ? " (PAGASA alerts are checked for every area)."
-              : estimatedAreaCount > 0
-                ? <>; <strong>{estimatedAreaCount}</strong> more have a partial estimate.</>
-                : "."}
+            {ratedAreaCount === 0 && estimatedAreaCount > 0 && activeLayer === "overall"
+              ? <>No Metro Manila area has a full rating yet: flood and road data is not live. <strong>{estimatedAreaCount}</strong> have a partial estimate.</>
+              : <>
+                <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
+                {activeLayer === "Weather" && liveAreaWeather
+                  ? " (live weather covers every area)."
+                  : activeLayer === "Official advisories" && liveActiveAlerts
+                    ? " (PAGASA alerts are checked for every area)."
+                    : estimatedAreaCount > 0
+                      ? <>; <strong>{estimatedAreaCount}</strong> more have a partial estimate.</>
+                      : "."}
+              </>}
           </p>
         )}
         <p className="mt-1 text-[10px] leading-snug text-ink-soft">
-          {activeLayer === "Weather"
+          {atLabel
+            ? `Rewound to ${atLabel}: recorded Open-Meteo weather for that hour${pastAlerts ? " and the PAGASA alerts in force then" : " (PAGASA alert history unavailable)"}, scored like now. Demo factors are not counted.`
+            : activeLayer === "Weather"
             ? weatherStatus === "live"
               ? "Open-Meteo model weather per city (per district in Manila), plus SafeGo readings where higher."
               : weatherStatus === "off"
@@ -782,6 +963,7 @@ export function RiskMap({
                 : "PAGASA alerts are loading or unavailable; only SafeGo locations are rated."
               : `Areas within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m of a SafeGo location take its highest score. Barangays; districts in Manila. Click an area for details.`}
         </p>
+      </div>
       </div>
     </div>
   );

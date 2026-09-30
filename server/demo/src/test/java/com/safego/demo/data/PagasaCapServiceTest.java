@@ -72,6 +72,18 @@ class PagasaCapServiceTest {
     }
 
     @Test
+    void activeLooksBackInTimeUsingOnlyAlertsIssuedByThen() throws Exception {
+        // Issued 05:00 Manila (21:00Z the day before); its replacement is issued 07:00 Manila (23:00Z).
+        var old = PagasaCapService.parseCap(cap("old", "", "Alert", "Moderate", "Expected", "Prepare", LATER, METRO_MANILA_POLYGON), "https://x/o.cap");
+        var replacement = PagasaCapService.parseCap(cap("new", "PAGASA-DOST,old,2026-09-30T05:00:00+08:00", "Update", "Severe", "Expected", "Prepare", LATER, METRO_MANILA_POLYGON)
+            .replace("2026-09-30T05:00:00+08:00</sent>", "2026-09-30T07:00:00+08:00</sent>"), "https://x/n.cap");
+        var alerts = List.of(old, replacement);
+        assertEquals(List.of(), PagasaCapService.active(alerts, Instant.parse("2026-09-29T20:00:00Z")).stream().map(PagasaCapService.CapAlert::id).toList(), "before either was issued");
+        assertEquals(List.of("old"), PagasaCapService.active(alerts, Instant.parse("2026-09-29T22:00:00Z")).stream().map(PagasaCapService.CapAlert::id).toList(), "only the first was issued");
+        assertEquals(List.of("new"), PagasaCapService.active(alerts, Instant.parse("2026-09-30T00:00:00Z")).stream().map(PagasaCapService.CapAlert::id).toList(), "the replacement takes over");
+    }
+
+    @Test
     void severityMappingNeverScoresAnActiveAlertAsZero() throws Exception {
         for (var entry : List.of(new Object[] {"Extreme", 90}, new Object[] {"Severe", 70},
                 new Object[] {"Moderate", 45}, new Object[] {"Minor", 25}, new Object[] {"Unknown", 25})) {

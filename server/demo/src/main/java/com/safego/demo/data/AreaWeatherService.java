@@ -99,6 +99,81 @@ public class AreaWeatherService {
         }
     }
 
+    public static final int MAX_PAST_DAYS = 4;
+    private static final long HISTORY_CACHE_MS = 60 * 60 * 1000;
+
+    public record DayHistory(String key, List<RainfallScoring.DayAssessment> days) {}
+
+    public record HistoryResult(List<DayHistory> history, SourceStatus source) {}
+
+    private final Map<String, CachedHistory> historyCache = new ConcurrentHashMap<>();
+
+    private record CachedHistory(long expiresAt, HistoryResult result) {}
+
+    /** Weather for the last {@link #MAX_PAST_DAYS} complete days per point. Past days do not change, so this caches for an hour. */
+    public HistoryResult history(List<Point> points) {
+        validate(points);
+        String provider = System.getenv().getOrDefault("SAFEGO_WEATHER_PROVIDER", "open-meteo").trim().toLowerCase(Locale.ROOT);
+        if (!"open-meteo".equals(provider)) {
+            return new HistoryResult(List.of(), OperationalFeedService.status("open-meteo", "Open-Meteo forecast models", "weather",
+                "disabled".equals(provider) ? "disabled" : "degraded",
+                "disabled".equals(provider) ? null : "SAFEGO_WEATHER_PROVIDER must be open-meteo or disabled."));
+        }
+        String cacheKey = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")) + "|" + cacheKey(points);
+        CachedHistory cached = historyCache.get(cacheKey);
+        if (cached != null && cached.expiresAt() > System.currentTimeMillis()) return cached.result();
+        try {
+            List<List<RainfallScoring.DayAssessment>> fetched = weather.fetchPastDays(
+                points.stream().map(point -> new double[] {point.latitude(), point.longitude()}).toList(), MAX_PAST_DAYS);
+            List<DayHistory> history = new ArrayList<>();
+            for (int i = 0; i < points.size(); i++) history.add(new DayHistory(points.get(i).key(), fetched.get(i)));
+            HistoryResult result = new HistoryResult(List.copyOf(history), new SourceStatus("open-meteo",
+                "Open-Meteo forecast models", "weather", "active", Instant.now().toString(), null, null));
+            if (historyCache.size() > 20) historyCache.clear();
+            historyCache.put(cacheKey, new CachedHistory(System.currentTimeMillis() + HISTORY_CACHE_MS, result));
+            return result;
+        } catch (Exception e) {
+            return new HistoryResult(List.of(), OperationalFeedService.status("open-meteo", "Open-Meteo forecast models", "weather",
+                "degraded", OperationalFeedService.safeMessage(e)));
+        }
+    }
+
+    public record HourTimeline(String key, List<RainfallScoring.HourAssessment> hours) {}
+
+    public record TimelineResult(List<HourTimeline> timelines, SourceStatus source) {}
+
+    private final Map<String, CachedTimeline> timelineCache = new ConcurrentHashMap<>();
+
+    private record CachedTimeline(long expiresAt, TimelineResult result) {}
+
+    /** Hour-by-hour weather for the last {@link #MAX_PAST_DAYS} days up to now, per point. Cached for 15 minutes. */
+    public TimelineResult timeline(List<Point> points) {
+        validate(points);
+        String provider = System.getenv().getOrDefault("SAFEGO_WEATHER_PROVIDER", "open-meteo").trim().toLowerCase(Locale.ROOT);
+        if (!"open-meteo".equals(provider)) {
+            return new TimelineResult(List.of(), OperationalFeedService.status("open-meteo", "Open-Meteo forecast models", "weather",
+                "disabled".equals(provider) ? "disabled" : "degraded",
+                "disabled".equals(provider) ? null : "SAFEGO_WEATHER_PROVIDER must be open-meteo or disabled."));
+        }
+        String cacheKey = cacheKey(points);
+        CachedTimeline cached = timelineCache.get(cacheKey);
+        if (cached != null && cached.expiresAt() > System.currentTimeMillis()) return cached.result();
+        try {
+            List<List<RainfallScoring.HourAssessment>> fetched = weather.fetchPastHours(
+                points.stream().map(point -> new double[] {point.latitude(), point.longitude()}).toList(), MAX_PAST_DAYS);
+            List<HourTimeline> timelines = new ArrayList<>();
+            for (int i = 0; i < points.size(); i++) timelines.add(new HourTimeline(points.get(i).key(), fetched.get(i)));
+            TimelineResult result = new TimelineResult(List.copyOf(timelines), new SourceStatus("open-meteo",
+                "Open-Meteo forecast models", "weather", "active", Instant.now().toString(), null, null));
+            if (timelineCache.size() > 20) timelineCache.clear();
+            timelineCache.put(cacheKey, new CachedTimeline(System.currentTimeMillis() + 15 * 60 * 1000, result));
+            return result;
+        } catch (Exception e) {
+            return new TimelineResult(List.of(), OperationalFeedService.status("open-meteo", "Open-Meteo forecast models", "weather",
+                "degraded", OperationalFeedService.safeMessage(e)));
+        }
+    }
+
     private static String cacheKey(List<Point> points) {
         StringBuilder key = new StringBuilder();
         for (Point point : points) {

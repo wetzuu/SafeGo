@@ -40,6 +40,15 @@ export interface RiskAssessment {
   summary: string;
   status: string;
   modelVersion: string;
+  /**
+   * What the score is built from, set once location data reaches the app:
+   * full = every factor comes from live data; partial = only the live factors count;
+   * none = no live factor, so the location is not rated and `percentage` must not be shown.
+   * Undefined for assessments that never pass through that step (e.g. validation scenarios).
+   */
+  basis?: "full" | "partial" | "none";
+  /** Factors counted in `percentage`; the rest are demo placeholders shown for context only. */
+  countedFactors?: FactorName[];
 }
 
 export interface Stat {

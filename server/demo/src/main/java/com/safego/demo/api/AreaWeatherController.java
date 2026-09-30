@@ -35,4 +35,30 @@ public class AreaWeatherController {
         return LocationsController.noStore(ApiResponse.ok(
             Map.of("readings", result.readings(), "source", result.source()), dashboard.backend()));
     }
+
+    /** Hour-by-hour weather for the last four days up to now per point, oldest first, for the map's time slider. */
+    @PostMapping("/timeline")
+    public ResponseEntity<Object> timeline(@RequestBody(required = false) AreaWeatherRequest body) {
+        try {
+            AreaWeatherService.validate(body == null ? null : body.points());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(ApiResponse.error("invalid_points", e.getMessage()));
+        }
+        AreaWeatherService.TimelineResult result = areaWeather.timeline(body.points());
+        return LocationsController.noStore(ApiResponse.ok(
+            Map.of("timelines", result.timelines(), "source", result.source()), dashboard.backend()));
+    }
+
+    /** The last four complete days of weather per point, newest first. */
+    @PostMapping("/history")
+    public ResponseEntity<Object> history(@RequestBody(required = false) AreaWeatherRequest body) {
+        try {
+            AreaWeatherService.validate(body == null ? null : body.points());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(ApiResponse.error("invalid_points", e.getMessage()));
+        }
+        AreaWeatherService.HistoryResult result = areaWeather.history(body.points());
+        return LocationsController.noStore(ApiResponse.ok(
+            Map.of("history", result.history(), "source", result.source()), dashboard.backend()));
+    }
 }

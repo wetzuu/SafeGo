@@ -146,6 +146,10 @@ public class DashboardService {
         return items;
     }
 
+    public PagasaCapService.Result pagasaRecentAlerts() {
+        return pagasaService.recentAlerts();
+    }
+
     public PagasaCapService.Result pagasaAlerts() {
         return pagasaService.activeAlerts();
     }

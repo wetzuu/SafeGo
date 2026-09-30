@@ -10,12 +10,15 @@ import { riskGradient } from "@/lib/safego/risk-model";
 import type {
   Advisory,
   CommunityReport,
+  FactorName,
   SafeGoLocation,
   ScreenKey,
 } from "@/lib/safego/types";
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { assessTrip } from "@/lib/trips/trip-assessment";
+import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
+import { honestLocation, honestSnapshot, liveFactorNames } from "@/lib/safego/honest-risk";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import { RiskGauge } from "./RiskGauge";
@@ -82,12 +85,57 @@ function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: stri
   return <div className="page-head"><div className="page-eyebrow">{eyebrow}</div><h1 className="page-title">{title}</h1><p className="page-sub">{subtitle}</p></div>;
 }
 
+function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor: FactorName }) {
+  if (!location.risk.countedFactors) return null;
+  return location.risk.countedFactors.includes(factor)
+    ? <span className="text-[10px] font-bold uppercase text-low">Live</span>
+    : <span className="text-[10px] font-bold uppercase text-mod">Demo · not counted</span>;
+}
+
+function BasisNote({ location }: { location: SafeGoLocation }) {
+  if (location.risk.basis === "partial") {
+    return <div className="calculation-rule">Partial rating: only live factors are counted. Factors marked “Demo · not counted” are placeholders shown for context. This is not a full travel rating.</div>;
+  }
+  if (location.risk.basis === "none") {
+    return <div className="calculation-rule">Not rated: SafeGo has no live data for this location right now. Not rated does not mean safe.</div>;
+  }
+  return null;
+}
+
 function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
-  return <section className="page"><PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${location.name} · ${location.risk.name.toLocaleLowerCase()}`} />
-    <div className="card mb-[22px]"><div className="gauge-lg-wrap"><RiskGauge score={location.risk.percentage} size={190} /><div className="risk-level-name md">{location.risk.name}</div><p className="gauge-caption">{location.risk.summary}</p><div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div></div></div>
+  const rated = location.risk.basis !== "none";
+  return <section className="page">
+    <PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${location.name} · ${location.risk.name.toLocaleLowerCase()}${location.risk.basis === "partial" ? " (partial)" : ""}`} />
+    <div className="card mb-[22px]">
+      <div className="gauge-lg-wrap">
+        {rated ? <RiskGauge score={location.risk.percentage} size={190} /> : <div className="risk-level-name md">–</div>}
+        <div className="risk-level-name md">{location.risk.name}{location.risk.basis === "partial" ? " (partial)" : ""}</div>
+        <p className="gauge-caption">{location.risk.summary}</p>
+        <BasisNote location={location} />
+        <div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div>
+      </div>
+    </div>
     <div className="section-title">What SafeGo considered</div>
-    <div>{location.factors.map((factor) => <article className="card factor-card" key={factor.name}><div className={`factor-icon ${factor.tone}`}><Icon name={factor.icon} /></div><div className="factor-body"><div className="factor-top"><div className="factor-name">{displayFactorName(factor.name)}</div><span className={`pill ${factor.pill}`}><span className="dot" />{factor.pillText} · {factor.score}/100</span></div><p className="factor-desc">{factor.description}</p><div className="meter"><div className="meter-fill" style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div></div></article>)}</div>
-    <div className="card card-pad mb-[22px] result-explanation"><h2>How to use this result</h2><p>SafeGo gives more importance to flooding and road conditions, then considers weather, official updates, community observations, and nearby school information.</p>{location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}<p><strong>This is not permission to travel.</strong> Conditions can change quickly, so check current government and school announcements before leaving.</p></div>
+    <div>{location.factors.map((factor) => {
+      const counted = !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name);
+      return <article className={`card factor-card${counted ? "" : " opacity-70"}`} key={factor.name}>
+        <div className={`factor-icon ${factor.tone}`}><Icon name={factor.icon} /></div>
+        <div className="factor-body">
+          <div className="factor-top">
+            <div className="factor-name">{displayFactorName(factor.name)} <FactorBasisTag location={location} factor={factor.name} /></div>
+            <span className={`pill ${factor.pill}`}><span className="dot" />{factor.pillText} · {factor.score}/100</span>
+          </div>
+          <p className="factor-desc">{factor.description}</p>
+          <div className="meter"><div className="meter-fill" style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div>
+        </div>
+      </article>;
+    })}</div>
+    <div className="card card-pad mb-[22px] result-explanation">
+      <h2>How to use this result</h2>
+      <p>SafeGo gives more importance to flooding and road conditions, then considers weather, official updates, community observations, and nearby school information. Only factors backed by live data are counted; the rest are shown for context.</p>
+      {location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}
+      <p><strong>This is not permission to travel.</strong> Conditions can change quickly, so check current government and school announcements before leaving.</p>
+    </div>
   </section>;
 }
 
@@ -96,11 +144,40 @@ function LocationConditions({ location }: { location: SafeGoLocation }) {
 }
 
 function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
-  return <section className="page"><PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
+  const partial = trip.corridorLocations.some((location) => location.risk.basis === "partial");
+  return <section className="page">
+    <PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
     <TripDataNotice trip={trip} />
-    {trip.overallRiskScore !== null && <div className="card card-pad mb-[22px]"><div className="gauge-lg-wrap"><RiskGauge score={trip.overallRiskScore} size={190} /><div className="risk-level-name md">{trip.riskName}</div><p className="gauge-caption">This result uses the parts of the route where SafeGo has information. Missing information is never treated as low risk.</p>{trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}</div></div>}
+    {trip.overallRiskScore !== null && <div className="card card-pad mb-[22px]">
+      <div className="gauge-lg-wrap">
+        <RiskGauge score={trip.overallRiskScore} size={190} />
+        <div className="risk-level-name md">{trip.riskName}{partial ? " (partial)" : ""}</div>
+        <p className="gauge-caption">This result uses the parts of the route where SafeGo has information. Missing information is never treated as low risk.</p>
+        {partial && <div className="calculation-rule">Partial rating: places along this route count only their live factors. Demo placeholders are shown below but not counted, so this is not a full travel rating.</div>}
+        {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
+      </div>
+    </div>}
     <div className="section-title">Places that shaped this result</div>
-    <div>{trip.corridorLocations.map((location) => <article className="card factor-card route-factor-card" key={location.id}><div className="route-location-score" style={{ background: riskGradient(location.risk.percentage) }}>{location.risk.percentage}</div><div className="factor-body"><div className="factor-top"><div className="factor-name">{location.name}</div><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.name}</span></div><p className="factor-desc">{location.risk.summary}</p><p className="route-weather-detail"><strong>Weather:</strong> {location.factors.find((factor) => factor.name === "Weather")?.description}</p><div className="route-factor-pills">{location.factors.map((factor) => <span key={factor.name}>{displayFactorName(factor.name)}: <strong>{factor.score}</strong></span>)}</div></div></article>)}</div>
+    <div>{trip.corridorLocations.map((location) => {
+      const rated = location.risk.basis !== "none";
+      return <article className="card factor-card route-factor-card" key={location.id}>
+        <div className="route-location-score" style={{ background: rated ? riskGradient(location.risk.percentage) : UNKNOWN_ROUTE_COLOR }}>{rated ? location.risk.percentage : "–"}</div>
+        <div className="factor-body">
+          <div className="factor-top">
+            <div className="factor-name">{location.name}</div>
+            <span className={`pill ${rated ? location.risk.key : "unknown"}`}><span className="dot" />{location.risk.name}{location.risk.basis === "partial" ? " (partial)" : ""}</span>
+          </div>
+          <p className="factor-desc">{location.risk.summary}</p>
+          <p className="route-weather-detail"><strong>Weather:</strong> {location.factors.find((factor) => factor.name === "Weather")?.description}</p>
+          <div className="route-factor-pills">{location.factors.map((factor) => {
+            const counted = !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name);
+            return <span key={factor.name} className={counted ? "" : "opacity-60"}>
+              {displayFactorName(factor.name)}: <strong className={counted ? "" : "line-through"}>{factor.score}</strong>{counted ? "" : " (demo, not counted)"}
+            </span>;
+          })}</div>
+        </div>
+      </article>;
+    })}</div>
   </section>;
 }
 
@@ -153,7 +230,11 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
 }
 
 export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean }) {
-  const [locations, setLocations] = useState(initialLocations);
+  // Every score in the app comes from live factors only; see lib/safego/honest-risk.ts.
+  const [locations, setLocations] = useState(() => {
+    const live = liveFactorNames(initialSources, initialBackend);
+    return initialLocations.map((location) => honestLocation(location, live));
+  });
   const [dataBackend, setDataBackend] = useState(initialBackend);
   const [sources, setSources] = useState(initialSources);
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
@@ -179,13 +260,14 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
       const envelope = (await response.json()) as DashboardEnvelope;
       setApiUnavailable(false);
-      setLocations(envelope.data.locations);
-      setTrip((current) => current ? assessTrip(current, envelope.data) : null);
+      const honest = honestSnapshot(envelope.data, envelope.meta.backend);
+      setLocations(honest.locations);
+      setTrip((current) => current ? assessTrip(current, honest) : null);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
       setSelectedLocation((current) => current
-        ? envelope.data.locations.find((location) => location.id === current.id) ?? current
+        ? honest.locations.find((location) => location.id === current.id) ?? current
         : current);
       return true;
     } catch {
@@ -221,7 +303,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     };
   }, [refreshDashboard]);
 
-  const selectTrip = useCallback((analysis: TripAnalysis) => {
+  const selectTrip = useCallback((result: TripAnalysis) => {
+    // The trip API scores with every factor; re-assess the same route with honest scores.
+    const analysis = assessTrip(result, { locations, sources, weatherUpdatedAt });
     const destinationRiskId =
       analysis.destination.matchedLocationId ??
       analysis.segments.at(-1)?.basisLocationId;
@@ -232,7 +316,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setTrip(analysis);
     setSelectedLocation(supportingLocation);
     setActiveScreen("overview");
-  }, [locations]);
+  }, [locations, sources, weatherUpdatedAt]);
   const selectLocation = useCallback((location: SafeGoLocation) => {
     setTrip(null);
     setSelectedLocation(location);
@@ -377,7 +461,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
               liveWeather={!apiUnavailable && sources.some((source) => source.key === "open-meteo" && source.status === "active")}
-              locationDataIsDemo={dataBackend === "mock"}
               liveAlerts={!apiUnavailable && sources.some((source) => source.key === "pagasa-cap" && source.status === "active")}
             />
           ) : (
@@ -396,9 +479,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                       {trip ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}` : detailLocation?.name}
                     </span>
                     {trip ? (
-                      <span className={`pill ${trip.riskKey} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(trip.riskName)}</span>
+                      <span className={`pill ${trip.riskKey} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(trip.riskName)}{trip.corridorLocations.some((location) => location.risk.basis === "partial") ? " (partial)" : ""}</span>
                     ) : detailLocation && (
-                      <span className={`pill ${detailLocation.risk.key} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(detailLocation.risk.name)}</span>
+                      <span className={`pill ${detailLocation.risk.basis === "none" ? "unknown" : detailLocation.risk.key} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(detailLocation.risk.name)}{detailLocation.risk.basis === "partial" ? " (partial)" : ""}</span>
                     )}
                   </div>
                 </div>

@@ -84,6 +84,54 @@ public class WeatherService {
         return readings;
     }
 
+    /** Scored weather for every hour of the last {@code days} days up to now, oldest first, at each coordinate. */
+    public List<List<RainfallScoring.HourAssessment>> fetchPastHours(List<double[]> coordinates, int days) throws Exception {
+        if (coordinates.isEmpty()) return List.of();
+        String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
+        String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
+        String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
+            + "&hourly=" + URLEncoder.encode("weather_code,precipitation,wind_gusts_10m,temperature_2m", StandardCharsets.UTF_8)
+            + "&past_days=" + days + "&forecast_days=1&timezone=Asia%2FManila";
+
+        JsonNode payload = request(url);
+        List<JsonNode> results = new ArrayList<>();
+        if (payload.isArray()) payload.forEach(results::add);
+        else results.add(payload);
+        if (results.size() != coordinates.size()) {
+            throw new IllegalStateException("Open-Meteo returned an unexpected number of locations.");
+        }
+
+        String nowHour = java.time.LocalDateTime.now(MANILA).withMinute(0).withSecond(0).withNano(0).toString().substring(0, 16);
+        List<List<RainfallScoring.HourAssessment>> timelines = new ArrayList<>();
+        for (JsonNode result : results) timelines.add(RainfallScoring.assessHours(result.path("hourly"), nowHour));
+        return timelines;
+    }
+
+    /** Scored weather for up to {@code days} complete past days at each coordinate, newest day first. */
+    public List<List<RainfallScoring.DayAssessment>> fetchPastDays(List<double[]> coordinates, int days) throws Exception {
+        if (coordinates.isEmpty()) return List.of();
+        String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
+        String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
+        String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
+            + "&daily=" + URLEncoder.encode("weather_code,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_gusts_10m_max", StandardCharsets.UTF_8)
+            + "&hourly=precipitation&past_days=" + days + "&forecast_days=1&timezone=Asia%2FManila";
+
+        JsonNode payload = request(url);
+        List<JsonNode> results = new ArrayList<>();
+        if (payload.isArray()) payload.forEach(results::add);
+        else results.add(payload);
+        if (results.size() != coordinates.size()) {
+            throw new IllegalStateException("Open-Meteo returned an unexpected number of locations.");
+        }
+
+        String today = java.time.LocalDate.now(MANILA).toString();
+        List<List<RainfallScoring.DayAssessment>> history = new ArrayList<>();
+        for (JsonNode result : results) {
+            history.add(RainfallScoring.assessPastDays(result.path("daily"), result.path("hourly"), today, days));
+        }
+        return history;
+    }
+
     public List<SafeGoLocation> fetchAndApplyWeather(List<SafeGoLocation> locations) throws Exception {
         if (locations.isEmpty()) return locations;
 
