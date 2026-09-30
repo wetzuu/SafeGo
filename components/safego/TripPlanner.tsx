@@ -3,18 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
-import { isAreaDashboardLocation } from "@/lib/trips/pilot";
 import type { AccountProfile, SavedPlace } from "@/lib/account/types";
+import type { PreviewTripRoute } from "./RiskMap";
 
 interface TripEnvelope {
   data?: TripAnalysis;
   error?: { message?: string };
 }
 
+interface PlaceSuggestion {
+  label: string;
+  detail: string;
+  coordinates: [number, number];
+  matchedLocation?: SafeGoLocation;
+}
+
 function friendlyRouteError(status: number) {
   if (status === 400) return "Check both place names and try again.";
-  if (status === 404) return "We couldn’t find a road route between those places. Try nearby landmarks or the demo trip.";
-  if (status === 422) return "SafeGo cannot check that trip yet. Try one of the supported areas or the demo trip.";
+  if (status === 404) return "We couldn’t find a road route between those places. Try nearby landmarks or roads.";
+  if (status === 422) return "SafeGo cannot check that trip yet. Try searching for specific Philippine landmarks or roads.";
   return "SafeGo couldn’t check this route right now. Try again, or open the demo trip.";
 }
 
@@ -34,21 +41,151 @@ export function TripPlanner({
   locations,
   onLocation,
   onTrip,
+  onPreviewRoute,
+  pinnedPoint,
   account,
+  initialOrigin,
+  initialDestination,
+  initialOriginPlace,
+  initialDestinationPlace,
 }: {
   locations: SafeGoLocation[];
   onLocation: (location: SafeGoLocation) => void;
   onTrip: (trip: TripAnalysis) => void;
+  onPreviewRoute?: (preview: PreviewTripRoute | null) => void;
+  pinnedPoint?: { coordinates: [number, number]; label: string } | null;
   account: AccountProfile | null;
+  initialOrigin?: string;
+  initialDestination?: string;
+  initialOriginPlace?: SavedPlace | null;
+  initialDestinationPlace?: SavedPlace | null;
 }) {
-  const [stops, setStops] = useState([""]);
-  const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>([null]);
+  const [stops, setStops] = useState<string[]>(() => {
+    if (initialOrigin && initialDestination) return [initialOrigin, initialDestination];
+    if (initialOrigin) return [initialOrigin];
+    return [""];
+  });
+  const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>(() => {
+    if (initialOriginPlace && initialDestinationPlace) return [initialOriginPlace, initialDestinationPlace];
+    if (initialOriginPlace) return [initialOriginPlace];
+    return [null];
+  });
+  const [activeInputIndex, setActiveInputIndex] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preferSavedDemo, setPreferSavedDemo] = useState(false);
+  const [previewInfo, setPreviewInfo] = useState<{ distanceKm: number; durationMin: number; roadNames: string[] } | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
 
-  useEffect(() => () => activeRequest.current?.abort(), []);
+  // Synchronize when initialOrigin or initialDestination change from parent
+  useEffect(() => {
+    if (initialOrigin !== undefined) {
+      setStops(initialDestination !== undefined ? [initialOrigin, initialDestination] : [initialOrigin]);
+      setSavedStops(initialDestinationPlace !== undefined ? [initialOriginPlace ?? null, initialDestinationPlace] : [initialOriginPlace ?? null]);
+    }
+  }, [initialOrigin, initialDestination, initialOriginPlace, initialDestinationPlace]);
+
+  useEffect(() => () => {
+    activeRequest.current?.abort();
+    searchAbort.current?.abort();
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+  }, []);
+
+  // Handle map click pin drops into inputs
+  useEffect(() => {
+    if (!pinnedPoint) return;
+    const { coordinates, label } = pinnedPoint;
+    const newPlace: SavedPlace = {
+      label,
+      canonicalLabel: label,
+      coordinates,
+      source: "nominatim",
+      matchedLocationId: null,
+      approximate: true,
+    };
+
+    setStops((current) => {
+      if (!current[0] || !current[0].trim()) {
+        return [label];
+      }
+      if (current.length === 1) {
+        return [current[0], label];
+      }
+      return [current[0], label];
+    });
+
+    setSavedStops((current) => {
+      if (!current[0]) {
+        return [newPlace];
+      }
+      if (current.length === 1) {
+        return [current[0], newPlace];
+      }
+      return [current[0], newPlace];
+    });
+    setError("");
+  }, [pinnedPoint]);
+
+  // Fetch OSRM preview route as soon as origin and destination coordinates are available
+  useEffect(() => {
+    const originCoord = savedStops[0]?.coordinates;
+    const destCoord = savedStops[1]?.coordinates;
+    if (!originCoord || !destCoord) {
+      onPreviewRoute?.(null);
+      setPreviewInfo(null);
+      return;
+    }
+
+    const start: [number, number] = originCoord;
+    const end: [number, number] = destCoord;
+    let cancelled = false;
+
+    async function fetchPreview() {
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const route = data.routes?.[0];
+        if (route && !cancelled) {
+          const coords: Array<[number, number]> = route.geometry.coordinates.map(
+            ([lon, lat]: [number, number]) => [lat, lon],
+          );
+          const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
+          const durationMin = Math.round(route.duration / 60);
+          const roadNames: string[] = Array.from(
+            new Set(
+              route.legs?.flatMap((leg: { steps?: Array<{ name?: string }> }) =>
+                leg.steps?.map((st) => st.name?.trim()).filter(Boolean),
+              ),
+            ),
+          ).slice(0, 3) as string[];
+
+          const preview: PreviewTripRoute = {
+            routeCoordinates: coords,
+            origin: { coordinates: start, label: stops[0] || "Point A" },
+            destination: { coordinates: end, label: stops[1] || "Point B" },
+            distanceKm,
+            durationMin,
+            roadNames,
+          };
+          onPreviewRoute?.(preview);
+          setPreviewInfo({ distanceKm, durationMin, roadNames });
+        }
+      } catch {}
+    }
+
+    void fetchPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [savedStops[0]?.coordinates, savedStops[1]?.coordinates, stops[0], stops[1], onPreviewRoute]);
 
   const hasDestination = stops.length === 2;
 
@@ -59,6 +196,90 @@ export function TripPlanner({
     setSavedStops((current) => current.map((place, stopIndex) => stopIndex === index ? null : place));
     setPreferSavedDemo(false);
     setError("");
+
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchAbort.current?.abort();
+
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      setSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    setLoadingSuggestions(true);
+    searchDebounce.current = setTimeout(async () => {
+      const controller = new AbortController();
+      searchAbort.current = controller;
+
+      const norm = normalized(trimmed);
+      const localMatches: PlaceSuggestion[] = locations
+        .filter((loc) =>
+          [loc.name, loc.city, ...loc.aliases].some((cand) => normalized(cand).includes(norm)))
+        .map((loc) => ({
+          label: loc.name,
+          detail: `${loc.city} · SafeGo Location`,
+          coordinates: loc.coordinates,
+          matchedLocation: loc,
+        }));
+
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmed)}&format=jsonv2&countrycodes=ph&limit=5&addressdetails=1`,
+          {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error("Search service error");
+        const osmResults = (await response.json()) as Array<{
+          display_name: string;
+          name?: string;
+          lat: string;
+          lon: string;
+        }>;
+
+        const osmSuggestions: PlaceSuggestion[] = osmResults.map((item) => {
+          const parts = item.display_name.split(", ");
+          const shortTitle = item.name || parts[0];
+          const rest = parts.slice(item.name ? 0 : 1, 4).join(", ");
+          return {
+            label: shortTitle,
+            detail: rest || item.display_name,
+            coordinates: [Number(item.lat), Number(item.lon)],
+          };
+        });
+
+        // Combine local preset matches and OSM results without duplicating exact names
+        const combined = [...localMatches];
+        for (const osm of osmSuggestions) {
+          if (!combined.some((item) => normalized(item.label) === normalized(osm.label))) {
+            combined.push(osm);
+          }
+        }
+        setSuggestions(combined.slice(0, 6));
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setSuggestions(localMatches);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoadingSuggestions(false);
+      }
+    }, 300);
+  }
+
+  function pickSuggestion(index: number, suggestion: PlaceSuggestion) {
+    setStops((current) => current.map((s, idx) => idx === index ? suggestion.label : s));
+    setSavedStops((current) => current.map((s, idx) => idx === index ? {
+      label: suggestion.label,
+      canonicalLabel: suggestion.detail,
+      coordinates: suggestion.coordinates,
+      source: suggestion.matchedLocation ? "preset" : "nominatim",
+      matchedLocationId: suggestion.matchedLocation?.id ?? null,
+      approximate: true,
+    } : s));
+    setSuggestions([]);
+    setActiveInputIndex(null);
   }
 
   async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean, resolved = savedStops) {
@@ -100,14 +321,22 @@ export function TripPlanner({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+    setSuggestions([]);
 
     if (!hasDestination) {
-      const location = findLocation(locations.filter(isAreaDashboardLocation), stops[0]);
-      if (!location) {
-        setError("Choose one of the supported areas shown below.");
+      const location = findLocation(locations, stops[0]);
+      if (location) {
+        onLocation(location);
         return;
       }
-      onLocation(location);
+      // If single point is not in predefined database, analyze with self as destination or prompt for second point
+      if (savedStops[0]?.coordinates) {
+        // Automatically add destination to form route
+        addDestination();
+        return;
+      }
+      // Try resolving single location
+      setError("Add a destination to plan a route from this location.");
       return;
     }
 
@@ -155,32 +384,74 @@ export function TripPlanner({
   }
 
   return (
-    <form className="trip-planner" onSubmit={submit}>
-      <p className="demo-scope"><strong>Currently supported:</strong> España, Lerma, Quiapo, Mapúa Makati, and Pasig.</p>
-      <datalist id="safego-locations">
-        {locations.filter(isAreaDashboardLocation).map((location) => <option key={location.id} value={location.name} />)}
-      </datalist>
+    <form className="trip-planner" onSubmit={submit} onBlur={(e) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        setSuggestions([]);
+        setActiveInputIndex(null);
+      }
+    }}>
+      <p className="demo-scope">Search any road, landmark, or city across the Philippines.</p>
       {stops.map((stop, index) => (
         <div className="trip-stop" key={index}>
-          {index > 0 && <div className="trip-connector" aria-hidden="true" />}
+          {index > 0 && (
+            <div className="flex items-center justify-between my-1 pl-3.5 pr-1">
+              <div className="trip-connector !m-0 !h-4" aria-hidden="true" />
+              <button
+                type="button"
+                className="text-[11px] text-ink-soft hover:text-brand hover:bg-brand-soft/50 px-2 py-0.5 rounded transition-colors flex items-center gap-1 font-semibold"
+                title="Swap origin and destination"
+                onClick={() => {
+                  setStops(([a, b]) => [b ?? "", a ?? ""]);
+                  setSavedStops(([a, b]) => [b ?? null, a ?? null]);
+                }}
+              >
+                <span className="text-sm leading-none">⇅</span> Swap
+              </button>
+            </div>
+          )}
           <div className="trip-input-row">
             <span className={`trip-point trip-point-${index === 0 ? "a" : "b"}`}>{String.fromCharCode(65 + index)}</span>
-            <div className="trip-field">
+            <div className="trip-field relative">
               <label htmlFor={`trip-stop-${index}`}>
-                {hasDestination ? (index === 0 ? "Starting point" : "Destination") : "Location"}
+                {hasDestination ? (index === 0 ? "Starting point" : "Destination") : "Location or road"}
               </label>
               <input
                 id={`trip-stop-${index}`}
                 value={stop}
                 onChange={(event) => updateStop(index, event.target.value)}
-                list="safego-locations"
-                placeholder={index === 0 ? "Search a SafeGo location" : "Where are you going?"}
+                onFocus={() => {
+                  setActiveInputIndex(index);
+                  if (stop.trim().length >= 2) updateStop(index, stop);
+                }}
+                placeholder={index === 0 ? "e.g. EDSA, España Blvd, or Cebu IT Park" : "Where are you going?"}
                 autoComplete="off"
                 disabled={loading}
                 required
                 maxLength={160}
                 autoFocus={index === 1}
               />
+              {activeInputIndex === index && (suggestions.length > 0 || loadingSuggestions) && (
+                <ul className="place-results absolute left-0 right-0 top-full shadow-lg z-50 bg-white border border-hairline rounded-box max-h-56 overflow-auto">
+                  {loadingSuggestions && suggestions.length === 0 && (
+                    <li className="place-empty">Searching OpenStreetMap…</li>
+                  )}
+                  {suggestions.map((item, sugIdx) => (
+                    <li key={`${item.label}-${sugIdx}`}>
+                      <button
+                        type="button"
+                        className="place-option"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          pickSuggestion(index, item);
+                        }}
+                      >
+                        <span className="place-option-name">{item.label}</span>
+                        <span className="place-option-meta">{item.detail}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             {index > 0 && (
               <button className="remove-trip-stop" type="button" onClick={removeDestination} disabled={loading} aria-label="Remove destination">×</button>
@@ -193,23 +464,30 @@ export function TripPlanner({
           <span aria-hidden="true">+</span> Add destination
         </button>
       )}
-      {account && (account.home || account.school) && <div className="saved-place-row" aria-label="Saved places">
-        {account.homePlace && <button type="button" onClick={() => applySavedPlace(account.homePlace)} disabled={loading}><span>⌂</span> Home</button>}
-        {account.schoolPlace && <button type="button" onClick={() => applySavedPlace(account.schoolPlace)} disabled={loading}><span>▣</span> School</button>}
-      </div>}
+      {previewInfo && (
+        <div className="preview-route-badge my-3 p-3 bg-blue-50 border border-blue-200 rounded-box text-[13px] text-blue-900 flex items-center justify-between">
+          <div>
+            <strong>Route Preview:</strong> {previewInfo.distanceKm} km · ~{previewInfo.durationMin} mins
+            {previewInfo.roadNames.length > 0 && (
+              <span className="block text-[12px] text-blue-700">via {previewInfo.roadNames.join(", ")}</span>
+            )}
+          </div>
+          <span className="text-xs bg-blue-600 text-white font-semibold px-2 py-1 rounded">OSM Route</span>
+        </div>
+      )}
       <div className="trip-actions">
         <button className="submit-btn" type="submit" disabled={loading}>
-          {loading ? "Checking your route…" : hasDestination ? "Check my trip" : "Check this area"}
+          {loading ? "Analyzing travel risk…" : hasDestination ? "Analyze Travel Risk" : "Check this area"}
         </button>
         <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>{loading ? "Opening example…" : "Try an example trip"}</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-mode-help">
         {hasDestination
-          ? "SafeGo checks the roads between A and B."
+          ? "Click 'Analyze Travel Risk' to assess weather, flooding, and road alerts along this route."
           : "Check one area, or add a destination for a route."}
       </p>
-      <p className="trip-attribution">Map and place information © OpenStreetMap contributors.</p>
+      <p className="trip-attribution">Road and map data © OpenStreetMap contributors.</p>
     </form>
   );
 }

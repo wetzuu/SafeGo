@@ -20,11 +20,10 @@ import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import { OverviewContextPanel } from "./OverviewContextPanel";
 import { RiskGauge } from "./RiskGauge";
-import { RiskMap } from "./RiskMap";
+import { RiskMap, type PreviewTripRoute } from "./RiskMap";
 import { TripOverview } from "./TripOverview";
 import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
-import { isAreaDashboardLocation } from "@/lib/trips/pilot";
 import { NearbyUniversities } from "./NearbyUniversities";
 import { AccountPanel, loadAccountSession } from "./AccountPanel";
 import type { AccountProfile } from "@/lib/account/types";
@@ -179,13 +178,15 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
 }
 
 export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean }) {
-  const [locations, setLocations] = useState(initialLocations.filter(isAreaDashboardLocation));
+  const [locations, setLocations] = useState(initialLocations);
   const [dataBackend, setDataBackend] = useState(initialBackend);
   const [sources, setSources] = useState(initialSources);
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [apiUnavailable, setApiUnavailable] = useState(false);
   const [trip, setTrip] = useState<TripAnalysis | null>(null);
+  const [previewRoute, setPreviewRoute] = useState<PreviewTripRoute | null>(null);
+  const [pinnedPoint, setPinnedPoint] = useState<{ coordinates: [number, number]; label: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
   const [account, setAccount] = useState<AccountProfile | null>(null);
@@ -202,7 +203,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
       const envelope = (await response.json()) as DashboardEnvelope;
       setApiUnavailable(false);
-      setLocations(envelope.data.locations.filter(isAreaDashboardLocation));
+      setLocations(envelope.data.locations);
       setTrip((current) => current ? assessTrip(current, envelope.data) : null);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
@@ -285,20 +286,182 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
   const startNewTrip = useCallback(() => {
     setTrip(null);
+    setPreviewRoute(null);
+    setPinnedPoint(null);
     setSelectedLocation(null);
     setActiveScreen("overview");
   }, []);
 
-  if (!selectedLocation) {
-    return <><main id="search-screen"><div className="search-panel trip-search-panel"><div className="search-account-row"><div className="brandmark search-brand"><Brand /></div><button className="account-button" type="button" onClick={() => setAccountOpen(true)}>{account ? `Hi, ${account.name}` : "Sign in"}</button></div><h1 className="search-title">Check a route or area</h1><p className="search-lead">See what SafeGo knows about conditions before you travel.</p><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /><TripPlanner locations={locations} onLocation={selectLocation} onTrip={selectTrip} account={account} /><div className="suggest-label">Try a supported area</div><div className="place-chips">{locations.map((location) => <button key={location.id} type="button" className="place-chip" onClick={() => selectLocation(location)}>{location.name}</button>)}</div><p className="search-disclaimer">SafeGo is for guidance only. Always check current government, school, and emergency announcements before traveling.</p></div></main><AccountPanel key={`${account?.email ?? "guest"}-${accountOpen}`} open={accountOpen} account={account} onClose={() => setAccountOpen(false)} onAccount={setAccount} /></>;
-  }
+  const mobilePlanner = (
+    <div className="block lg:hidden bg-white/95 backdrop-blur-md border border-hairline rounded-2xl shadow-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip}>
+          <Brand compact />
+        </button>
+        <div className="flex items-center gap-1.5">
+          {(trip || selectedLocation) && (
+            <button
+              className="text-xs font-semibold px-2 py-1 rounded-lg border border-hairline hover:bg-neutral-100 text-ink-soft"
+              type="button"
+              onClick={startNewTrip}
+            >
+              Reset
+            </button>
+          )}
+          <button
+            className="account-button text-xs font-semibold px-2.5 py-1 rounded-lg border border-hairline hover:bg-neutral-100"
+            type="button"
+            onClick={() => setAccountOpen(true)}
+          >
+            {account ? `Hi, ${account.name}` : "Sign in"}
+          </button>
+        </div>
+      </div>
+      <TripPlanner
+        key={`mobile-${trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}`}
+        locations={locations}
+        onLocation={selectLocation}
+        onTrip={selectTrip}
+        onPreviewRoute={setPreviewRoute}
+        account={account}
+        initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
+        initialDestination={trip ? trip.destination.label : undefined}
+      />
+    </div>
+  );
 
-  return <><div id="app-shell" className="active"><nav className="sidenav hidden lg:flex"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /><button type="button" className="change-loc" onClick={startNewTrip}>{trip ? "Plan another trip" : "Check another place"}</button><button type="button" className="side-account" onClick={() => setAccountOpen(true)}>{account ? account.name : "Sign in"}</button></nav><div className="main-col"><div className="topbar"><button type="button" className="brandmark brand-home" onClick={startNewTrip}><Brand compact /></button>{trip ? <span className={`pill ${trip.riskKey}`}><span className="dot" />{trip.riskName.replace(" RISK", "")}</span> : <LocationPill location={selectedLocation} />}<button className="account-button" type="button" onClick={() => setAccountOpen(true)}>{account ? account.name : "Sign in"}</button></div><div className="dashboard-data-status"><DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} /></div>{trip && <div className="trip-bar"><span><strong>A</strong> {trip.origin.label}</span><span className="trip-bar-arrow">→</span><span><strong>B</strong> {trip.destination.label}</span><button type="button" onClick={startNewTrip}>Change trip</button></div>}
-    {activeScreen === "overview" && (trip ? <TripOverview trip={trip} navigate={navigate} /> : <LocationOverview location={selectedLocation} sources={sources} navigate={navigate} />)}
-    {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : <LocationRiskFactors location={selectedLocation} />)}
-    {activeScreen === "alerts" && <section className="page"><PageHeader eyebrow={trip ? "Route announcements" : "Area announcements"} title={trip ? "Announcements near this trip" : "Announcements for this area"} subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation.name}. Newest announcements first.`} /><Advisories items={trip ? trip.advisories : selectedLocation.advisories} /></section>}
-    {activeScreen === "map" && <RiskMap locations={trip ? trip.corridorLocations : locations} selectedLocation={trip ? trip.corridorLocations.find((location) => location.id === selectedLocation.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation} trip={trip} onSelectLocation={selectMapLocation} onViewDashboard={() => navigate("overview")} />}
-    {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : <LocationConditions location={selectedLocation} />)}
-    {activeScreen === "reports" && <ReportPage key={`${selectedLocation.id}-${trip ? "trip" : "area"}`} location={selectedLocation} items={trip ? trip.reports : selectedLocation.reports} tripMode={Boolean(trip)} reportingEnabled={communityReportingEnabled} onSubmitted={addSubmittedReport} />}
-  </div><nav className="bottom-tabs visible" aria-label="Primary navigation"><Navigation activeScreen={activeScreen} reportsEnabled={communityReportingEnabled} onNavigate={navigate} /></nav></div><AccountPanel key={`${account?.email ?? "guest"}-${accountOpen}`} open={accountOpen} account={account} onClose={() => setAccountOpen(false)} onAccount={setAccount} /></>;
+  return (
+    <>
+      <div id="app-shell" className="active w-screen h-screen overflow-hidden flex flex-row">
+        {/* Desktop Sidebar: SafeGo Brand, Sign in, Trip Planner & Plan another trip only */}
+        <nav className="sidenav hidden lg:flex h-screen shrink-0 border-r border-hairline bg-white p-5 flex-col justify-between overflow-y-auto z-20">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-hairline">
+              <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip}>
+                <Brand compact />
+              </button>
+              <button
+                className="account-button text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100"
+                type="button"
+                onClick={() => setAccountOpen(true)}
+              >
+                {account ? `Hi, ${account.name}` : "Sign in"}
+              </button>
+            </div>
+
+            <h1 className="text-lg font-bold text-ink mb-0.5">Plan a trip & check risk</h1>
+            <p className="text-xs text-ink-soft mb-3">
+              Search Philippine roads, landmarks, or cities across the country.
+            </p>
+
+            <TripPlanner
+              key={trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}
+              locations={locations}
+              onLocation={selectLocation}
+              onTrip={selectTrip}
+              onPreviewRoute={setPreviewRoute}
+              account={account}
+              initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
+              initialDestination={trip ? trip.destination.label : undefined}
+            />
+
+            {(trip || selectedLocation) && (
+              <button
+                type="button"
+                className="change-loc w-full mt-3 py-2.5 text-xs font-bold text-brand bg-brand-soft/60 hover:bg-brand-soft border border-brand/20 rounded-xl transition-colors text-center"
+                onClick={startNewTrip}
+              >
+                Plan another trip
+              </button>
+            )}
+
+            <div className="text-[10px] font-bold text-ink-soft uppercase tracking-wider mt-4 mb-2">
+              Popular places
+            </div>
+            <div className="place-chips flex flex-wrap gap-1.5">
+              {locations.slice(0, 6).map((loc) => (
+                <button
+                  key={loc.id}
+                  type="button"
+                  className="text-[11px] bg-surface border border-hairline hover:border-brand px-2.5 py-1 rounded-full text-ink font-medium transition-colors"
+                  onClick={() => selectLocation(loc)}
+                >
+                  {loc.name.split(",")[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        {/* Main View Area: Fullscreen Map (or detail sub-screen) */}
+        <div className="flex-1 relative h-screen overflow-hidden">
+          {activeScreen === "overview" || activeScreen === "map" ? (
+            <RiskMap
+              locations={trip ? trip.corridorLocations : locations}
+              selectedLocation={trip ? trip.corridorLocations.find((loc) => loc.id === selectedLocation?.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation}
+              trip={trip}
+              previewRoute={previewRoute}
+              leftFloatingPanel={mobilePlanner}
+              onSelectLocation={selectLocation}
+              onViewDashboard={() => navigate("conditions")}
+              onViewRiskDetails={() => navigate("risk")}
+              onViewAnnouncements={() => navigate("alerts")}
+            />
+          ) : (
+            <div className="main-col h-screen overflow-y-auto">
+              <div className="bg-white/90 backdrop-blur-md border-b border-hairline px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-hover hover:underline"
+                  onClick={() => navigate("overview")}
+                >
+                  <span>← Back to Live Map</span>
+                </button>
+                {trip ? (
+                  <span className={`pill ${trip.riskKey} text-xs font-bold`}>
+                    <span className="dot" />{trip.riskName.replace(" RISK", "")}
+                  </span>
+                ) : selectedLocation && (
+                  <LocationPill location={selectedLocation} />
+                )}
+              </div>
+              <div className="dashboard-data-status">
+                <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} />
+              </div>
+              {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : selectedLocation && <LocationRiskFactors location={selectedLocation} />)}
+              {activeScreen === "alerts" && (
+                <section className="page">
+                  <PageHeader
+                    eyebrow={trip ? "Route announcements" : "Area announcements"}
+                    title={trip ? "Announcements near this trip" : "Announcements for this area"}
+                    subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation?.name ?? "Area"}. Newest announcements first.`}
+                  />
+                  <Advisories items={trip ? trip.advisories : selectedLocation?.advisories ?? []} />
+                </section>
+              )}
+              {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : selectedLocation && <LocationConditions location={selectedLocation} />)}
+              {activeScreen === "reports" && selectedLocation && (
+                <ReportPage
+                  key={`${selectedLocation.id}-${trip ? "trip" : "area"}`}
+                  location={selectedLocation}
+                  items={trip ? trip.reports : selectedLocation.reports}
+                  tripMode={Boolean(trip)}
+                  reportingEnabled={communityReportingEnabled}
+                  onSubmitted={addSubmittedReport}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <AccountPanel
+        key={`${account?.email ?? "guest"}-${accountOpen}`}
+        open={accountOpen}
+        account={account}
+        onClose={() => setAccountOpen(false)}
+        onAccount={setAccount}
+      />
+    </>
+  );
 }
