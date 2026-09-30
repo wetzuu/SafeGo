@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
+import { scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { TripDataNotice } from "./TripCoverage";
 import { Icon } from "./Icon";
-import { createRiskHeatLayer, type RiskHeatLayer } from "./risk-heat-layer";
 import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
 
 const MAP_LAYERS: MapLayer[] = [
@@ -21,6 +21,26 @@ const MAP_LAYERS: MapLayer[] = [
 ];
 
 const APPROXIMATE_COVERAGE_RADIUS_METERS = PILOT.radiusMeters;
+const UNRATED_AREA_COLOR = "#94a3b8";
+const AREA_BORDER_COLOR = "#334155";
+
+// Flat colours per 10-point class, taken from the middle of each class on the shared risk gradient.
+function classColor(riskClass: number) {
+  return riskGradient(riskClass * 10 + 5);
+}
+
+let areasRequest: Promise<AreaCollection | null> | null = null;
+
+function loadAreas() {
+  areasRequest ??= fetch("/data/ncr-areas.json")
+    .then((response) => (response.ok ? (response.json() as Promise<AreaCollection>) : null))
+    .catch(() => null)
+    .then((collection) => {
+      if (!collection) areasRequest = null;
+      return collection;
+    });
+  return areasRequest;
+}
 
 type FitOptions = { paddingTopLeft: [number, number]; paddingBottomRight: [number, number]; maxZoom: number };
 
@@ -105,7 +125,8 @@ export function RiskMap({
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerLayerRef = useRef<LayerGroup | null>(null);
-  const heatLayerRef = useRef<RiskHeatLayer | null>(null);
+  const areaRendererRef = useRef<Renderer | null>(null);
+  const [areas, setAreas] = useState<AreaCollection | null>(null);
   const cardRef = useRef<HTMLElement>(null);
   const [activeLayer, setActiveLayer] = useState<MapLayerKey>("overall");
   const [mapReady, setMapReady] = useState(false);
@@ -168,11 +189,12 @@ export function RiskMap({
 
         map.fitBounds(L.latLngBounds(bounds), fitOptions(map, cardRef.current));
         mapRef.current = map;
-        // Below the route lines and markers (overlayPane is 400, markerPane 600).
-        const heatPane = map.createPane("riskHeat");
-        heatPane.style.zIndex = "350";
-        heatPane.style.pointerEvents = "none";
-        heatLayerRef.current = createRiskHeatLayer(L, { radiusMeters: APPROXIMATE_COVERAGE_RADIUS_METERS, pane: "riskHeat" }).addTo(map);
+        // Area shading sits below the route lines and markers (overlayPane is 400, markerPane 600).
+        map.createPane("riskAreas").style.zIndex = "350";
+        areaRendererRef.current = L.canvas({ pane: "riskAreas", padding: 0.5 });
+        void loadAreas().then((collection) => {
+          if (!cancelled) setAreas(collection);
+        });
         markerLayerRef.current = L.layerGroup().addTo(map);
 
         setMapReady(true);
@@ -188,7 +210,7 @@ export function RiskMap({
       mapRef.current?.remove();
       mapRef.current = null;
       markerLayerRef.current = null;
-      heatLayerRef.current = null;
+      areaRendererRef.current = null;
     };
   }, []);
 
@@ -217,10 +239,6 @@ export function RiskMap({
       const L = await import("leaflet");
       if (cancelled || !markerLayerRef.current) return;
       markerLayerRef.current.clearLayers();
-      heatLayerRef.current?.setPoints(locations.map((location) => ({
-        coordinates: location.coordinates,
-        score: layerScore(location, activeLayer),
-      })));
 
       locations.forEach((location) => {
         const score = layerScore(location, activeLayer);
@@ -255,6 +273,60 @@ export function RiskMap({
       cancelled = true;
     };
   }, [activeLayer, activeLayerLabel, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map || !areas || !areaRendererRef.current) return;
+    let cancelled = false;
+    let areaLayer: GeoJSONLayer | null = null;
+    const renderer = areaRendererRef.current;
+
+    async function renderAreas() {
+      const L = await import("leaflet");
+      if (cancelled || !map) return;
+      const points = locations.map((location) => ({
+        id: location.id,
+        coordinates: location.coordinates,
+        score: layerScore(location, activeLayer),
+      }));
+      const byId = new Map(locations.map((location) => [location.id, location]));
+
+      // Leaflet hands these options to each polygon, which accepts a renderer; the typings omit it.
+      const options: GeoJSONOptions & { renderer: Renderer } = {
+        renderer,
+        attribution: "Areas: PSA/NAMRIA 2023; Manila districts © OpenStreetMap",
+        style: (feature) => {
+          const area = feature && scoreArea(feature.geometry as AreaCollection["features"][number]["geometry"], points, APPROXIMATE_COVERAGE_RADIUS_METERS);
+          const selected = area?.sourceId === effectiveSelected?.id;
+          return area
+            ? { fillColor: classColor(scoreClass(area.score)), fillOpacity: 0.68, color: selected ? "#1a1a1a" : AREA_BORDER_COLOR, weight: selected ? 1.8 : 0.7, opacity: selected ? 0.9 : 0.55 }
+            : { fillColor: UNRATED_AREA_COLOR, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
+        },
+        onEachFeature: (feature, layer) => {
+          const { name, city, level } = feature.properties as AreaCollection["features"][number]["properties"];
+          const area = scoreArea(feature.geometry as AreaCollection["features"][number]["geometry"], points, APPROXIMATE_COVERAGE_RADIUS_METERS);
+          const source = area ? byId.get(area.sourceId) : undefined;
+          const title = level === "district" ? `${name} district, Manila` : `${name}, ${city}`;
+          layer.bindTooltip(
+            makeTooltip(title, area && source
+              ? `${activeLayerLabel}: ${area.score}/100, from ${shortPlaceName(source.name)}.`
+              : "No SafeGo data nearby. Not rated, which does not mean safe."),
+            { sticky: true, direction: "top", opacity: 0.96 },
+          );
+          layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
+          layer.on("mouseout", () => areaLayer?.resetStyle(layer));
+          if (source && onSelectLocation) layer.on("click", () => onSelectLocation(source));
+        },
+      };
+      areaLayer = L.geoJSON(areas, options).addTo(map);
+    }
+
+    void renderAreas();
+    return () => {
+      cancelled = true;
+      if (areaLayer) map.removeLayer(areaLayer);
+    };
+  }, [activeLayer, activeLayerLabel, areas, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -521,24 +593,30 @@ export function RiskMap({
         </aside>
       )}
 
-      <div className="hidden lg:block absolute bottom-6 right-4 z-[1000] bg-white/90 backdrop-blur-md border border-hairline rounded-xl shadow-md p-2.5 text-[11px]">
-        <div className="font-bold text-ink mb-1">Score and risk level</div>
-        <div className="map-gradient h-2 w-56 rounded mb-1" />
-        <div className="flex justify-between text-[10px] text-ink-soft">
-          <span>0 Low</span>
-          <span>30 Moderate</span>
-          <span>60 High</span>
-          <span>80+ Critical</span>
+      <div className="hidden lg:block absolute bottom-6 right-4 z-[1000] w-64 bg-white/90 backdrop-blur-md border border-hairline rounded-xl shadow-md p-2.5 text-[11px]">
+        <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area</div>
+        <div className="grid grid-cols-10 gap-px">
+          {Array.from({ length: SCORE_CLASS_COUNT }, (_, riskClass) => (
+            <span key={riskClass} className="h-3" style={{ background: classColor(riskClass) }} title={`${riskClass * 10}–${riskClass === SCORE_CLASS_COUNT - 1 ? 100 : riskClass * 10 + 9}`} />
+          ))}
+          <span className="col-span-3 text-[10px] text-ink-soft">Low</span>
+          <span className="col-span-3 text-[10px] text-ink-soft">Moderate</span>
+          <span className="col-span-2 text-[10px] text-ink-soft">High</span>
+          <span className="col-span-2 text-[10px] text-ink-soft">Critical</span>
         </div>
-        <p className="mt-1.5 w-56 text-[10px] leading-snug text-ink-soft">
-          Shading blends nearby scores and fades where SafeGo has no data. Unshaded areas are not rated safe.
-        </p>
+        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-ink-soft">
+          <span className="h-3 w-6 border border-hairline" style={{ background: UNRATED_AREA_COLOR, opacity: 0.45 }} />
+          Not rated: no SafeGo data nearby (not safe)
+        </div>
         {hasUnratedSections && (
-          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-ink-soft">
+          <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
             <span className="w-6 border-t-[3px] border-dashed" style={{ borderColor: UNKNOWN_ROUTE_COLOR }} />
-            Not enough data (not rated safe)
+            Route section without data (not rated safe)
           </div>
         )}
+        <p className="mt-1.5 text-[10px] leading-snug text-ink-soft">
+          Each barangay (Manila: district) shows the highest score within 850 m. Areas cover Metro Manila.
+        </p>
       </div>
     </div>
   );

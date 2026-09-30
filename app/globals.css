@@ -746,8 +746,9 @@
     @apply absolute inset-0 z-0 size-full bg-[#e8e5dc];
   }
 
-  .risk-heat-layer {
-    @apply pointer-events-none absolute top-0 left-0 transition-opacity duration-200;
+  /* A muted basemap lets the area colours read clearly, as on a printed choropleth. */
+  .live-map .leaflet-tile-pane {
+    filter: grayscale(0.7) contrast(0.92) brightness(1.04);
   }
 
   /* Below lg the trip planner floats over the top-left corner; pinch zoom covers it. */
@@ -811,11 +812,6 @@
 
   .leaflet-tooltip-top::before {
     border-top-color: #1a1a1a;
-  }
-
-  .map-gradient {
-    @apply h-2.5 w-full rounded-sm;
-    background: linear-gradient(90deg, #15803d 0%, #65a30d 29%, #ca8a04 30%, #eab308 59%, #ea580c 60%, #f97316 79%, #dc2626 80%, #991b1b 100%);
   }
 
   .map-evidence-legend,

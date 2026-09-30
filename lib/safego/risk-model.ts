@@ -87,40 +87,31 @@ export function analyzeRisk(
   };
 }
 
-const RISK_GRADIENT_STOPS = [
-  { score: 0, color: "#15803d" },
-  { score: 29, color: "#65a30d" },
-  { score: 30, color: "#ca8a04" },
-  { score: 59, color: "#eab308" },
-  { score: 60, color: "#ea580c" },
-  { score: 79, color: "#f97316" },
-  { score: 80, color: "#dc2626" },
-  { score: 100, color: "#991b1b" },
-];
-
-function hexToRgb(color: string) {
-  return color.match(/\w\w/g)!.map((value) => parseInt(value, 16)) as [number, number, number];
-}
-
-export function riskGradientRgb(score: number): [number, number, number] {
-  const stops = RISK_GRADIENT_STOPS;
+export function riskGradient(score: number) {
+  const stops = [
+    { score: 0, color: "#15803d" },
+    { score: 29, color: "#65a30d" },
+    { score: 30, color: "#ca8a04" },
+    { score: 59, color: "#eab308" },
+    { score: 60, color: "#ea580c" },
+    { score: 79, color: "#f97316" },
+    { score: 80, color: "#dc2626" },
+    { score: 100, color: "#991b1b" },
+  ];
   const bounded = Math.max(0, Math.min(100, score));
   const upperIndex = stops.findIndex((stop) => bounded <= stop.score);
 
-  if (upperIndex <= 0) return hexToRgb(stops[0].color);
+  if (upperIndex <= 0) return stops[0].color;
 
   const lower = stops[upperIndex - 1];
   const upper = stops[upperIndex];
   const amount =
     (bounded - lower.score) / Math.max(1, upper.score - lower.score);
-  const start = hexToRgb(lower.color);
-  const end = hexToRgb(upper.color);
-  return start.map((value, index) =>
+  const start = lower.color.match(/\w\w/g)!.map((value) => parseInt(value, 16));
+  const end = upper.color.match(/\w\w/g)!.map((value) => parseInt(value, 16));
+  const rgb = start.map((value, index) =>
     Math.round(value + (end[index] - value) * amount),
-  ) as [number, number, number];
-}
+  );
 
-export function riskGradient(score: number) {
-  if (score <= 0) return RISK_GRADIENT_STOPS[0].color;
-  return `rgb(${riskGradientRgb(score).join(", ")})`;
+  return `rgb(${rgb.join(", ")})`;
 }

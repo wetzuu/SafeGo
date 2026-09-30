@@ -15,6 +15,7 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "db:verify": "node scripts/db-verify.ts",
     "db:backup": "node scripts/db-backup.mjs",
+    "data:boundaries": "node scripts/build-area-boundaries.mjs",
     "staging:config": "docker compose --env-file .env.staging -f compose.staging.yaml config",
     "staging:build": "docker compose --env-file .env.staging -f compose.staging.yaml build",
     "staging:migrate": "docker compose --env-file .env.staging -f compose.staging.yaml --profile tools run --rm migrate",
