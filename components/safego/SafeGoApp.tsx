@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
   DashboardSnapshot,
   DataBackend,
@@ -18,52 +18,41 @@ import type { TripAnalysis } from "@/lib/trips/types";
 import { assessTrip } from "@/lib/trips/trip-assessment";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
-import { OverviewContextPanel } from "./OverviewContextPanel";
 import { RiskGauge } from "./RiskGauge";
 import { RiskMap, type PreviewTripRoute } from "./RiskMap";
-import { TripOverview } from "./TripOverview";
 import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
-import { NearbyUniversities } from "./NearbyUniversities";
 import { AccountPanel, loadAccountSession } from "./AccountPanel";
+import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
 import type { AccountProfile } from "@/lib/account/types";
 
-const NAV_ITEMS: Array<{
-  key: ScreenKey;
-  label: string;
-  icon: "overview" | "risk" | "alert" | "map" | "flood" | "reports";
-}> = [
-  { key: "overview", label: "Overview", icon: "overview" },
-  { key: "risk", label: "Why this result", icon: "risk" },
-  { key: "alerts", label: "Updates", icon: "alert" },
-  { key: "map", label: "Map", icon: "map" },
-  { key: "conditions", label: "Conditions", icon: "flood" },
-  { key: "reports", label: "Reports", icon: "reports" },
+const DETAIL_TABS: Array<{ key: ScreenKey; label: string }> = [
+  { key: "risk", label: "Why this result" },
+  { key: "conditions", label: "Conditions" },
+  { key: "alerts", label: "Updates" },
+  { key: "reports", label: "Reports" },
 ];
+
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function subscribeToDesktopQuery(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+// Only one trip planner is mounted at a time, so route previews are fetched once.
+function useIsDesktop() {
+  return useSyncExternalStore(
+    subscribeToDesktopQuery,
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => true,
+  );
+}
 
 interface DashboardEnvelope {
   data: DashboardSnapshot;
   meta: { backend: DataBackend; generatedAt: string };
-}
-
-function displayFactorName(name: string) {
-  if (name === "School status") return "Nearby university status";
-  if (name === "Official advisories") return "Official announcements";
-  return name;
-}
-
-function Navigation({ activeScreen, reportsEnabled, onNavigate }: { activeScreen: ScreenKey; reportsEnabled: boolean; onNavigate: (screen: ScreenKey) => void }) {
-  return (
-    <ul className="nav-list">
-      {NAV_ITEMS.filter((item) => item.key !== "reports" || reportsEnabled).map((item) => (
-        <li key={item.key}>
-          <button type="button" className={`nav-item${activeScreen === item.key ? " active" : ""}`} onClick={() => onNavigate(item.key)} aria-current={activeScreen === item.key ? "page" : undefined}>
-            <Icon name={item.icon} /><span>{item.label}</span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavailable, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; apiUnavailable: boolean; onRefresh: () => void }) {
@@ -91,20 +80,6 @@ function Reports({ items }: { items: CommunityReport[] }) {
 
 function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
   return <div className="page-head"><div className="page-eyebrow">{eyebrow}</div><h1 className="page-title">{title}</h1><p className="page-sub">{subtitle}</p></div>;
-}
-
-function LocationPill({ location }: { location: SafeGoLocation }) {
-  return <span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.name.replace(" RISK", "")}</span>;
-}
-
-function LocationOverview({ location, sources, navigate }: { location: SafeGoLocation; sources: SourceStatus[]; navigate: (screen: ScreenKey) => void }) {
-  return <section className="page"><PageHeader eyebrow="Area overview" title={location.name} subtitle={`${location.city}. Informational only.`} />
-    <div className={`risk-hero risk-${location.risk.key}`}><div className="risk-hero-top"><div><div className="risk-hero-q">Current travel risk for this area</div><div className="risk-level-row"><div className="risk-level-name">{location.risk.name}</div><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.percentage}/100</span></div><p className="risk-hero-why">{location.risk.summary}</p><div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div></div><div className="gauge-wrap"><RiskGauge score={location.risk.percentage} /></div></div></div>
-    <OverviewContextPanel location={location} sources={sources} onOpenMap={() => navigate("map")} onViewConditions={() => navigate("conditions")} />
-    <NearbyUniversities universities={location.universities} />
-    <section className="overview-announcements" aria-labelledby="overview-announcements-title"><div className="section-title"><div className="section-title-copy"><span className="section-title-icon"><Icon name="alert" /></span><div><span>Official and local updates</span><h2 id="overview-announcements-title">Latest announcements</h2></div></div><button type="button" className="view-all" onClick={() => navigate("alerts")}>View all</button></div><Advisories items={location.advisories.slice(0, 2)} /></section>
-    <p className="overview-safety-note">SafeGo does not replace government, school, or emergency announcements.</p>
-  </section>;
 }
 
 function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
@@ -186,13 +161,14 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [apiUnavailable, setApiUnavailable] = useState(false);
   const [trip, setTrip] = useState<TripAnalysis | null>(null);
   const [previewRoute, setPreviewRoute] = useState<PreviewTripRoute | null>(null);
-  const [pinnedPoint, setPinnedPoint] = useState<{ coordinates: [number, number]; label: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
 
+  const isDesktop = useIsDesktop();
   const refreshInFlight = useRef(false);
+  const detailScrollRef = useRef<HTMLDivElement>(null);
 
   const refreshDashboard = useCallback(async (): Promise<boolean> => {
     if (refreshInFlight.current) return false;
@@ -256,13 +232,11 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setTrip(analysis);
     setSelectedLocation(supportingLocation);
     setActiveScreen("overview");
-    window.scrollTo({ top: 0, behavior: "instant" });
   }, [locations]);
   const selectLocation = useCallback((location: SafeGoLocation) => {
     setTrip(null);
     setSelectedLocation(location);
     setActiveScreen("overview");
-    window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
   const selectMapLocation = useCallback((location: SafeGoLocation) => {
     setSelectedLocation(location);
@@ -282,71 +256,73 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
   const navigate = useCallback((screen: ScreenKey) => {
     setActiveScreen(screen);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    detailScrollRef.current?.scrollTo({ top: 0 });
   }, []);
   const startNewTrip = useCallback(() => {
     setTrip(null);
     setPreviewRoute(null);
-    setPinnedPoint(null);
     setSelectedLocation(null);
     setActiveScreen("overview");
   }, []);
 
-  const mobilePlanner = (
-    <div className="block lg:hidden bg-white/95 backdrop-blur-md border border-hairline rounded-2xl shadow-xl p-4">
+  // With nothing picked, the map card describes the first location, so the detail screens do too.
+  const detailLocation = selectedLocation ?? locations[0];
+  const hasSelection = Boolean(trip || selectedLocation);
+  const detailTabs = DETAIL_TABS.filter((tab) =>
+    tab.key !== "reports" || communityReportingEnabled || (trip ? trip.reports : detailLocation?.reports ?? []).length > 0);
+  const accountLabel = account ? `Hi, ${account.name}` : "Sign in";
+
+  const brandButton = (
+    <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip} aria-label="SafeGo home, start a new trip">
+      <Brand compact />
+    </button>
+  );
+  const accountButton = (
+    <button className="account-button text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100" type="button" onClick={() => setAccountOpen(true)}>
+      {accountLabel}
+    </button>
+  );
+  const planner = (
+    <TripPlanner
+      key={trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}
+      locations={locations}
+      onLocation={selectLocation}
+      onTrip={selectTrip}
+      onPreviewRoute={setPreviewRoute}
+      account={account}
+      initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
+      initialDestination={trip ? trip.destination.label : undefined}
+    />
+  );
+  const dataStatus = (
+    <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} />
+  );
+
+  const mobilePlanner = isDesktop ? null : (
+    <div className="bg-white/95 backdrop-blur-md border border-hairline rounded-2xl shadow-xl p-3 [&_.trip-planner]:border-0 [&_.trip-planner]:p-1 [&_.trip-planner]:shadow-none">
       <div className="flex items-center justify-between mb-2">
-        <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip}>
-          <Brand compact />
-        </button>
+        {brandButton}
         <div className="flex items-center gap-1.5">
-          {(trip || selectedLocation) && (
-            <button
-              className="text-xs font-semibold px-2 py-1 rounded-lg border border-hairline hover:bg-neutral-100 text-ink-soft"
-              type="button"
-              onClick={startNewTrip}
-            >
-              Reset
+          {hasSelection && (
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100 text-ink-soft" type="button" onClick={startNewTrip}>
+              New trip
             </button>
           )}
-          <button
-            className="account-button text-xs font-semibold px-2.5 py-1 rounded-lg border border-hairline hover:bg-neutral-100"
-            type="button"
-            onClick={() => setAccountOpen(true)}
-          >
-            {account ? `Hi, ${account.name}` : "Sign in"}
-          </button>
+          {accountButton}
         </div>
       </div>
-      <TripPlanner
-        key={`mobile-${trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}`}
-        locations={locations}
-        onLocation={selectLocation}
-        onTrip={selectTrip}
-        onPreviewRoute={setPreviewRoute}
-        account={account}
-        initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
-        initialDestination={trip ? trip.destination.label : undefined}
-      />
+      {planner}
     </div>
   );
 
   return (
     <>
       <div id="app-shell" className="active w-screen h-screen overflow-hidden flex flex-row">
-        {/* Desktop Sidebar: SafeGo Brand, Sign in, Trip Planner & Plan another trip only */}
-        <nav className="sidenav hidden lg:flex h-screen shrink-0 border-r border-hairline bg-white p-5 flex-col justify-between overflow-y-auto z-20">
+        <aside className="sidenav justify-between" aria-label="Trip planner">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-hairline">
-              <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip}>
-                <Brand compact />
-              </button>
-              <button
-                className="account-button text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100"
-                type="button"
-                onClick={() => setAccountOpen(true)}
-              >
-                {account ? `Hi, ${account.name}` : "Sign in"}
-              </button>
+              {brandButton}
+              {accountButton}
             </div>
 
             <h1 className="text-lg font-bold text-ink mb-0.5">Plan a trip & check risk</h1>
@@ -354,47 +330,41 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               Search Philippine roads, landmarks, or cities across the country.
             </p>
 
-            <TripPlanner
-              key={trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}
-              locations={locations}
-              onLocation={selectLocation}
-              onTrip={selectTrip}
-              onPreviewRoute={setPreviewRoute}
-              account={account}
-              initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
-              initialDestination={trip ? trip.destination.label : undefined}
-            />
+            {isDesktop && planner}
 
-            {(trip || selectedLocation) && (
-              <button
-                type="button"
-                className="change-loc w-full mt-3 py-2.5 text-xs font-bold text-brand bg-brand-soft/60 hover:bg-brand-soft border border-brand/20 rounded-xl transition-colors text-center"
-                onClick={startNewTrip}
-              >
+            {hasSelection && (
+              <button type="button" className="change-loc w-full" onClick={startNewTrip}>
                 Plan another trip
               </button>
             )}
 
-            <div className="text-[10px] font-bold text-ink-soft uppercase tracking-wider mt-4 mb-2">
+            <div className="text-[10px] font-bold text-ink-soft uppercase tracking-wider mt-5 mb-2">
               Popular places
             </div>
             <div className="place-chips flex flex-wrap gap-1.5">
-              {locations.slice(0, 6).map((loc) => (
-                <button
-                  key={loc.id}
-                  type="button"
-                  className="text-[11px] bg-surface border border-hairline hover:border-brand px-2.5 py-1 rounded-full text-ink font-medium transition-colors"
-                  onClick={() => selectLocation(loc)}
-                >
-                  {loc.name.split(",")[0]}
-                </button>
-              ))}
+              {locations.slice(0, 6).map((loc) => {
+                const active = !trip && loc.id === selectedLocation?.id;
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    className={`text-[11px] border px-2.5 py-1 rounded-full font-medium transition-colors ${
+                      active ? "bg-brand-soft border-brand text-brand" : "bg-surface border-hairline hover:border-brand text-ink"
+                    }`}
+                    aria-pressed={active}
+                    onClick={() => selectLocation(loc)}
+                  >
+                    {shortPlaceName(loc.name)}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </nav>
 
-        {/* Main View Area: Fullscreen Map (or detail sub-screen) */}
-        <div className="flex-1 relative h-screen overflow-hidden">
+          <div className="mt-5 [&_.data-status]:mb-0">{dataStatus}</div>
+        </aside>
+
+        <main className="flex-1 relative h-screen overflow-hidden">
           {activeScreen === "overview" || activeScreen === "map" ? (
             <RiskMap
               locations={trip ? trip.corridorLocations : locations}
@@ -402,49 +372,67 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               trip={trip}
               previewRoute={previewRoute}
               leftFloatingPanel={mobilePlanner}
-              onSelectLocation={selectLocation}
+              onSelectLocation={trip ? selectMapLocation : selectLocation}
               onViewDashboard={() => navigate("conditions")}
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
             />
           ) : (
-            <div className="main-col h-screen overflow-y-auto">
-              <div className="bg-white/90 backdrop-blur-md border-b border-hairline px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-hover hover:underline"
-                  onClick={() => navigate("overview")}
-                >
-                  <span>← Back to Live Map</span>
-                </button>
-                {trip ? (
-                  <span className={`pill ${trip.riskKey} text-xs font-bold`}>
-                    <span className="dot" />{trip.riskName.replace(" RISK", "")}
-                  </span>
-                ) : selectedLocation && (
-                  <LocationPill location={selectedLocation} />
-                )}
+            <div className="main-col h-screen overflow-y-auto" ref={detailScrollRef}>
+              <div className="bg-white/90 backdrop-blur-md border-b border-hairline sticky top-0 z-30">
+                <div className="mx-auto max-w-[1120px] px-3.5 lg:px-7 pt-3 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-hover hover:underline shrink-0"
+                    onClick={() => navigate("overview")}
+                  >
+                    ← Back to map
+                  </button>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-semibold text-ink truncate">
+                      {trip ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}` : detailLocation?.name}
+                    </span>
+                    {trip ? (
+                      <span className={`pill ${trip.riskKey} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(trip.riskName)}</span>
+                    ) : detailLocation && (
+                      <span className={`pill ${detailLocation.risk.key} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(detailLocation.risk.name)}</span>
+                    )}
+                  </div>
+                </div>
+                <nav className="mx-auto max-w-[1120px] px-3.5 lg:px-7 py-2.5 flex gap-1 overflow-x-auto" aria-label="Result details">
+                  {detailTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                        tab.key === activeScreen ? "bg-brand text-white" : "text-ink hover:bg-neutral-100"
+                      }`}
+                      aria-current={tab.key === activeScreen ? "page" : undefined}
+                      onClick={() => navigate(tab.key)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
               </div>
-              <div className="dashboard-data-status">
-                <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} />
-              </div>
-              {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : selectedLocation && <LocationRiskFactors location={selectedLocation} />)}
+              <div className="dashboard-data-status lg:hidden">{dataStatus}</div>
+              {activeScreen === "risk" && (trip ? <TripRiskFactors trip={trip} /> : detailLocation && <LocationRiskFactors location={detailLocation} />)}
               {activeScreen === "alerts" && (
                 <section className="page">
                   <PageHeader
                     eyebrow={trip ? "Route announcements" : "Area announcements"}
                     title={trip ? "Announcements near this trip" : "Announcements for this area"}
-                    subtitle={trip ? "Official and local updates linked to locations along this route." : `${selectedLocation?.name ?? "Area"}. Newest announcements first.`}
+                    subtitle={trip ? "Official and local updates linked to locations along this route." : `${detailLocation?.name ?? "Area"}. Newest announcements first.`}
                   />
-                  <Advisories items={trip ? trip.advisories : selectedLocation?.advisories ?? []} />
+                  <Advisories items={trip ? trip.advisories : detailLocation?.advisories ?? []} />
                 </section>
               )}
-              {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : selectedLocation && <LocationConditions location={selectedLocation} />)}
-              {activeScreen === "reports" && selectedLocation && (
+              {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : detailLocation && <LocationConditions location={detailLocation} />)}
+              {activeScreen === "reports" && detailLocation && (
                 <ReportPage
-                  key={`${selectedLocation.id}-${trip ? "trip" : "area"}`}
-                  location={selectedLocation}
-                  items={trip ? trip.reports : selectedLocation.reports}
+                  key={`${detailLocation.id}-${trip ? "trip" : "area"}`}
+                  location={detailLocation}
+                  items={trip ? trip.reports : detailLocation.reports}
                   tripMode={Boolean(trip)}
                   reportingEnabled={communityReportingEnabled}
                   onSubmitted={addSubmittedReport}
@@ -452,7 +440,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               )}
             </div>
           )}
-        </div>
+        </main>
       </div>
 
       <AccountPanel

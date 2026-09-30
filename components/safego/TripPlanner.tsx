@@ -42,52 +42,35 @@ export function TripPlanner({
   onLocation,
   onTrip,
   onPreviewRoute,
-  pinnedPoint,
   account,
   initialOrigin,
   initialDestination,
-  initialOriginPlace,
-  initialDestinationPlace,
 }: {
   locations: SafeGoLocation[];
   onLocation: (location: SafeGoLocation) => void;
   onTrip: (trip: TripAnalysis) => void;
   onPreviewRoute?: (preview: PreviewTripRoute | null) => void;
-  pinnedPoint?: { coordinates: [number, number]; label: string } | null;
   account: AccountProfile | null;
   initialOrigin?: string;
   initialDestination?: string;
-  initialOriginPlace?: SavedPlace | null;
-  initialDestinationPlace?: SavedPlace | null;
 }) {
   const [stops, setStops] = useState<string[]>(() => {
     if (initialOrigin && initialDestination) return [initialOrigin, initialDestination];
     if (initialOrigin) return [initialOrigin];
     return [""];
   });
-  const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>(() => {
-    if (initialOriginPlace && initialDestinationPlace) return [initialOriginPlace, initialDestinationPlace];
-    if (initialOriginPlace) return [initialOriginPlace];
-    return [null];
-  });
+  const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>(() =>
+    initialOrigin && initialDestination ? [null, null] : [null]);
   const [activeInputIndex, setActiveInputIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [preferSavedDemo, setPreferSavedDemo] = useState(false);
-  const [previewInfo, setPreviewInfo] = useState<{ distanceKm: number; durationMin: number; roadNames: string[] } | null>(null);
+  const [preview, setPreview] = useState<{ key: string; distanceKm: number; durationMin: number; roadNames: string[] } | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchAbort = useRef<AbortController | null>(null);
-
-  // Synchronize when initialOrigin or initialDestination change from parent
-  useEffect(() => {
-    if (initialOrigin !== undefined) {
-      setStops(initialDestination !== undefined ? [initialOrigin, initialDestination] : [initialOrigin]);
-      setSavedStops(initialDestinationPlace !== undefined ? [initialOriginPlace ?? null, initialDestinationPlace] : [initialOriginPlace ?? null]);
-    }
-  }, [initialOrigin, initialDestination, initialOriginPlace, initialDestinationPlace]);
 
   useEffect(() => () => {
     activeRequest.current?.abort();
@@ -95,51 +78,21 @@ export function TripPlanner({
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
   }, []);
 
-  // Handle map click pin drops into inputs
+  const originCoord = savedStops[0]?.coordinates;
+  const destCoord = savedStops[1]?.coordinates;
+  const originLabel = stops[0];
+  const destLabel = stops[1];
+  const previewKey = originCoord && destCoord ? `${originCoord.join(",")};${destCoord.join(",")}` : null;
+  const previewInfo = preview && preview.key === previewKey ? preview : null;
+
+  // Fetch an OSRM preview route as soon as both ends have coordinates.
   useEffect(() => {
-    if (!pinnedPoint) return;
-    const { coordinates, label } = pinnedPoint;
-    const newPlace: SavedPlace = {
-      label,
-      canonicalLabel: label,
-      coordinates,
-      source: "nominatim",
-      matchedLocationId: null,
-      approximate: true,
-    };
-
-    setStops((current) => {
-      if (!current[0] || !current[0].trim()) {
-        return [label];
-      }
-      if (current.length === 1) {
-        return [current[0], label];
-      }
-      return [current[0], label];
-    });
-
-    setSavedStops((current) => {
-      if (!current[0]) {
-        return [newPlace];
-      }
-      if (current.length === 1) {
-        return [current[0], newPlace];
-      }
-      return [current[0], newPlace];
-    });
-    setError("");
-  }, [pinnedPoint]);
-
-  // Fetch OSRM preview route as soon as origin and destination coordinates are available
-  useEffect(() => {
-    const originCoord = savedStops[0]?.coordinates;
-    const destCoord = savedStops[1]?.coordinates;
-    if (!originCoord || !destCoord) {
+    if (!originCoord || !destCoord || !previewKey) {
       onPreviewRoute?.(null);
-      setPreviewInfo(null);
       return;
     }
 
+    const key = previewKey;
     const start: [number, number] = originCoord;
     const end: [number, number] = destCoord;
     let cancelled = false;
@@ -167,16 +120,16 @@ export function TripPlanner({
             ),
           ).slice(0, 3) as string[];
 
-          const preview: PreviewTripRoute = {
+          const previewRoute: PreviewTripRoute = {
             routeCoordinates: coords,
-            origin: { coordinates: start, label: stops[0] || "Point A" },
-            destination: { coordinates: end, label: stops[1] || "Point B" },
+            origin: { coordinates: start, label: originLabel || "Point A" },
+            destination: { coordinates: end, label: destLabel || "Point B" },
             distanceKm,
             durationMin,
             roadNames,
           };
-          onPreviewRoute?.(preview);
-          setPreviewInfo({ distanceKm, durationMin, roadNames });
+          onPreviewRoute?.(previewRoute);
+          setPreview({ key, distanceKm, durationMin, roadNames });
         }
       } catch {}
     }
@@ -185,7 +138,7 @@ export function TripPlanner({
     return () => {
       cancelled = true;
     };
-  }, [savedStops[0]?.coordinates, savedStops[1]?.coordinates, stops[0], stops[1], onPreviewRoute]);
+  }, [previewKey, originLabel, destLabel, onPreviewRoute]); // eslint-disable-line react-hooks/exhaustive-deps -- coordinates are captured by previewKey
 
   const hasDestination = stops.length === 2;
 
@@ -196,7 +149,10 @@ export function TripPlanner({
     setSavedStops((current) => current.map((place, stopIndex) => stopIndex === index ? null : place));
     setPreferSavedDemo(false);
     setError("");
+    searchPlaces(value);
+  }
 
+  function searchPlaces(value: string) {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchAbort.current?.abort();
 
@@ -350,23 +306,6 @@ export function TripPlanner({
     setError("");
   }
 
-  function applySavedPlace(place: SavedPlace | null) {
-    if (!place) return;
-    const value = place.label;
-    setStops((current) => {
-      if (current.length === 2) return [current[0], value];
-      if (current[0].trim()) return [current[0], value];
-      return [value];
-    });
-    setSavedStops((current) => {
-      if (current.length === 2) return [current[0], place];
-      if (stops[0].trim()) return [current[0], place];
-      return [place];
-    });
-    setPreferSavedDemo(false);
-    setError("");
-  }
-
   function removeDestination() {
     setStops((current) => [current[0]]);
     setSavedStops((current) => [current[0]]);
@@ -390,7 +329,6 @@ export function TripPlanner({
         setActiveInputIndex(null);
       }
     }}>
-      <p className="demo-scope">Search any road, landmark, or city across the Philippines.</p>
       {stops.map((stop, index) => (
         <div className="trip-stop" key={index}>
           {index > 0 && (
@@ -421,14 +359,14 @@ export function TripPlanner({
                 onChange={(event) => updateStop(index, event.target.value)}
                 onFocus={() => {
                   setActiveInputIndex(index);
-                  if (stop.trim().length >= 2) updateStop(index, stop);
+                  if (!savedStops[index] && stop.trim().length >= 2) searchPlaces(stop);
                 }}
                 placeholder={index === 0 ? "e.g. EDSA, España Blvd, or Cebu IT Park" : "Where are you going?"}
                 autoComplete="off"
                 disabled={loading}
                 required
                 maxLength={160}
-                autoFocus={index === 1}
+                autoFocus={index === 1 && !initialDestination}
               />
               {activeInputIndex === index && (suggestions.length > 0 || loadingSuggestions) && (
                 <ul className="place-results absolute left-0 right-0 top-full shadow-lg z-50 bg-white border border-hairline rounded-box max-h-56 overflow-auto">
@@ -465,28 +403,20 @@ export function TripPlanner({
         </button>
       )}
       {previewInfo && (
-        <div className="preview-route-badge my-3 p-3 bg-blue-50 border border-blue-200 rounded-box text-[13px] text-blue-900 flex items-center justify-between">
-          <div>
-            <strong>Route Preview:</strong> {previewInfo.distanceKm} km · ~{previewInfo.durationMin} mins
-            {previewInfo.roadNames.length > 0 && (
-              <span className="block text-[12px] text-blue-700">via {previewInfo.roadNames.join(", ")}</span>
-            )}
-          </div>
-          <span className="text-xs bg-blue-600 text-white font-semibold px-2 py-1 rounded">OSM Route</span>
+        <div className="mt-3 rounded-box border border-brand/25 bg-brand-soft/60 px-3 py-2 text-[12px] text-ink">
+          <strong>{previewInfo.distanceKm} km</strong> · about {previewInfo.durationMin} min by car
+          {previewInfo.roadNames.length > 0 && (
+            <span className="block text-[11px] text-ink-soft">via {previewInfo.roadNames.join(", ")}</span>
+          )}
         </div>
       )}
       <div className="trip-actions">
         <button className="submit-btn" type="submit" disabled={loading}>
-          {loading ? "Analyzing travel risk…" : hasDestination ? "Analyze Travel Risk" : "Check this area"}
+          {loading ? "Checking…" : hasDestination ? "Check this route" : "Check this area"}
         </button>
-        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>{loading ? "Opening example…" : "Try an example trip"}</button>
+        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>Try an example trip</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
-      <p className="trip-mode-help">
-        {hasDestination
-          ? "Click 'Analyze Travel Risk' to assess weather, flooding, and road alerts along this route."
-          : "Check one area, or add a destination for a route."}
-      </p>
       <p className="trip-attribution">Road and map data © OpenStreetMap contributors.</p>
     </form>
   );
