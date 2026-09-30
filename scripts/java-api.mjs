@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cwd = join(root, "server", "demo");
@@ -15,10 +15,29 @@ const javacName = windows ? "javac.exe" : "javac";
 const localJdks = windows && process.env.LOCALAPPDATA
   ? join(process.env.LOCALAPPDATA, "Programs", "SafeGoJdk21")
   : null;
+function jdkFromPath() {
+  try {
+    const whichCmd = windows ? "where" : "which";
+    for (const bin of [javacName, javaName]) {
+      const res = spawnSync(whichCmd, [bin], { encoding: "utf8", windowsHide: true });
+      if (res.status === 0 && res.stdout) {
+        const binPath = res.stdout.trim().split(/\r?\n/)[0];
+        if (binPath && existsSync(binPath)) {
+          const realBin = realpathSync(binPath);
+          const candidateHome = dirname(dirname(realBin));
+          if (existsSync(join(candidateHome, "bin", javacName))) {
+            return candidateHome;
+          }
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
 function jdkHomes(parent) {
   return parent && existsSync(parent)
     ? readdirSync(parent, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith("jdk-21"))
+    .filter((entry) => (entry.isDirectory() || entry.isSymbolicLink()) && (entry.name.includes("21") || entry.name.startsWith("jdk-21") || entry.name.startsWith("java-21")))
     .map((entry) => join(parent, entry.name))
     : [];
 }
@@ -32,7 +51,7 @@ const discoveredHomes = windows
       ...jdkHomes("/usr/lib/jvm"),
       ...jdkHomes("/Library/Java/JavaVirtualMachines"),
     ];
-const candidates = [process.env.SAFEGO_JAVA_HOME, process.env.JAVA_HOME, ...discoveredHomes]
+const candidates = [process.env.SAFEGO_JAVA_HOME, process.env.JAVA_HOME, jdkFromPath(), ...discoveredHomes]
   .filter(Boolean);
 function isJava21(home) {
   if (!existsSync(join(home, "bin", javacName))) return false;
