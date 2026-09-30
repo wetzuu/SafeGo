@@ -26,6 +26,7 @@ import {
   type HourWeather,
 } from "@/lib/safego/timeline";
 import { assessTrip } from "@/lib/trips/trip-assessment";
+import { makeRouteEstimate } from "@/lib/trips/route-estimate";
 import { TimeSlider } from "./TimeSlider";
 import { analyzeArea } from "@/lib/safego/area-analysis";
 import { alertsCovering, fetchActiveAlerts, type ActiveAlert } from "@/lib/safego/area-alerts";
@@ -166,6 +167,7 @@ export function RiskMap({
   const markerLayerRef = useRef<LayerGroup | null>(null);
   const areaRendererRef = useRef<Renderer | null>(null);
   const [areas, setAreas] = useState<AreaCollection | null>(null);
+  const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
   const cardRef = useRef<HTMLElement>(null);
   const [activeLayer, setActiveLayer] = useState<MapLayerKey>("overall");
   const [mapReady, setMapReady] = useState(false);
@@ -191,9 +193,15 @@ export function RiskMap({
       timelineLabel(at),
     )), [at, liveLocations, pastAlerts, weatherTimeline]);
   const selectedLocation = liveSelected ? locations.find((location) => location.id === liveSelected.id) ?? liveSelected : liveSelected;
-  const trip = useMemo(() => liveTrip && at !== null
-    ? assessTrip(liveTrip, { locations, sources: liveTrip.sources, weatherUpdatedAt: null })
-    : liveTrip, [at, liveTrip, locations]);
+  const trip = useMemo(() => {
+    if (!liveTrip || at === null) return liveTrip;
+    // Rewound: sections away from SafeGo locations use that hour's recorded area weather and alerts.
+    const samples = weatherPoints.flatMap((point) => {
+      const reading = weatherAt(weatherTimeline?.get(point.key), at);
+      return reading ? [{ coordinates: point.coordinates, score: reading.score }] : [];
+    });
+    return assessTrip(liveTrip, { locations, sources: liveTrip.sources, weatherUpdatedAt: null }, makeRouteEstimate(samples, pastAlerts));
+  }, [at, liveTrip, locations, pastAlerts, weatherPoints, weatherTimeline]);
 
   const activeLayerLabel =
     MAP_LAYERS.find((layer) => layer.key === activeLayer)?.label ?? "Overall risk";
@@ -218,7 +226,6 @@ export function RiskMap({
   const areaAlerts = at === null ? liveActiveAlerts : pastAlerts;
   const cursorDate = at === null ? null : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(at));
   const weatherStatus = !liveWeather ? "off" : liveAreaWeather ? "live" : weatherFailed ? "unavailable" : "loading";
-  const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
   const timelinePoints = useMemo(() => [
     ...weatherPoints,
     ...liveLocations.map((location) => ({ key: `location:${location.id}`, label: location.name, coordinates: location.coordinates })),
@@ -588,14 +595,23 @@ export function RiskMap({
         // A white casing keeps the risk-coloured route readable on top of the heat shading.
         L.polyline(trip.routeCoordinates, { color: "#ffffff", weight: 13, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(routeLayer!);
         trip.segments.forEach((segment) => {
+          // Estimated sections (no SafeGo location nearby) are drawn lighter so they never read as a full rating.
+          const estimated = segment.coverage === "estimated";
           L.polyline(segment.coordinates, {
             color: segment.riskScore === null ? UNKNOWN_ROUTE_COLOR : riskGradient(segment.riskScore),
-            dashArray: segment.riskScore === null ? "8 6" : undefined,
-            weight: 8,
-            opacity: 0.9,
-            lineCap: segment.riskScore === null ? "butt" : "round",
+            dashArray: segment.riskScore === null ? "8 6" : estimated ? "14 5" : undefined,
+            weight: estimated ? 6 : 8,
+            opacity: estimated ? 0.75 : 0.9,
+            lineCap: segment.riskScore === null || estimated ? "butt" : "round",
           })
-            .bindTooltip(makeTooltip(segment.basisLocationName ?? "Insufficient information", segment.riskScore === null ? "Not enough information to score this section." : `${segment.riskScore}/100. Approximate route section.`))
+            .bindTooltip(makeTooltip(
+              segment.basisLocationName ?? "Insufficient information",
+              segment.riskScore === null
+                ? "Not enough information to score this section."
+                : estimated
+                  ? `${segment.riskScore}/100. Partial estimate from ${atLabel ? "recorded" : "live"} weather and PAGASA alerts here; street flooding and roads not checked.`
+                  : `${segment.riskScore}/100. Approximate route section.`,
+            ))
             .addTo(routeLayer!);
         });
         ([
@@ -644,7 +660,7 @@ export function RiskMap({
       cancelled = true;
       if (routeLayer && mapRef.current) mapRef.current.removeLayer(routeLayer);
     };
-  }, [mapReady, trip, previewRoute]);
+  }, [atLabel, mapReady, trip, previewRoute]);
 
   const showTimeline = liveWeather;
   const overallScore = trip ? trip.overallRiskScore : effectiveSelected ? layerScore(effectiveSelected, "overall") : null;

@@ -64,9 +64,16 @@ export function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[nu
   return highest;
 }
 
+/**
+ * A partial score for a point away from SafeGo locations (live weather and PAGASA alerts there),
+ * or null when nothing is known. Sections scored this way are labelled estimates.
+ */
+export type RouteEstimate = (point: [number, number]) => number | null;
+
 export function analyzeRouteSegments(
   routeCoordinates: Array<[number, number]>,
   locations: SafeGoLocation[],
+  estimate?: RouteEstimate | null,
 ) {
   if (routeCoordinates.length < 2 || routeCoordinates.some(([lat, lon]) =>
     !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)) {
@@ -95,6 +102,7 @@ export function analyzeRouteSegments(
   let weightedRisk = 0;
   let totalDistance = 0;
   let coveredDistance = 0;
+  let estimatedDistance = 0;
   let unknownGap = 0;
   let longestUnknownGapMeters = 0;
   let maximumRisk = 0;
@@ -115,11 +123,13 @@ export function analyzeRouteSegments(
     // A location that is not rated (no live data) covers nothing.
     const covered = Boolean(nearest && nearest.location.risk.basis !== "none" &&
       distanceKm(start, nearest.location.coordinates) * 1000 + segmentDistanceMeters <= PILOT.radiusMeters);
-    const score = covered ? nearest.location.risk.percentage : null;
+    const estimated = covered || !estimate ? null : estimate(center);
+    const score = covered ? nearest.location.risk.percentage : estimated;
 
     totalDistance += segmentDistanceMeters;
     if (score !== null) {
-      coveredDistance += segmentDistanceMeters;
+      if (covered) coveredDistance += segmentDistanceMeters;
+      else estimatedDistance += segmentDistanceMeters;
       weightedRisk += score * segmentDistanceMeters;
       maximumRisk = Math.max(maximumRisk, score);
       unknownGap = 0;
@@ -132,15 +142,16 @@ export function analyzeRouteSegments(
       riskScore: score,
       riskKey: score === null ? "unknown" : routeRiskBand(score).key,
       basisLocationId: covered ? nearest.location.id : null,
-      basisLocationName: covered ? nearest.location.name : null,
+      basisLocationName: covered ? nearest.location.name : estimated !== null ? "Area estimate" : null,
       lengthMeters: segmentDistanceMeters,
-      coverage: covered ? "covered" : "unknown",
+      coverage: covered ? "covered" : estimated !== null ? "estimated" : "unknown",
       nearestPointDistanceMeters: nearest ? nearest.distance * 1000 : null,
     };
     // A continuous polyline keeps dash patterns visible at low zoom and avoids
     // hundreds of independent Leaflet objects, while retaining every bend.
     const previous = segments.at(-1);
-    if (previous && previous.basisLocationId === segment.basisLocationId && previous.riskScore === segment.riskScore) {
+    if (previous && previous.basisLocationId === segment.basisLocationId && previous.riskScore === segment.riskScore
+      && previous.coverage === segment.coverage) {
       previous.coordinates.push(end);
       previous.lengthMeters += segment.lengthMeters;
       previous.nearestPointDistanceMeters = previous.nearestPointDistanceMeters === null
@@ -152,7 +163,8 @@ export function analyzeRouteSegments(
   }
 
   if (totalDistance < 1) throw new Error("Choose two distinct route endpoints.");
-  const ratio = coveredDistance / totalDistance;
+  // Estimated sections count toward coverage; the trip is then labelled a partial rating.
+  const ratio = (coveredDistance + estimatedDistance) / totalDistance;
   const sufficient = ratio * 100 >= PILOT.minimumCoveragePercent;
   const coverage: RouteCoverage = {
     pilotId: PILOT.id,
@@ -163,11 +175,12 @@ export function analyzeRouteSegments(
     radiusMeters: PILOT.radiusMeters,
     totalMeters: totalDistance,
     coveredMeters: coveredDistance,
-    unknownMeters: totalDistance - coveredDistance,
+    estimatedMeters: estimatedDistance,
+    unknownMeters: totalDistance - coveredDistance - estimatedDistance,
     longestUnknownGapMeters,
   };
   const calmScore = sufficient ? null : calmAreaScore(pilotLocations, routeCoordinates);
-  const rawRiskScore = sufficient ? Math.round(weightedRisk / coveredDistance) : calmScore;
+  const rawRiskScore = sufficient ? Math.round(weightedRisk / (coveredDistance + estimatedDistance)) : calmScore;
   let overallRiskScore = rawRiskScore;
   let safetyRule = "";
   if (overallRiskScore !== null && maximumRisk >= 80 && overallRiskScore < 80) {

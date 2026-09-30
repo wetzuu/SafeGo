@@ -18,6 +18,8 @@ import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { assessTrip } from "@/lib/trips/trip-assessment";
 import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
+import { buildRouteEstimate } from "@/lib/trips/route-estimate";
+import type { RouteEstimate } from "@/lib/trips/route-risk";
 import { honestLocation, honestSnapshot, liveFactorNames } from "@/lib/safego/honest-risk";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
@@ -250,6 +252,31 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const isDesktop = useIsDesktop();
   const refreshInFlight = useRef(false);
   const detailScrollRef = useRef<HTMLDivElement>(null);
+  // Route sections away from SafeGo locations are scored from live weather and PAGASA alerts there.
+  const routeEstimateRef = useRef<RouteEstimate | null>(null);
+  const routeEstimateToken = useRef(0);
+  const tripRef = useRef<TripAnalysis | null>(null);
+  useEffect(() => {
+    tripRef.current = trip;
+  }, [trip]);
+
+  /** Builds the live estimate for this route, then re-scores the trip if it is still the one shown. */
+  const rescoreWithEstimate = useCallback((route: TripAnalysis, snapshot: DashboardSnapshot) => {
+    const token = ++routeEstimateToken.current;
+    const weatherLive = snapshot.sources.some((source) => source.key === "open-meteo" && source.status === "active");
+    const alertsLive = snapshot.sources.some((source) => source.key === "pagasa-cap" && source.status === "active");
+    if (!weatherLive && !alertsLive) {
+      routeEstimateRef.current = null;
+      return;
+    }
+    void buildRouteEstimate(route.routeCoordinates, alertsLive).then((estimate) => {
+      if (token !== routeEstimateToken.current) return;
+      routeEstimateRef.current = estimate;
+      setTrip((current) => current && current.routeCoordinates === route.routeCoordinates
+        ? assessTrip(current, snapshot, estimate)
+        : current);
+    });
+  }, []);
 
   const refreshDashboard = useCallback(async (): Promise<boolean> => {
     if (refreshInFlight.current) return false;
@@ -262,7 +289,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       setApiUnavailable(false);
       const honest = honestSnapshot(envelope.data, envelope.meta.backend);
       setLocations(honest.locations);
-      setTrip((current) => current ? assessTrip(current, honest) : null);
+      setTrip((current) => current ? assessTrip(current, honest, routeEstimateRef.current) : null);
+      if (tripRef.current) rescoreWithEstimate(tripRef.current, honest);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
@@ -277,7 +305,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       refreshInFlight.current = false;
       setRefreshing(false);
     }
-  }, []);
+  }, [rescoreWithEstimate]);
 
   useEffect(() => {
     const accountTimer = window.setTimeout(() => void loadAccountSession().then(setAccount), 0);
@@ -305,7 +333,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
 
   const selectTrip = useCallback((result: TripAnalysis) => {
     // The trip API scores with every factor; re-assess the same route with honest scores.
-    const analysis = assessTrip(result, { locations, sources, weatherUpdatedAt });
+    const snapshot = { locations, sources, weatherUpdatedAt };
+    const analysis = assessTrip(result, snapshot);
     const destinationRiskId =
       analysis.destination.matchedLocationId ??
       analysis.segments.at(-1)?.basisLocationId;
@@ -313,11 +342,14 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       locations.find((location) => location.id === destinationRiskId) ??
       analysis.corridorLocations[0] ??
       locations[0];
+    routeEstimateRef.current = null;
     setTrip(analysis);
     setSelectedLocation(supportingLocation);
     setActiveScreen("overview");
-  }, [locations, sources, weatherUpdatedAt]);
+    rescoreWithEstimate(analysis, snapshot);
+  }, [locations, rescoreWithEstimate, sources, weatherUpdatedAt]);
   const selectLocation = useCallback((location: SafeGoLocation) => {
+    routeEstimateToken.current += 1;
     setTrip(null);
     setSelectedLocation(location);
     setActiveScreen("overview");
@@ -343,6 +375,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     detailScrollRef.current?.scrollTo({ top: 0 });
   }, []);
   const startNewTrip = useCallback(() => {
+    routeEstimateToken.current += 1;
     setTrip(null);
     setPreviewRoute(null);
     setSelectedLocation(null);

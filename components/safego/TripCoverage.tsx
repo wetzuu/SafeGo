@@ -13,7 +13,17 @@ export function TripDataNotice({ trip }: { trip: TripAnalysis }) {
   const savedRoute = trip.routingSource === "saved-demo";
   const hazardBand = knownHazardBand(trip);
 
-  if (!missingRating && !savedRoute) return null;
+  const estimatedPercent = trip.coverage.estimatedMeters
+    ? Math.round((trip.coverage.estimatedMeters / trip.coverage.totalMeters) * 100)
+    : 0;
+
+  if (!missingRating && !savedRoute && !estimatedPercent) return null;
+  if (!missingRating && !savedRoute) {
+    return <div className="trip-data-notice" role="status">
+      <strong>{estimatedPercent}% of this route is an area estimate.</strong>
+      <span>No SafeGo location is nearby, so those lighter, dashed sections use live weather and PAGASA alerts only. Street flooding and road conditions are not checked there.</span>
+    </div>;
+  }
 
   return <div className={`trip-data-notice${missingRating ? " warning" : ""}`} role="status">
     <strong>{missingRating ? "Some parts of this route do not have enough data." : "Using the saved demo route."}</strong>

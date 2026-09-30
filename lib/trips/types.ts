@@ -22,7 +22,8 @@ export interface RouteRiskSegment {
   basisLocationId: string | null;
   basisLocationName: string | null;
   lengthMeters: number;
-  coverage: "covered" | "unknown";
+  /** "estimated": no SafeGo location nearby, scored from live weather and PAGASA alerts there. */
+  coverage: "covered" | "estimated" | "unknown";
   nearestPointDistanceMeters: number | null;
 }
 
@@ -34,6 +35,8 @@ export interface RouteCoverage {
   radiusMeters: number;
   totalMeters: number;
   coveredMeters: number;
+  /** Distance scored by an area estimate rather than a SafeGo location (not sent by older APIs). */
+  estimatedMeters?: number;
   unknownMeters: number;
   longestUnknownGapMeters: number;
 }
