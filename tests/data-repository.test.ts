@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { MockSafeGoRepository } from "../lib/data/mock-repository.ts";
 import { isAreaDashboardLocation } from "../lib/trips/pilot.ts";
+import { LOCATIONS } from "../lib/safego/locations.ts";
 
 test("mock repository exposes every preset location", async () => {
   const repository = new MockSafeGoRepository();
   const locations = await repository.listLocations();
 
-  assert.equal(locations.length, 7);
+  assert.equal(locations.length, LOCATIONS.length);
   assert.ok(locations.every((location) => location.coordinates.length === 2));
   assert.ok(locations.every((location) => location.risk.percentage >= 0));
 });

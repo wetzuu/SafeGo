@@ -216,7 +216,7 @@ export function AreaDetails({
         </Section>
 
         <Section title="About this area">
-          {properties.level === "district" ? "District of the City of Manila" : `Barangay in ${properties.city}`} · {properties.areaKm2.toFixed(2)} km²
+          {properties.level === "city" ? "City / Municipality in Metro Manila" : properties.level === "district" ? "District of the City of Manila" : `Barangay in ${properties.city}`} · {properties.areaKm2.toFixed(2)} km²
           {properties.psgc && <span className="block text-ink-soft">Philippine Standard Geographic Code: {properties.psgc}</span>}
         </Section>
       </div>

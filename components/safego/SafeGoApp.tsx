@@ -254,6 +254,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   // Route sections away from SafeGo locations are scored from live weather and PAGASA alerts there.
   const routeEstimateRef = useRef<RouteEstimate | null>(null);
   const routeEstimateToken = useRef(0);
+  const locationsRef = useRef(locations);
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
   const tripRef = useRef<TripAnalysis | null>(null);
   useEffect(() => {
     tripRef.current = trip;
@@ -287,14 +291,21 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       const envelope = (await response.json()) as DashboardEnvelope;
       setApiUnavailable(false);
       const honest = honestSnapshot(envelope.data, envelope.meta.backend);
-      setLocations(honest.locations);
-      setTrip((current) => current ? assessTrip(current, honest, routeEstimateRef.current) : null);
-      if (tripRef.current) rescoreWithEstimate(tripRef.current, honest);
+      const live = liveFactorNames(envelope.data.sources, envelope.meta.backend);
+      const byId = new Map(honest.locations.map((location) => [location.id, location]));
+      const merged = [
+        ...locationsRef.current.map((location) => byId.get(location.id) ?? honestLocation(location, live)),
+        ...honest.locations.filter((location) => !locationsRef.current.some((candidate) => candidate.id === location.id)),
+      ];
+      const snapshot: DashboardSnapshot = { ...honest, locations: merged };
+      setLocations(merged);
+      setTrip((current) => current ? assessTrip(current, snapshot, routeEstimateRef.current) : null);
+      if (tripRef.current) rescoreWithEstimate(tripRef.current, snapshot);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
       setSelectedLocation((current) => current
-        ? honest.locations.find((location) => location.id === current.id) ?? current
+        ? merged.find((location) => location.id === current.id) ?? current
         : current);
       return true;
     } catch {

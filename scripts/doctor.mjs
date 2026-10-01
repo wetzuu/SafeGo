@@ -26,7 +26,7 @@ check(webBuilt, "Web production build", webBuilt ? `built ${statSync(buildId).mt
 const jar = join(root, "server", "demo", "build", "libs", "demo-0.0.1-SNAPSHOT.jar");
 check(existsSync(jar), "Java API build", existsSync(jar) ? `built ${statSync(jar).mtime.toLocaleString()}` : "missing",
   "Run npm run presentation:build.");
-check(existsSync(join(root, "public", "data", "ncr-areas.json")), "Metro Manila area data", "present", "Run npm run data:boundaries.");
+check(existsSync(join(root, "lib", "data", "ncr-cities.json")), "Metro Manila area data", "present", "Run npm run data:boundaries.");
 
 // Ports.
 const portFree = (port) => new Promise((resolve) => {

@@ -282,6 +282,74 @@ function cloneEspana(
   });
 }
 
+function createFloodProneLocation(config: {
+  id: string;
+  name: string;
+  city: string;
+  aliases: string[];
+  coordinates: [number, number];
+  floodTitle: string;
+  floodMeta: string;
+  riskSummary: string;
+  riskStatus?: string;
+  floodScore?: number;
+  weatherScore?: number;
+  advisoryScore?: number;
+  points: [
+    { label: string; name: string; detail: string },
+    { label: string; name: string; detail: string },
+    { label: string; name: string; detail: string },
+  ];
+  hazardTitle?: string;
+  hazardMeta?: string;
+}): SafeGoLocation {
+  const floodScore = config.floodScore ?? 68;
+  const weatherScore = config.weatherScore ?? 55;
+  const advisoryScore = config.advisoryScore ?? 65;
+  const floodPill = floodScore >= 80 ? "crit" : floodScore >= 60 ? "high" : floodScore >= 30 ? "mod" : "low";
+  const weatherPill = weatherScore >= 80 ? "crit" : weatherScore >= 60 ? "high" : weatherScore >= 30 ? "mod" : "low";
+  const advisoryPill = advisoryScore >= 80 ? "crit" : advisoryScore >= 60 ? "high" : advisoryScore >= 30 ? "mod" : "low";
+
+  return createLocation({
+    id: config.id,
+    name: config.name,
+    city: config.city,
+    aliases: config.aliases,
+    coordinates: config.coordinates,
+    updated: "6:40 AM",
+    riskSummary: config.riskSummary,
+    riskStatus: config.riskStatus ?? "Flood hazard · delays",
+    stats: [
+      { label: "Weather", value: "Rain, 25°C", detail: "Active rain system", icon: "weather", tone: "icon-weather" },
+      { label: "School status", value: "Monitor LGUs", detail: "Check city DRRMO bulletin", icon: "school", tone: "icon-ok" },
+      { label: "Road condition", value: config.floodTitle, detail: config.floodMeta, icon: "flood", tone: "icon-alert" },
+      { label: "Latest advisory", value: "Flood watch", detail: `${config.city} DRRMO alert`, icon: "alert", tone: "icon-alert" },
+    ],
+    factors: [
+      { name: "Weather", score: weatherScore, pill: weatherPill, pillText: weatherPill === "high" ? "Elevated" : "Moderate", description: `Rain continuing over ${config.city}. Weather system active across Metro Manila.`, icon: "weather", tone: "icon-weather" },
+      { name: "Flood / roads", score: floodScore, pill: floodPill, pillText: floodPill === "high" ? "High" : floodPill === "crit" ? "Critical" : "Elevated", description: `${config.floodTitle}: ${config.floodMeta}.`, icon: "flood", tone: "icon-alert" },
+      { name: "Official advisories", score: advisoryScore, pill: advisoryPill, pillText: advisoryPill === "high" ? "Elevated" : "Moderate", description: `City flood bulletin and PAGASA rainfall advisory active for ${config.city}.`, icon: "alert", tone: "icon-alert" },
+      { name: "School status", score: 20, pill: "low", pillText: "Normal", description: "Classes subject to local LGU suspension announcements.", icon: "school", tone: "icon-ok" },
+      { name: "Community reports", score: 40, pill: "mod", pillText: "Active", description: "Community reports received and being monitored.", icon: "reports", tone: "icon-neutral" },
+    ],
+    advisories: [
+      { source: "gov", label: config.city, title: `${config.city} DRRMO Flood Advisory`, description: `${config.floodTitle} reported. Motorists are advised to seek alternate routes.`, time: "6:10 AM" },
+      { source: "weather", label: "PAGASA", title: "Metro Manila Rainfall Advisory", description: "Moderate to heavy rainfall expected over low-lying areas.", time: "6:15 AM" },
+    ],
+    universities: [],
+    reports: [
+      { type: "Flooding", title: config.floodTitle, meta: `${config.name} · 6:15 AM`, status: "verified", statusLabel: "Verified" },
+    ],
+    points: [
+      { kind: "start", label: config.points[0].label, name: config.points[0].name, detail: config.points[0].detail },
+      { kind: "mid", label: config.points[1].label, name: config.points[1].name, detail: config.points[1].detail },
+      { kind: "end", label: config.points[2].label, name: config.points[2].name, detail: config.points[2].detail },
+    ],
+    floods: [{ title: config.floodTitle, meta: config.floodMeta, tone: "icon-alert" }],
+    hazards: config.hazardTitle ? [{ title: config.hazardTitle, meta: config.hazardMeta ?? "Reported 6:10 AM · Verified" }] : [],
+  });
+}
+
 export const LOCATIONS: SafeGoLocation[] = [
   createLocation(espanaInput),
   createLocation(makatiInput),
@@ -290,6 +358,217 @@ export const LOCATIONS: SafeGoLocation[] = [
   cloneEspana("binondo", "Binondo, Manila", "Manila", ["binondo", "manila", "divisoria", "ongpin"], [14.601, 120.9745]),
   cloneEspana("katipunan", "Katipunan Avenue, Quezon City", "Quezon City", ["katipunan", "quezon city", "qc", "ateneo", "up diliman"], [14.6405, 121.0741]),
   createLocation(pasigInput),
+  createFloodProneLocation({
+    id: "marikina-riverbanks",
+    name: "Marikina Riverbanks, Marikina",
+    city: "Marikina",
+    aliases: ["marikina", "riverbanks", "marikina river", "tumana", "provident"],
+    coordinates: [14.6346, 121.0963],
+    floodTitle: "Marikina River overflow",
+    floodMeta: "Waist-deep in low river parks · road closure near bridge",
+    riskSummary: "Marikina River water levels elevated. Riverbanks park submerged; riverside access roads closed or impassable to light vehicles.",
+    floodScore: 78,
+    points: [
+      { label: "North approach", name: "J.P. Rizal St.", detail: "Water ponding near curb" },
+      { label: "Watched", name: "Marikina Riverbanks Center", detail: "Waist-deep flooding in low sections" },
+      { label: "South exit", name: "Marcos Highway bridge", detail: "Bridge passable, slow movement" },
+    ],
+    hazardTitle: "Submerged riverside park walkway",
+  }),
+  createFloodProneLocation({
+    id: "malabon-dampalit",
+    name: "C-4 Road / Dampalit, Malabon",
+    city: "Malabon",
+    aliases: ["malabon", "dampalit", "c4", "tullahan", "concepcion", "hulong duhat"],
+    coordinates: [14.6645, 120.9575],
+    floodTitle: "Tullahan River tidal overflow",
+    floodMeta: "Knee- to waist-deep (~45cm) · high tide convergence",
+    riskSummary: "High tide combined with monsoon runoff has caused tidal overflow along C-4 and Dampalit. Light vehicles not passable.",
+    floodScore: 76,
+    points: [
+      { label: "Approach", name: "Gov. Pascual Ave.", detail: "Gutters overflowing" },
+      { label: "Watched", name: "C-4 Road / Dampalit Bridge", detail: "Knee- to waist-deep water" },
+      { label: "Exit", name: "Toward Navotas boundary", detail: "Impassable to light vehicles" },
+    ],
+    hazardTitle: "Deep tidal flood on roadway",
+  }),
+  createFloodProneLocation({
+    id: "navotas-nbbs",
+    name: "North Bay Blvd. South (NBBS), Navotas",
+    city: "Navotas",
+    aliases: ["navotas", "nbbs", "r10", "fish port", "san rafael"],
+    coordinates: [14.6441, 120.9535],
+    floodTitle: "Coastal ponding along R-10",
+    floodMeta: "Knee-deep (~35cm) · coastal gate overflow",
+    riskSummary: "High tide backflow along Manila Bay dikes has flooded North Bay Boulevard South. Commercial and fish port traffic delayed.",
+    floodScore: 70,
+    points: [
+      { label: "North approach", name: "Honorio Lopez Blvd.", detail: "Ankle-deep ponding" },
+      { label: "Watched", name: "NBBS / Navotas Fish Port complex", detail: "Knee-deep tidal water" },
+      { label: "South exit", name: "R-10 toward Tondo", detail: "Heavy vehicle traffic only" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "valenzuela-malinta",
+    name: "MacArthur Highway, Malinta, Valenzuela",
+    city: "Valenzuela",
+    aliases: ["valenzuela", "malinta", "macarthur", "dalandanan", "karuhatan"],
+    coordinates: [14.6933, 120.9634],
+    floodTitle: "MacArthur Hwy. knee-deep flood",
+    floodMeta: "Knee-deep (~40cm) · slow drainage near Malinta junction",
+    riskSummary: "Continuous rain and runoff have overwhelmed roadside drainage along MacArthur Highway in Malinta. Light vehicles advised to divert.",
+    floodScore: 72,
+    points: [
+      { label: "North approach", name: "MacArthur / Dalandanan", detail: "Water ponding in right lanes" },
+      { label: "Watched", name: "Malinta junction / People's Park", detail: "Knee-deep standing water" },
+      { label: "South exit", name: "Toward Karuhatan", detail: "Passable with extreme caution" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "qc-araneta",
+    name: "G. Araneta Ave. / Talayan, Quezon City",
+    city: "Quezon City",
+    aliases: ["araneta", "talayan", "tatalon", "quezon city", "qc", "maria clara", "e rodriguez"],
+    coordinates: [14.6385, 121.0030],
+    floodTitle: "San Juan River catch basin flooding",
+    floodMeta: "Waist-deep (~70cm) · impassable to all light vehicles",
+    riskSummary: "San Juan River overflow has turned G. Araneta Avenue near Talayan into a deep flood basin. Road is closed to light traffic.",
+    floodScore: 85,
+    points: [
+      { label: "Approach", name: "Del Monte Ave. corner Araneta", detail: "Ankle-deep water spreading" },
+      { label: "Watched", name: "G. Araneta Ave. near Talayan creek", detail: "Waist-deep flood · vehicles stalled" },
+      { label: "Exit", name: "Toward Quezon Ave. underpass", detail: "Traffic diversion in effect" },
+    ],
+    hazardTitle: "Submerged vehicle on G. Araneta",
+  }),
+  createFloodProneLocation({
+    id: "mandaluyong-maysilo",
+    name: "Maysilo Circle, Mandaluyong",
+    city: "Mandaluyong",
+    aliases: ["mandaluyong", "maysilo", "boni", "plainview", "city hall"],
+    coordinates: [14.5772, 121.0347],
+    floodTitle: "Maysilo Circle flood basin",
+    floodMeta: "Knee-deep (~35cm) · pumping stations operating",
+    riskSummary: "Water ponding around Maysilo Circle in front of the City Hall. Pumping stations active; slow movement along Boni Avenue.",
+    floodScore: 66,
+    points: [
+      { label: "West approach", name: "Boni Ave. near San Francisco", detail: "Ankle-deep water" },
+      { label: "Watched", name: "Maysilo Circle roundabout", detail: "Knee-deep water in inner lanes" },
+      { label: "East exit", name: "Boni Ave. toward EDSA", detail: "Slow moving but passable" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "san-juan-river",
+    name: "F. Manalo / San Juan River, San Juan",
+    city: "San Juan",
+    aliases: ["san juan", "manalo", "san juan river", "batis", "progreso"],
+    coordinates: [14.6042, 121.0267],
+    floodTitle: "San Juan Riverbank overflow",
+    floodMeta: "Shin- to knee-deep (~30cm) · rapid river rise",
+    riskSummary: "River levels along San Juan River have spilled over low embankments near F. Manalo Street. Use elevated routes.",
+    floodScore: 68,
+    points: [
+      { label: "Approach", name: "N. Domingo St.", detail: "Passable, wet pavement" },
+      { label: "Watched", name: "F. Manalo St. near riverbank", detail: "Shin- to knee-deep water" },
+      { label: "Exit", name: "Blumentritt St.", detail: "Water receding slowly" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "paranaque-sucat",
+    name: "Dr. A. Santos Ave. (Sucat), Parañaque",
+    city: "Parañaque",
+    aliases: ["paranaque", "parañaque", "sucat", "kabihasnan", "santos"],
+    coordinates: [14.4988, 120.9882],
+    floodTitle: "Sucat / Kabihasnan tidal flood",
+    floodMeta: "Ankle- to knee-deep (~25cm) · slow drainage",
+    riskSummary: "Rainfall combined with Parañaque River high tide causes localized flooding along Dr. A. Santos Avenue near Kabihasnan.",
+    floodScore: 62,
+    points: [
+      { label: "West approach", name: "Quirino Ave. / Kabihasnan", detail: "Knee-deep near bridge" },
+      { label: "Watched", name: "Dr. A. Santos Ave. near SM Sucat", detail: "Ankle-deep water in outer lanes" },
+      { label: "East exit", name: "Sucat interchange approach", detail: "Passable, heavy congestion" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "pasay-rotonda",
+    name: "Taft Ave. / EDSA Rotonda, Pasay",
+    city: "Pasay",
+    aliases: ["pasay", "rotonda", "taft", "edsa", "baclaran", "malibay"],
+    coordinates: [14.5378, 120.9995],
+    floodTitle: "Pasay Rotonda flash ponding",
+    floodMeta: "Shin-deep (~20cm) · drainage backup at transit hub",
+    riskSummary: "Heavy surface runoff has backed up drainage around the MRT/LRT Pasay Rotonda intersection. Expect heavy delays.",
+    floodScore: 58,
+    points: [
+      { label: "North approach", name: "Taft Ave. near Zamora", detail: "Ponding in curb lanes" },
+      { label: "Watched", name: "Taft / EDSA Rotonda underpass", detail: "Shin-deep water near stairs" },
+      { label: "South exit", name: "Toward Baclaran", detail: "Slow movement, passable" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "taguig-c6",
+    name: "C-6 Road / Hagonoy, Taguig",
+    city: "Taguig",
+    aliases: ["taguig", "c6", "hagonoy", "lakeshore", "lower bicutan"],
+    coordinates: [14.5098, 121.0742],
+    floodTitle: "Laguna Lake shoreline flood watch",
+    floodMeta: "Knee-deep (~35cm) · lake water spillover",
+    riskSummary: "High water levels in Laguna de Bay have pushed lake water over roadside sections of C-6 Road in Hagonoy. Light vehicles avoid.",
+    floodScore: 70,
+    points: [
+      { label: "North approach", name: "C-6 Lakeshore entrance", detail: "Water reaching shoulder" },
+      { label: "Watched", name: "C-6 Hagonoy low dike section", detail: "Knee-deep lake overflow" },
+      { label: "South exit", name: "Toward Lower Bicutan", detail: "Single lane passable" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "laspinas-zapote",
+    name: "Alabang–Zapote Road, Zapote, Las Piñas",
+    city: "Las Piñas",
+    aliases: ["las pinas", "las piñas", "zapote", "alabang zapote", "talaba"],
+    coordinates: [14.4635, 120.9765],
+    floodTitle: "Zapote River bridge overflow",
+    floodMeta: "Knee-deep (~40cm) · critical bottleneck",
+    riskSummary: "Zapote River has overflowed near the Las Piñas–Bacoor boundary, flooding Alabang–Zapote Road. Traffic severely gridlocked.",
+    floodScore: 74,
+    points: [
+      { label: "East approach", name: "Alabang–Zapote near Diego Cera", detail: "Water ponding in center" },
+      { label: "Watched", name: "Zapote Bridge junction", detail: "Knee-deep flooding across lanes" },
+      { label: "West exit", name: "Toward Aguinaldo Hwy.", detail: "Heavy vehicle traffic only" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "muntinlupa-bayanan",
+    name: "National Road, Bayanan, Muntinlupa",
+    city: "Muntinlupa",
+    aliases: ["muntinlupa", "bayanan", "alabang", "putatan", "poblacion"],
+    coordinates: [14.4081, 121.0415],
+    floodTitle: "Bayanan lakeshore ponding",
+    floodMeta: "Ankle- to shin-deep (~20cm) · lake backflow",
+    riskSummary: "Prolonged rains and high lake levels in Laguna de Bay cause water to pond along National Road in Bayanan.",
+    floodScore: 56,
+    points: [
+      { label: "North approach", name: "National Road near Alabang viaduct", detail: "Passable, wet pavement" },
+      { label: "Watched", name: "National Road, Bayanan market", detail: "Shin-deep standing water" },
+      { label: "South exit", name: "Toward Putatan / City Hall", detail: "Slow moving but clear" },
+    ],
+  }),
+  createFloodProneLocation({
+    id: "caloocan-monumento",
+    name: "Monumento / Samson Road, Caloocan",
+    city: "Caloocan",
+    aliases: ["caloocan", "kalookan", "monumento", "samson", "mcu", "edsa"],
+    coordinates: [14.6575, 120.9836],
+    floodTitle: "Monumento Circle road ponding",
+    floodMeta: "Ankle- to shin-deep (~20cm) · drain blockage",
+    riskSummary: "Surface runoff has accumulated around the Monumento roundabout and Samson Road. Transit and jeepney queues delayed.",
+    floodScore: 54,
+    points: [
+      { label: "East approach", name: "EDSA toward Monumento", detail: "Ponding in outer bus lane" },
+      { label: "Watched", name: "Monumento Circle / Samson Rd.", detail: "Shin-deep flood at corner" },
+      { label: "West exit", name: "Samson Rd. toward Malabon", detail: "Passable with delay" },
+    ],
+  }),
 ];
 
 export function searchLocations(query: string) {

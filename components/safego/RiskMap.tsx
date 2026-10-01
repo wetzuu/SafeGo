@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CircleMarker, GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
+import { NCR_CITIES } from "@/lib/safego/ncr-cities";
 import {
   fetchAreaWeather,
   fetchAreaWeatherHistory,
@@ -54,23 +55,11 @@ const APPROXIMATE_COVERAGE_RADIUS_METERS = PILOT.radiusMeters;
 const UNRATED_AREA_COLOR = "#94a3b8";
 const AREA_BORDER_COLOR = "#334155";
 const ESTIMATE_FILL_OPACITY = 0.3;
+const MANILA_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" });
 
 // Flat colours per 10-point class, taken from the middle of each class on the shared risk gradient.
 function classColor(riskClass: number) {
   return riskGradient(riskClass * 10 + 5);
-}
-
-let areasRequest: Promise<AreaCollection | null> | null = null;
-
-function loadAreas() {
-  areasRequest ??= fetch("/data/ncr-areas.json")
-    .then((response) => (response.ok ? (response.json() as Promise<AreaCollection>) : null))
-    .catch(() => null)
-    .then((collection) => {
-      if (!collection) areasRequest = null;
-      return collection;
-    });
-  return areasRequest;
 }
 
 /** The plain-language summary for a map area, from its own analysis, weather and alerts. */
@@ -199,8 +188,8 @@ export function RiskMap({
   const mapRef = useRef<LeafletMap | null>(null);
   const markerLayerRef = useRef<LayerGroup | null>(null);
   const areaRendererRef = useRef<Renderer | null>(null);
-  const [areas, setAreas] = useState<AreaCollection | null>(null);
-  const weatherPoints = useMemo(() => (areas ? weatherSamplePoints(areas) : []), [areas]);
+  const areas = NCR_CITIES;
+  const weatherPoints = useMemo(() => weatherSamplePoints(NCR_CITIES), []);
   const cardRef = useRef<HTMLElement>(null);
   const [activeLayer, setActiveLayer] = useState<MapLayerKey>("overall");
   const [mapReady, setMapReady] = useState(false);
@@ -257,7 +246,7 @@ export function RiskMap({
   const liveActiveAlerts = liveAlerts ? activeAlerts : null;
   // What the area shading uses: live readings now, recorded ones when rewound.
   const areaAlerts = at === null ? liveActiveAlerts : pastAlerts;
-  const cursorDate = at === null ? null : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(at));
+  const cursorDate = at === null ? null : MANILA_DATE_FORMAT.format(new Date(at));
   const weatherStatus = !liveWeather ? "off" : liveAreaWeather ? "live" : weatherFailed ? "unavailable" : "loading";
   const timelinePoints = useMemo(() => [
     ...weatherPoints,
@@ -273,6 +262,8 @@ export function RiskMap({
     return readings;
   }, [at, liveAreaWeather, weatherPoints, weatherTimeline]);
 
+  const areaCenters = useMemo(() => areas.features.map(({ geometry }) => areaCenter(geometry)), [areas]);
+
   const areaInfos: AreaInfo[] = useMemo(() => {
     if (!areas) return [];
     const points = locations.flatMap((location) => {
@@ -285,7 +276,7 @@ export function RiskMap({
     });
     const byId = new Map(locations.map((location) => [location.id, location]));
     const weatherLabels = new Map(weatherPoints.map((point) => [point.key, point.label]));
-    return areas.features.map(({ geometry, properties }) => {
+    return areas.features.map(({ geometry, properties }, index) => {
       const measured = scoreArea(geometry, points, APPROXIMATE_COVERAGE_RADIUS_METERS);
       const measuredSource = measured ? byId.get(measured.sourceId) ?? null : null;
       const key = weatherGroupKey(properties);
@@ -294,7 +285,7 @@ export function RiskMap({
       const pastDay = cursorDate ? history?.find((day) => day.date === cursorDate) ?? null : null;
       const nearest = nearestPoint(geometry, locations);
       const overallMeasured = activeLayer === "overall" ? measured : scoreArea(geometry, overallPoints, APPROXIMATE_COVERAGE_RADIUS_METERS);
-      const advisory = areaAlerts ? alertsCovering(areaCenter(geometry), areaAlerts) : null;
+      const advisory = areaAlerts ? alertsCovering(areaCenters[index], areaAlerts) : null;
       const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather, advisory);
       // Weather and PAGASA alerts are the factors SafeGo can read everywhere. The overall layer shows
       // partial estimates for uncovered areas; the flood, university and community layers only rate covered areas.
@@ -325,6 +316,22 @@ export function RiskMap({
   const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
   const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null && !info.estimated).length;
   const estimatedAreaCount = areaInfos.filter((info) => info.estimated).length;
+  const areaLayerRef = useRef<GeoJSONLayer | null>(null);
+  const routeLayerRef = useRef<LayerGroup | null>(null);
+  const atLabelRef = useRef(atLabel);
+  atLabelRef.current = atLabel;
+  const activeLayerLabelRef = useRef(activeLayerLabel);
+  activeLayerLabelRef.current = activeLayerLabel;
+  const activeLayerRef = useRef(activeLayer);
+  activeLayerRef.current = activeLayer;
+  const areaInfosRef = useRef(areaInfos);
+  areaInfosRef.current = areaInfos;
+  const selectedAreaIndexRef = useRef(selectedAreaIndex);
+  selectedAreaIndexRef.current = selectedAreaIndex;
+  const effectiveSelectedIdRef = useRef(effectiveSelected?.id);
+  effectiveSelectedIdRef.current = effectiveSelected?.id;
+  const selectionContextRef = useRef(selectionContext);
+  selectionContextRef.current = selectionContext;
 
   const bounds: Array<[number, number]> = useMemo(
     () => liveTrip?.routeCoordinates.length
@@ -377,9 +384,7 @@ export function RiskMap({
         // Area shading sits below the route lines and markers (overlayPane is 400, markerPane 600).
         map.createPane("riskAreas").style.zIndex = "350";
         areaRendererRef.current = L.canvas({ pane: "riskAreas", padding: 0.5 });
-        void loadAreas().then((collection) => {
-          if (!cancelled) setAreas(collection);
-        });
+        routeLayerRef.current = L.layerGroup().addTo(map);
         markerLayerRef.current = L.layerGroup().addTo(map);
 
         setMapReady(true);
@@ -395,7 +400,9 @@ export function RiskMap({
       mapRef.current?.remove();
       mapRef.current = null;
       markerLayerRef.current = null;
+      routeLayerRef.current = null;
       areaRendererRef.current = null;
+      areaLayerRef.current = null;
     };
     // Create the Leaflet map once; later bound changes are handled by the fit effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -481,7 +488,7 @@ export function RiskMap({
         });
 
         marker.bindTooltip(
-          makeTooltip(atLabel ? `${location.name} · ${atLabel}` : location.name, score === null ? `${activeLayerLabel}: not rated (no live data).` : `${activeLayerLabel}: ${score}/100${partial ? " (partial: live factors only)" : ""}.`),
+          () => makeTooltip(atLabelRef.current ? `${location.name} · ${atLabelRef.current}` : location.name, score === null ? `${activeLayerLabelRef.current}: not rated (no live data).` : `${activeLayerLabelRef.current}: ${score}/100${partial ? " (partial: live factors only)" : ""}.`),
           { direction: "top", opacity: 0.96 },
         );
         if (onSelectLocation) marker.on("click", () => onSelectLocation(location));
@@ -493,7 +500,7 @@ export function RiskMap({
     return () => {
       cancelled = true;
     };
-  }, [activeLayer, activeLayerLabel, atLabel, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
+  }, [activeLayer, locations, mapReady, onSelectLocation, effectiveSelected?.id]);
 
   useEffect(() => {
     if (!liveWeather || !weatherPoints.length) return;
@@ -580,88 +587,114 @@ export function RiskMap({
     };
   }, [liveAlerts]);
 
+  const indexByFeature = useMemo(
+    () => new Map<object, number>(areas.features.map((feature, index) => [feature, index])),
+    [areas],
+  );
+
+  const getFeatureStyle = useCallback((feature: unknown) => {
+    const index = feature ? indexByFeature.get(feature as object) : undefined;
+    const info = index === undefined ? undefined : areaInfosRef.current[index];
+    if (!info) return {};
+    const fill = info.displayScore === null ? UNRATED_AREA_COLOR : classColor(scoreClass(info.displayScore));
+    if (index === selectedAreaIndexRef.current) {
+      return { fillColor: fill, fillOpacity: info.displayScore === null ? 0.45 : info.estimated ? 0.4 : 0.78, color: "#1a1a1a", weight: 2.6, opacity: 1 };
+    }
+    if (info.estimated) {
+      return { fillColor: fill, fillOpacity: ESTIMATE_FILL_OPACITY, color: AREA_BORDER_COLOR, weight: 0.7, opacity: 0.45, dashArray: "3 3" };
+    }
+    if (info.displayScore === null) {
+      return { fillColor: fill, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
+    }
+    const fromSelected = selectedAreaIndexRef.current === null && info.measured?.sourceId === effectiveSelectedIdRef.current;
+    return { fillColor: fill, fillOpacity: 0.68, color: fromSelected ? "#1a1a1a" : AREA_BORDER_COLOR, weight: fromSelected ? 1.8 : 0.7, opacity: fromSelected ? 0.9 : 0.55 };
+  }, [indexByFeature]);
+
+  const getFeatureTooltip = useCallback((feature: unknown) => {
+    const index = feature ? indexByFeature.get(feature as object) : undefined;
+    const info = index === undefined ? undefined : areaInfosRef.current[index];
+    if (!info || index === undefined) return "";
+    const { name, city, level } = info.properties;
+    const title = level === "city" ? name : level === "district" ? `${name} district, Manila` : `${name}, ${city}`;
+    const at = atLabelRef.current;
+    const activeLabel = activeLayerLabelRef.current;
+    const layer = activeLayerRef.current;
+    const detail = info.displayScore === null
+      ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
+      : info.estimated
+        ? `Partial estimate: ${info.displayScore}/100 from ${at ? "recorded" : "live"} weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
+        : info.measured && info.measuredSource && info.measured.score >= info.displayScore
+        ? `${activeLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
+        : layer === "Official advisories"
+          ? info.advisory?.alerts.length
+            ? `PAGASA: ${info.advisory.alerts.map((alert) => alert.headline).join("; ")} (${info.displayScore}/100).`
+            : at ? "No PAGASA alert covered this area then." : "No active PAGASA alert covers this area."
+          : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (${at ? "recorded" : "live"} model for ${info.weatherLabel}).`;
+    return makeTooltip(at ? `${title} · ${at}` : title, `${detail} Click for details.`);
+  }, [indexByFeature]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !areas || !areaRendererRef.current) return;
     let cancelled = false;
-    let areaLayer: GeoJSONLayer | null = null;
-    const renderer = areaRendererRef.current;
-    const indexByFeature = new Map<object, number>(areas.features.map((feature, index) => [feature, index]));
 
-    async function renderAreas() {
+    async function mountAreas() {
       const L = await import("leaflet");
-      if (cancelled || !map) return;
+      if (cancelled || !mapRef.current || !areaRendererRef.current) return;
 
-      // Leaflet hands these options to each polygon, which accepts a renderer; the typings omit it.
       const options: GeoJSONOptions & { renderer: Renderer } = {
-        renderer,
+        renderer: areaRendererRef.current,
         attribution: "Areas: PSA/NAMRIA 2023; Manila districts © OpenStreetMap; alerts: PAGASA (CC BY 4.0)",
-        style: (feature) => {
-          const index = feature ? indexByFeature.get(feature) : undefined;
-          const info = index === undefined ? undefined : areaInfos[index];
-          if (!info) return {};
-          const fill = info.displayScore === null ? UNRATED_AREA_COLOR : classColor(scoreClass(info.displayScore));
-          if (index === selectedAreaIndex) {
-            return { fillColor: fill, fillOpacity: info.displayScore === null ? 0.45 : info.estimated ? 0.4 : 0.78, color: "#1a1a1a", weight: 2.6, opacity: 1 };
-          }
-          if (info.estimated) {
-            return { fillColor: fill, fillOpacity: ESTIMATE_FILL_OPACITY, color: AREA_BORDER_COLOR, weight: 0.7, opacity: 0.45, dashArray: "3 3" };
-          }
-          if (info.displayScore === null) {
-            return { fillColor: fill, fillOpacity: 0.3, color: AREA_BORDER_COLOR, weight: 0.8, opacity: 0.45 };
-          }
-          const fromSelected = selectedAreaIndex === null && info.measured?.sourceId === effectiveSelected?.id;
-          return { fillColor: fill, fillOpacity: 0.68, color: fromSelected ? "#1a1a1a" : AREA_BORDER_COLOR, weight: fromSelected ? 1.8 : 0.7, opacity: fromSelected ? 0.9 : 0.55 };
-        },
+        style: (feature) => getFeatureStyle(feature),
         onEachFeature: (feature, layer) => {
-          const index = indexByFeature.get(feature);
-          const info = index === undefined ? undefined : areaInfos[index];
-          if (!info || index === undefined) return;
-          const { name, city, level } = info.properties;
-          const title = level === "district" ? `${name} district, Manila` : `${name}, ${city}`;
-          const detail = info.displayScore === null
-            ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
-            : info.estimated
-              ? `Partial estimate: ${info.displayScore}/100 from ${atLabel ? "recorded" : "live"} weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
-              : info.measured && info.measuredSource && info.measured.score >= info.displayScore
-              ? `${activeLayerLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
-              : activeLayer === "Official advisories"
-                ? info.advisory?.alerts.length
-                  ? `PAGASA: ${info.advisory.alerts.map((alert) => alert.headline).join("; ")} (${info.displayScore}/100).`
-                  : atLabel ? "No PAGASA alert covered this area then." : "No active PAGASA alert covers this area."
-                : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (${atLabel ? "recorded" : "live"} model for ${info.weatherLabel}).`;
-          layer.bindTooltip(makeTooltip(atLabel ? `${title} · ${atLabel}` : title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
+          const index = feature ? indexByFeature.get(feature) : undefined;
+          layer.bindTooltip(() => getFeatureTooltip(feature), { sticky: true, direction: "top", opacity: 0.96 });
           layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
-          layer.on("mouseout", () => areaLayer?.resetStyle(layer));
+          layer.on("mouseout", () => {
+            if (feature) (layer as Path).setStyle(getFeatureStyle(feature));
+          });
           layer.on("click", () => {
-            setAreaSelection({ index, context: selectionContext });
-            setSheet((current) => (current === "peek" ? "half" : current));
+            if (index !== undefined) {
+              setAreaSelection({ index, context: selectionContextRef.current });
+              setSheet((current) => (current === "peek" ? "half" : current));
+            }
           });
         },
       };
-      areaLayer = L.geoJSON(areas, options).addTo(map);
+
+      const layer = L.geoJSON(areas, options).addTo(mapRef.current);
+      areaLayerRef.current = layer;
+      layer.setStyle((feature) => getFeatureStyle(feature));
     }
 
-    void renderAreas();
+    void mountAreas();
     return () => {
       cancelled = true;
-      if (areaLayer) map.removeLayer(areaLayer);
+      if (areaLayerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(areaLayerRef.current);
+        areaLayerRef.current = null;
+      }
     };
-  }, [activeLayer, activeLayerLabel, areaInfos, atLabel, areas, mapReady, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
+  }, [areas, getFeatureStyle, getFeatureTooltip, indexByFeature, mapReady]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
+    if (!areaLayerRef.current) return;
+    areaLayerRef.current.setStyle((feature) => getFeatureStyle(feature));
+  }, [areaInfos, getFeatureStyle, selectedAreaIndex, effectiveSelected?.id]);
+
+  useEffect(() => {
+    if (!mapReady || !routeLayerRef.current) return;
     let cancelled = false;
-    let routeLayer: LayerGroup | null = null;
 
     async function renderRoute() {
       const L = await import("leaflet");
-      if (cancelled || !mapRef.current) return;
-      routeLayer = L.layerGroup().addTo(mapRef.current);
+      if (cancelled || !routeLayerRef.current) return;
+      const routeLayer = routeLayerRef.current;
+      routeLayer.clearLayers();
 
       if (trip) {
         // A white casing keeps the risk-coloured route readable on top of the heat shading.
-        L.polyline(trip.routeCoordinates, { color: "#ffffff", weight: 13, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(routeLayer!);
+        L.polyline(trip.routeCoordinates, { color: "#ffffff", weight: 13, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(routeLayer);
         trip.segments.forEach((segment) => {
           // Estimated sections (no SafeGo location nearby) are drawn lighter so they never read as a full rating.
           const estimated = segment.coverage === "estimated";
@@ -672,15 +705,15 @@ export function RiskMap({
             opacity: estimated ? 0.75 : 0.9,
             lineCap: segment.riskScore === null || estimated ? "butt" : "round",
           })
-            .bindTooltip(makeTooltip(
+            .bindTooltip(() => makeTooltip(
               segment.basisLocationName ?? "Insufficient information",
               segment.riskScore === null
                 ? "Not enough information to score this section."
                 : estimated
-                  ? `${segment.riskScore}/100. Partial estimate from ${atLabel ? "recorded" : "live"} weather and PAGASA alerts here; street flooding and roads not checked.`
+                  ? `${segment.riskScore}/100. Partial estimate from ${atLabelRef.current ? "recorded" : "live"} weather and PAGASA alerts here; street flooding and roads not checked.`
                   : `${segment.riskScore}/100. Approximate route section.`,
             ))
-            .addTo(routeLayer!);
+            .addTo(routeLayer);
         });
         ([
           { place: trip.origin, label: "A" },
@@ -692,10 +725,10 @@ export function RiskMap({
             weight: 3,
             fillColor: "#1a1a1a",
             fillOpacity: 1,
-          }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route endpoint"), { direction: "top" }).addTo(routeLayer!);
+          }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route endpoint"), { direction: "top" }).addTo(routeLayer);
         });
       } else if (previewRoute) {
-        L.polyline(previewRoute.routeCoordinates, { color: "#ffffff", weight: 10, opacity: 0.9, lineCap: "round", interactive: false }).addTo(routeLayer!);
+        L.polyline(previewRoute.routeCoordinates, { color: "#ffffff", weight: 10, opacity: 0.9, lineCap: "round", interactive: false }).addTo(routeLayer);
         L.polyline(previewRoute.routeCoordinates, {
           color: "#2563eb",
           weight: 6,
@@ -706,7 +739,7 @@ export function RiskMap({
             "Route preview",
             `${previewRoute.origin.label} → ${previewRoute.destination.label}${previewRoute.distanceKm ? ` (${previewRoute.distanceKm} km)` : ""}`,
           ))
-          .addTo(routeLayer!);
+          .addTo(routeLayer);
 
         ([
           { place: previewRoute.origin, label: "A", bg: "#166534" },
@@ -718,7 +751,7 @@ export function RiskMap({
             weight: 3,
             fillColor: bg,
             fillOpacity: 1,
-          }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route stop"), { direction: "top" }).addTo(routeLayer!);
+          }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route stop"), { direction: "top" }).addTo(routeLayer);
         });
       }
     }
@@ -726,9 +759,8 @@ export function RiskMap({
     void renderRoute();
     return () => {
       cancelled = true;
-      if (routeLayer && mapRef.current) mapRef.current.removeLayer(routeLayer);
     };
-  }, [atLabel, mapReady, trip, previewRoute]);
+  }, [mapReady, trip, previewRoute]);
 
   const showTimeline = liveWeather;
   const overallScore = trip ? trip.overallRiskScore : effectiveSelected ? layerScore(effectiveSelected, "overall") : null;
@@ -759,7 +791,11 @@ export function RiskMap({
       ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}`
       : effectiveSelected?.name ?? "Metro Manila";
   const kicker = selectedAreaInfo
-    ? (selectedAreaInfo.properties.level === "district" ? "District · City of Manila" : `Barangay · ${selectedAreaInfo.properties.city}`)
+    ? (selectedAreaInfo.properties.level === "city"
+        ? "City / Municipality"
+        : selectedAreaInfo.properties.level === "district"
+        ? "District · City of Manila"
+        : `Barangay · ${selectedAreaInfo.properties.city}`)
     : trip
       ? `Route · ${(trip.coverage.totalMeters / 1000).toFixed(1)} km`
       : effectiveSelected ? `Area · ${effectiveSelected.city}` : "";

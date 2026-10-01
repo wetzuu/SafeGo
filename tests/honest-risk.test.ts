@@ -66,3 +66,20 @@ test("routes treat unrated locations as uncovered and need live flood data for a
   assert.equal(partial.segments[0].riskScore, weatherOnly[0].risk.percentage);
   assert.equal(partial.calmEstimate, false, "a calm estimate needs live flood and advisory data");
 });
+
+test("dashboard merge preserves local locations omitted by the backend", () => {
+  const live = liveFactorNames([source("open-meteo")], "mock");
+  const backendSubset = LOCATIONS.slice(0, 5);
+  const byId = new Map(backendSubset.map((loc) => [loc.id, loc]));
+
+  const merged = [
+    ...LOCATIONS.map((loc) => byId.get(loc.id) ?? honestLocation(loc, live)),
+    ...backendSubset.filter((loc) => !LOCATIONS.some((c) => c.id === loc.id)),
+  ];
+
+  assert.equal(merged.length, LOCATIONS.length);
+  assert.ok(merged.every((loc) => loc.id));
+  const omitted = merged.find((loc) => !byId.has(loc.id));
+  assert.ok(omitted);
+  assert.equal(omitted.risk.basis, "partial");
+});

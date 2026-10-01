@@ -3,7 +3,7 @@ import type { FeatureCollection, MultiPolygon, Polygon, Position } from "geojson
 export interface AreaProperties {
   name: string;
   city: string;
-  level: "barangay" | "district";
+  level: "barangay" | "district" | "city";
   /** PSA geographic code; null for Manila districts, which come from OpenStreetMap. */
   psgc: string | null;
   areaKm2: number;

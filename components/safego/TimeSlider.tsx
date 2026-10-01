@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HOUR_MS, timelineLabel } from "@/lib/safego/timeline";
 
 const PLAY_STEP_MS = 700;
 
+const tickDayFormat = new Intl.DateTimeFormat("en-PH", { weekday: "short", day: "numeric", timeZone: "Asia/Manila" });
+const tickHourFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Asia/Manila" });
+
 function dayTicks(start: number, end: number) {
   const ticks: Array<{ at: number; label: string }> = [];
-  const format = new Intl.DateTimeFormat("en-PH", { weekday: "short", day: "numeric", timeZone: "Asia/Manila" });
   for (let at = start; at <= end; at += HOUR_MS) {
-    const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Asia/Manila" }).format(new Date(at)));
-    if (hour === 0) ticks.push({ at, label: format.format(new Date(at)) });
+    const hour = Number(tickHourFormat.format(new Date(at)));
+    if (hour === 0) ticks.push({ at, label: tickDayFormat.format(new Date(at)) });
   }
   return ticks;
 }
@@ -52,6 +54,7 @@ export function TimeSlider({
   const position = value ?? end;
   const ready = status === "ready";
   const span = Math.max(HOUR_MS, end - start);
+  const ticks = useMemo(() => dayTicks(start, end), [start, end]);
 
   return (
     <div className="pointer-events-auto rounded-2xl border border-hairline bg-panel/95 backdrop-blur-md shadow-xl px-3 py-2">
@@ -98,7 +101,7 @@ export function TimeSlider({
               }}
             />
             <div className="relative h-3 text-[9px] text-ink-soft" aria-hidden="true">
-              {dayTicks(start, end).map((tick) => (
+              {ticks.map((tick) => (
                 <span key={tick.at} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${((tick.at - start) / span) * 100}%` }}>
                   {tick.label}
                 </span>
