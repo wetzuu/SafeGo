@@ -54,7 +54,7 @@ export function TimeSlider({
   const span = Math.max(HOUR_MS, end - start);
 
   return (
-    <div className="pointer-events-auto rounded-2xl border border-hairline bg-white/95 backdrop-blur-md shadow-xl px-3 py-2">
+    <div className="pointer-events-auto rounded-2xl border border-hairline bg-panel/95 backdrop-blur-md shadow-xl px-3 py-2">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -109,7 +109,7 @@ export function TimeSlider({
 
         <button
           type="button"
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${value === null ? "bg-low-soft text-low" : "bg-ink text-white hover:bg-neutral-700"}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${value === null ? "bg-low-soft text-low" : "bg-inverse text-white hover:opacity-90"}`}
           onClick={() => {
             setPlaying(false);
             onChange(null);

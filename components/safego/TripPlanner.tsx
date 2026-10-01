@@ -336,7 +336,7 @@ export function TripPlanner({
               <div className="trip-connector !m-0 !h-4" aria-hidden="true" />
               <button
                 type="button"
-                className="text-[11px] text-ink-soft hover:text-brand hover:bg-brand-soft/50 px-2 py-0.5 rounded transition-colors flex items-center gap-1 font-semibold"
+                className="text-[11px] text-ink-soft hover:text-brand-ink hover:bg-brand-soft/50 px-2 py-0.5 rounded transition-colors flex items-center gap-1 font-semibold"
                 title="Swap origin and destination"
                 onClick={() => {
                   setStops(([a, b]) => [b ?? "", a ?? ""]);
@@ -369,7 +369,7 @@ export function TripPlanner({
                 autoFocus={index === 1 && !initialDestination}
               />
               {activeInputIndex === index && (suggestions.length > 0 || loadingSuggestions) && (
-                <ul className="place-results absolute left-0 right-0 top-full shadow-lg z-50 bg-white border border-hairline rounded-box max-h-56 overflow-auto">
+                <ul className="place-results absolute left-0 right-0 top-full shadow-lg z-50 bg-panel border border-hairline rounded-box max-h-56 overflow-auto">
                   {loadingSuggestions && suggestions.length === 0 && (
                     <li className="place-empty">Searching OpenStreetMap…</li>
                   )}

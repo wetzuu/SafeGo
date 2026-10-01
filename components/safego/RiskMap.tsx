@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CircleMarker, GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
 import {
@@ -27,7 +27,11 @@ import {
 } from "@/lib/safego/timeline";
 import { assessTrip } from "@/lib/trips/trip-assessment";
 import { makeRouteEstimate } from "@/lib/trips/route-estimate";
+import { describeLocation, describeRisk, scoreWord } from "@/lib/safego/plain-language";
+import type { UniversityAlert } from "@/lib/safego/university-alerts";
 import { TimeSlider } from "./TimeSlider";
+import { UniversityAlertCards } from "./UniversityAlertCards";
+import { BottomSheet, Fab, OnboardingHint, RiskBadge, useIsDesktop, type SheetState } from "./ui";
 import { analyzeArea } from "@/lib/safego/area-analysis";
 import { alertsCovering, fetchActiveAlerts, type ActiveAlert } from "@/lib/safego/area-alerts";
 import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
@@ -35,8 +39,7 @@ import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT, UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { TripDataNotice } from "./TripCoverage";
 import { AreaDetails, type AreaInfo } from "./AreaDetails";
-import { Icon } from "./Icon";
-import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
+import { displayFactorName, shortPlaceName } from "./labels";
 
 const MAP_LAYERS: MapLayer[] = [
   { key: "overall", label: "Overall risk" },
@@ -70,29 +73,37 @@ function loadAreas() {
   return areasRequest;
 }
 
+/** The plain-language summary for a map area, from its own analysis, weather and alerts. */
+function describeArea(info: AreaInfo) {
+  const { analysis, weather, advisory } = info;
+  return describeRisk({
+    level: analysis.riskKey ?? "unknown",
+    basis: analysis.kind === "unrated" ? "none" : analysis.kind === "partial-estimate" ? "partial" : analysis.source?.risk.basis ?? "full",
+    weather: weather ? { score: weather.score, condition: weather.condition } : null,
+    advisory: advisory ? { score: advisory.score, count: advisory.alerts.length } : null,
+  });
+}
+
 type FitOptions = { paddingTopLeft: [number, number]; paddingBottomRight: [number, number]; maxZoom: number };
 
 // Keep fitted routes and markers inside the part of the map the floating panels leave uncovered.
 function fitOptions(map: LeafletMap, card: HTMLElement | null): FitOptions {
   const { x: width, y: height } = map.getSize();
-  const fallback: FitOptions = { paddingTopLeft: [40, 40], paddingBottomRight: [40, 40], maxZoom: 15 };
+  // Phones: keep things clear of the search bar and chips above and the bottom sheet below.
+  const fallback: FitOptions = height >= 480 && window.matchMedia("(max-width: 1023px)").matches
+    ? { paddingTopLeft: [24, 132], paddingBottomRight: [24, 210], maxZoom: 15 }
+    : { paddingTopLeft: [40, 40], paddingBottomRight: [40, 40], maxZoom: 15 };
   if (!card) return fallback;
 
   if (getComputedStyle(card).position === "absolute") {
     // Large screens: the card floats over the right edge.
     const reserved = card.offsetWidth + 56;
     return width - reserved >= 240
-      ? { paddingTopLeft: [60, 80], paddingBottomRight: [reserved, 60], maxZoom: 15 }
+      ? { paddingTopLeft: [60, 80], paddingBottomRight: [reserved, 130], maxZoom: 15 }
       : fallback;
   }
 
-  // Small screens: panels stack above the card, leaving a band of map between them.
-  const above = card.previousElementSibling as HTMLElement | null;
-  const top = above ? above.offsetTop + above.offsetHeight + 16 : 40;
-  const bottom = height - card.offsetTop + 16;
-  return height - top - bottom >= 120
-    ? { paddingTopLeft: [30, top], paddingBottomRight: [30, bottom], maxZoom: 15 }
-    : fallback;
+  return fallback;
 }
 
 function makeTooltip(title: string, detail: string) {
@@ -147,6 +158,15 @@ export interface RiskMapProps {
   liveWeather?: boolean;
   /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
   liveAlerts?: boolean;
+  /** Active nearby-university announcements for the selection, most relevant first. */
+  universityAlerts?: UniversityAlert[];
+  onDismissUniversity?: (id: string) => void;
+  /** Shown at the end of the phone sheet, e.g. the data status. */
+  footer?: React.ReactNode;
+  /** A problem to surface on the map, e.g. the server being unreachable. */
+  notice?: string | null;
+  /** Space taken by a bottom tab bar on phones, so the sheet sits above it. */
+  bottomInset?: number;
 }
 
 export function RiskMap({
@@ -161,7 +181,20 @@ export function RiskMap({
   onViewAnnouncements,
   liveWeather = false,
   liveAlerts = false,
+  universityAlerts = [],
+  onDismissUniversity,
+  footer,
+  notice = null,
+  bottomInset = 0,
 }: RiskMapProps) {
+  const isDesktop = useIsDesktop();
+  const [sheet, setSheet] = useState<SheetState>("peek");
+  // The legend starts open on desktop, where there is room, and closed on phones.
+  const [legendChoice, setLegendOpen] = useState<boolean | null>(null);
+  const legendOpen = legendChoice ?? isDesktop;
+  const [fitNonce, setFitNonce] = useState(0);
+  const [locateMessage, setLocateMessage] = useState<string | null>(null);
+  const locateMarkerRef = useRef<CircleMarker | null>(null);
   const mapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerLayerRef = useRef<LayerGroup | null>(null);
@@ -383,7 +416,37 @@ export function RiskMap({
     return () => {
       cancelled = true;
     };
-  }, [bounds, mapReady]);
+  }, [bounds, mapReady, fitNonce]);
+
+  const locateMe = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setLocateMessage("This browser cannot share your location.");
+      return;
+    }
+    setLocateMessage("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const L = await import("leaflet");
+        const map = mapRef.current;
+        if (!map) return;
+        const point: [number, number] = [position.coords.latitude, position.coords.longitude];
+        locateMarkerRef.current?.remove();
+        locateMarkerRef.current = L.circleMarker(point, { radius: 8, color: "#ffffff", weight: 3, fillColor: "#1d4ed8", fillOpacity: 1 })
+          .bindTooltip("You are here")
+          .addTo(map);
+        map.setView(point, 15, { animate: true });
+        setLocateMessage(null);
+      },
+      () => setLocateMessage("Could not get your location. Allow location access in your browser, then try again."),
+      { timeout: 10_000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!locateMessage || locateMessage.endsWith("…")) return;
+    const timer = window.setTimeout(() => setLocateMessage(null), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [locateMessage]);
 
   useEffect(() => {
     if (!mapReady || !markerLayerRef.current) return;
@@ -570,7 +633,10 @@ export function RiskMap({
           layer.bindTooltip(makeTooltip(atLabel ? `${title} · ${atLabel}` : title, `${detail} Click for details.`), { sticky: true, direction: "top", opacity: 0.96 });
           layer.on("mouseover", () => (layer as Path).setStyle({ color: "#1a1a1a", weight: 2 }));
           layer.on("mouseout", () => areaLayer?.resetStyle(layer));
-          layer.on("click", () => setAreaSelection({ index, context: selectionContext }));
+          layer.on("click", () => {
+            setAreaSelection({ index, context: selectionContext });
+            setSheet((current) => (current === "peek" ? "half" : current));
+          });
         },
       };
       areaLayer = L.geoJSON(areas, options).addTo(map);
@@ -666,323 +732,353 @@ export function RiskMap({
 
   const showTimeline = liveWeather;
   const overallScore = trip ? trip.overallRiskScore : effectiveSelected ? layerScore(effectiveSelected, "overall") : null;
-  const overallKey = trip ? trip.riskKey : overallScore === null ? "unknown" : effectiveSelected?.risk.key;
   // With no trip, the card describes one location; its basis says how much of the score is live.
-  const notLive = effectiveSelected?.factors.filter((factor) => !isCounted(effectiveSelected, factor.name)).map((factor) => displayFactorName(factor.name)) ?? [];
-  const notLiveCount = notLive.length;
-  const notLiveLabel = notLive.length <= 1 ? notLive.join("") : `${notLive.slice(0, -1).join(", ")} and ${notLive.at(-1)}`;
   const overallBasis = trip
     ? (trip.corridorLocations.some((location) => location.risk.basis === "partial") ? "partial" : trip.corridorLocations[0]?.risk.basis)
     : effectiveSelected?.risk.basis;
-  const overallName = trip ? trip.riskName : effectiveSelected?.risk.name ?? "";
-  const headlineScore = activeLayer === "overall" ? overallScore : selectedScore;
   const latestAdvisory = advisories[0];
   const hasUnratedSections = Boolean(trip?.segments.some((segment) => segment.riskScore === null));
 
-  return (
-    <div className="relative size-full overflow-hidden bg-[#e8e5dc]">
-      <div className="live-map absolute inset-0 size-full z-0" ref={mapElementRef} />
-      {mapError && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 p-6 text-center text-sm text-ink-soft">
-          The live map could not load. Check your internet connection and reload the page.
+  // Plain-language summary: what the rating is, why, and what to do.
+  const message = useMemo(() => {
+    if (!trip) return effectiveSelected ? describeLocation(effectiveSelected) : describeRisk({ level: "unknown", basis: "none" });
+    if (trip.overallRiskScore === null || trip.riskKey === "unknown") {
+      return { ...describeRisk({ level: "unknown", basis: "none" }), why: "Too little of this route has data to rate it. Gray sections are not rated, which does not mean safe." };
+    }
+    const worst = trip.segments.reduce((top, segment) => ((segment.riskScore ?? -1) > (top.riskScore ?? -1) ? segment : top));
+    const where = worst.coverage === "estimated" ? "an estimated section" : `near ${shortPlaceName(worst.basisLocationName ?? "the route")}`;
+    return {
+      ...describeRisk({ level: trip.riskKey, basis: overallBasis === "partial" ? "partial" : "full" }),
+      why: `The riskiest stretch is ${where} (${scoreWord(worst.riskScore ?? 0).toLocaleLowerCase()} risk).`,
+    };
+  }, [effectiveSelected, overallBasis, trip]);
+
+  const title = selectedAreaInfo
+    ? selectedAreaInfo.properties.name
+    : trip
+      ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}`
+      : effectiveSelected?.name ?? "Metro Manila";
+  const kicker = selectedAreaInfo
+    ? (selectedAreaInfo.properties.level === "district" ? "District · City of Manila" : `Barangay · ${selectedAreaInfo.properties.city}`)
+    : trip
+      ? `Route · ${(trip.coverage.totalMeters / 1000).toFixed(1)} km`
+      : effectiveSelected ? `Area · ${effectiveSelected.city}` : "";
+  const areaMessage = selectedAreaInfo ? describeArea(selectedAreaInfo) : null;
+  const headMessage = areaMessage ?? message;
+  const headScore = selectedAreaInfo ? selectedAreaInfo.analysis.score : overallScore;
+  const headPartial = selectedAreaInfo ? selectedAreaInfo.analysis.kind === "partial-estimate" : overallBasis === "partial";
+
+  const header = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-xs font-semibold uppercase tracking-wide text-ink-soft truncate">{kicker}</div>
+        <h3 className="text-base font-bold text-ink truncate">{title}</h3>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <RiskBadge level={headMessage.level} partial={headPartial} />
+          {headScore !== null && headMessage.level !== "unknown" && (
+            <span className="text-xs text-ink-soft" title="Risk score from 0 (lowest) to 100 (highest)">{headScore} out of 100</span>
+          )}
         </div>
-      )}
-
-      {/* Floating controls. Below lg they stack in one column so they never overlap. */}
-      <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col gap-2 p-3 sm:p-4 lg:block lg:p-0">
-        {leftFloatingPanel && (
-          <div className="pointer-events-auto shrink-0 w-full sm:w-[380px] max-h-[48vh] overflow-y-auto rounded-2xl">
-            {leftFloatingPanel}
-          </div>
-        )}
-
-        <div
-          role="toolbar"
-          aria-label="Map layer"
-          className="pointer-events-auto self-start max-w-full shrink-0 overflow-x-auto bg-white/90 backdrop-blur-md border border-hairline rounded-full shadow-lg px-1.5 py-1.5 flex items-center gap-1 lg:absolute lg:top-4 lg:left-1/2 lg:-translate-x-1/2 lg:max-w-[calc(100%-2rem)]"
+      </div>
+      {selectedAreaInfo && (
+        <button
+          type="button"
+          className="size-11 lg:size-9 shrink-0 rounded-full text-ink-soft hover:bg-surface text-xl leading-none"
+          onClick={() => setAreaSelection(null)}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label="Close area details"
         >
-          {MAP_LAYERS.map((layer) => (
-            <button
-              key={layer.key}
-              type="button"
-              aria-pressed={layer.key === activeLayer}
-              className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors whitespace-nowrap ${
-                layer.key === activeLayer ? "bg-brand text-white shadow-sm" : "text-ink hover:bg-neutral-100"
-              }`}
-              onClick={() => setActiveLayer(layer.key)}
-            >
-              {layer.label}
-            </button>
-          ))}
-        </div>
+          ×
+        </button>
+      )}
+    </div>
+  );
 
-        {!mapError && tileStatus !== "ready" && (
-          <div
-            role="status"
-            className={`pointer-events-auto self-center shrink-0 px-3 py-1.5 rounded-full shadow text-xs font-semibold lg:absolute lg:top-16 lg:left-1/2 lg:-translate-x-1/2 ${
-              tileStatus === "degraded" ? "bg-mod-soft text-mod" : "bg-white/90 text-ink-soft"
-            }`}
-          >
-            {tileStatus === "degraded" ? "Base map unavailable. Risk overlays remain visible." : "Loading map tiles…"}
-          </div>
-        )}
+  const rewoundStrip = atLabel && (
+    <div className="mb-3 rounded-box bg-inverse text-white px-3 py-2 text-xs flex items-center justify-between gap-2">
+      <span><strong>Viewing {atLabel}</strong><span className="block text-white/75">Recorded weather and PAGASA alerts for that hour.</span></span>
+      <button type="button" className="min-h-9 shrink-0 rounded-full bg-white/15 hover:bg-white/25 px-3 font-semibold" onClick={() => setTimeCursor(null)}>
+        Back to live
+      </button>
+    </div>
+  );
 
-        {showTimeline && (
-          <div className="mt-auto shrink-0 w-full lg:absolute lg:bottom-4 lg:left-4 lg:right-4 lg:mt-0 lg:w-auto">
-            <TimeSlider
-              start={timelineStart}
-              end={timelineEnd}
-              value={at}
-              onChange={setTimeCursor}
-              status={weatherTimeline ? "ready" : timelineFailed ? "unavailable" : "loading"}
-            />
-          </div>
-        )}
+  const summary = (
+    <>
+      <p className="text-sm text-ink leading-snug">{message.why}</p>
+      <p className="mt-1.5 text-sm text-ink leading-snug"><strong>What to do:</strong> {message.action}</p>
+      {message.caveat && <p className="mt-1.5 text-xs text-ink-soft leading-snug">{message.caveat}</p>}
 
-        {/* Location / route risk card */}
-        {effectiveSelected && (
-          <aside
-            className={`pointer-events-auto ${showTimeline ? "" : "mt-auto "}w-full sm:w-[350px] sm:self-end max-h-[40vh] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-hairline p-4 lg:absolute lg:top-16 lg:right-4 lg:mt-0 ${showTimeline ? "lg:max-h-[calc(100%-12rem)]" : "lg:max-h-[calc(100%-6rem)]"}`}
-            ref={cardRef}
-            aria-live="polite"
-            aria-label={selectedAreaInfo ? "Area details" : trip ? "Route risk" : "Location risk"}
-          >
-            {atLabel && (
-              <div className="-mx-4 -mt-4 mb-3 rounded-t-2xl bg-ink text-white px-4 py-2 text-xs flex items-center justify-between gap-2">
-                <span><strong>Viewing {atLabel}</strong><span className="block text-[10px] text-white/70">Recorded weather and PAGASA alerts. Detail pages show live conditions.</span></span>
-                <button type="button" className="shrink-0 rounded-full bg-white/15 hover:bg-white/25 px-2.5 py-1 font-semibold" onClick={() => setTimeCursor(null)}>
-                  Live
-                </button>
-              </div>
-            )}
-            {selectedAreaInfo ? (
-              <AreaDetails
-                info={selectedAreaInfo}
-                layerLabel={activeLayerLabel}
-                timeLabel={atLabel}
-                weatherStatus={weatherStatus}
-                coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
-                liveAlerts={liveAlerts}
-                onClose={() => setAreaSelection(null)}
-                onOpenLocation={onSelectLocation && ((location) => {
-                  setAreaSelection(null);
-                  onSelectLocation(location);
-                })}
-              />
-            ) : (
-            <>
-            <div className="flex items-start justify-between gap-3 border-b border-hairline pb-3 mb-3">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft truncate">
-                  {trip ? `Route · ${(trip.coverage.totalMeters / 1000).toFixed(1)} km` : `Approximate area · ${effectiveSelected.city}`}
-                </div>
-                <h3 className="text-base font-bold text-ink truncate mt-0.5">
-                  {trip ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}` : effectiveSelected.name}
-                </h3>
-                {activeLayer !== "overall" && (
-                  <div className="text-xs text-ink-soft mt-0.5">
-                    {activeLayerLabel} score{trip ? ` at ${shortPlaceName(effectiveSelected.name)}` : ""}
-                  </div>
-                )}
-              </div>
-              <div
-                className="size-11 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-sm"
-                style={{ backgroundColor: headlineScore === null ? UNKNOWN_ROUTE_COLOR : riskGradient(headlineScore) }}
-                title={`${activeLayerLabel}: ${headlineScore ?? "not rated"}`}
-              >
-                {headlineScore ?? "–"}
-              </div>
-            </div>
+      <div className="mt-3">
+        {at === null && <UniversityAlertCards alerts={universityAlerts} onDismiss={onDismissUniversity} onViewAll={onViewAnnouncements} />}
 
-            <div className="flex items-center justify-between gap-2 bg-surface rounded-xl p-2.5 mb-3 border border-hairline">
-              <span className="text-xs text-ink-soft font-semibold">{trip ? "Overall route risk" : "Overall travel risk"}</span>
-              <span className={`pill ${overallKey} text-xs font-bold${overallBasis === "partial" ? " opacity-80" : ""}`}>
-                <span className="dot" />
-                {overallScore !== null ? `${overallScore}/100 · ` : ""}{riskLevelLabel(overallName)}{overallBasis === "partial" && overallScore !== null ? " (partial)" : ""}
+        {latestAdvisory && (
+          <div className="mb-3 rounded-box border border-brand/30 bg-brand-soft p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wide text-brand-ink">
+                {atLabel ? "Official alert then" : "Official alert"}{latestAdvisory.isMock ? " · Demo" : ""}
               </span>
-            </div>
-            {overallBasis === "partial" && (
-              <p className="text-[11px] leading-snug text-mod bg-mod-soft rounded-lg px-2 py-1.5 mb-3">
-                Partial: only live factors are counted. {notLiveLabel} {notLiveCount === 1 ? "is" : "are"} demo data and not counted, so this is not a full travel rating.
-              </p>
-            )}
-            {overallBasis === "none" && !trip && (
-              <p className="text-[11px] leading-snug text-ink-soft bg-surface rounded-lg px-2 py-1.5 mb-3">
-                Not rated: no live data is available right now. Not rated does not mean safe.
-              </p>
-            )}
-
-            {trip && <TripDataNotice trip={trip} />}
-            {trip?.safetyRule && (
-              <div className="bg-mod-soft text-mod border border-mod/40 rounded-xl p-2 text-xs font-medium mb-3">
-                {trip.safetyRule}
-              </div>
-            )}
-
-            <div className="hidden sm:block mb-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-ink-soft mb-1">
-                {trip ? `Conditions near ${shortPlaceName(effectiveSelected.name)}` : "What SafeGo considered"}
-              </div>
-              {effectiveSelected.factors.map((factor) => {
-                const counted = isCounted(effectiveSelected, factor.name);
-                return (
-                  <div key={factor.name} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-hairline/60 last:border-b-0">
-                    <span className="text-ink-soft">{displayFactorName(factor.name)}</span>
-                    <span className="flex items-center gap-1.5">
-                      {effectiveSelected.risk.countedFactors && (counted
-                        ? <span className="text-[9px] font-bold uppercase text-low">{atLabel ? "Recorded" : "Live"}</span>
-                        : <span className="text-[9px] font-bold uppercase text-mod">Demo · not counted</span>)}
-                      <strong className={`font-mono ${counted ? "text-ink" : "text-ink-soft line-through decoration-ink-soft/50"}`}>{factor.score}</strong>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between gap-2 text-[11px] text-ink-soft pt-2 border-t border-hairline mb-3">
-              <span>
-                <span className="text-low font-semibold">{verifiedCount} verified</span> · {unverifiedCount} unconfirmed reports
-              </span>
-              <span className="font-mono shrink-0">Updated {effectiveSelected.updated}</span>
-            </div>
-
-            {/* On large screens the latest announcement has its own banner. */}
-            {latestAdvisory && (
-              <div className="lg:hidden bg-brand-soft/60 rounded-xl p-3 mb-3 border border-brand/25">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-brand">
-                    Latest announcement{latestAdvisory.isMock ? " · Demo" : ""}
-                  </span>
-                  {onViewAnnouncements && (
-                    <button type="button" className="text-[11px] font-bold text-brand hover:underline" onClick={onViewAnnouncements}>
-                      View all ({advisories.length})
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-ink font-semibold leading-snug">{latestAdvisory.title}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              {onViewRiskDetails && (
-                <button
-                  className="py-2 bg-surface text-ink text-xs font-semibold rounded-xl hover:bg-neutral-200 border border-hairline transition-colors"
-                  type="button"
-                  onClick={onViewRiskDetails}
-                >
-                  Why this result
-                </button>
-              )}
-              {onViewDashboard && (
-                <button
-                  className={`py-2 bg-brand text-white text-xs font-semibold rounded-xl hover:bg-brand-hover transition-colors shadow-sm${onViewRiskDetails ? "" : " col-span-2"}`}
-                  type="button"
-                  onClick={onViewDashboard}
-                >
-                  View conditions
+              {onViewAnnouncements && at === null && (
+                <button type="button" className="min-h-9 text-xs font-bold text-brand-ink hover:underline" onClick={onViewAnnouncements}>
+                  View all ({advisories.length})
                 </button>
               )}
             </div>
-            </>
-            )}
-          </aside>
+            <p className="text-sm font-semibold text-ink leading-snug">{latestAdvisory.title}</p>
+          </div>
+        )}
+
+        {trip && <TripDataNotice trip={trip} />}
+        {trip?.safetyRule && (
+          <div className="mb-3 rounded-box border border-mod/40 bg-mod-soft p-2.5 text-xs font-medium text-mod">{trip.safetyRule}</div>
         )}
       </div>
 
-      {/* Announcement banner and legend share one column on the left, above the time slider. */}
-      <div className={`hidden lg:flex flex-col items-start gap-3 absolute ${showTimeline ? "bottom-28" : "bottom-6"} left-6 z-[1000]`}>
-      {latestAdvisory && at === null && (
-        <aside
-          className={`w-[420px] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-brand/30 p-3.5`}
-          aria-label="Latest announcement"
-        >
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-xl bg-brand text-white flex items-center justify-center shrink-0 mt-0.5 [&_svg]:size-5">
-              <Icon name="alert" />
+      {effectiveSelected && (
+        <details className="group mb-3 rounded-box border border-hairline">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            How this was worked out
+            <span className="text-ink-soft transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+          </summary>
+          <div className="border-t border-hairline px-3 py-2.5">
+            <div className="text-xs font-semibold text-ink-soft mb-1">
+              {trip ? `Readings near ${shortPlaceName(effectiveSelected.name)}` : "What SafeGo looked at"}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2 mb-0.5">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand truncate">
-                  {latestAdvisory.label}{latestAdvisory.isMock ? " · Demo" : ""}
-                </span>
-                <span className="text-[10px] text-ink-soft shrink-0 font-mono">
-                  {latestAdvisory.date ? `${latestAdvisory.date} · ` : ""}{latestAdvisory.time}
-                </span>
-              </div>
-              <h4 className="text-xs font-bold text-ink leading-snug line-clamp-2">{latestAdvisory.title}</h4>
-              {latestAdvisory.description && (
-                <p className="text-[11px] text-ink-soft line-clamp-2 mt-1 leading-normal">{latestAdvisory.description}</p>
-              )}
-              {onViewAnnouncements && (
-                <button type="button" className="mt-2 text-[11px] font-bold text-brand hover:underline" onClick={onViewAnnouncements}>
-                  All announcements ({advisories.length}) →
-                </button>
-              )}
-            </div>
+            {effectiveSelected.factors.map((factor) => {
+              const counted = isCounted(effectiveSelected, factor.name);
+              return (
+                <div key={factor.name} className="flex items-center justify-between gap-2 border-b border-hairline/60 py-1.5 text-xs last:border-b-0">
+                  <span className="text-ink">{displayFactorName(factor.name)}</span>
+                  <span className={`text-right ${counted ? "text-ink" : "text-ink-soft"}`}>
+                    <strong className="font-semibold">{scoreWord(factor.score)}</strong> ({factor.score})
+                    {effectiveSelected.risk.countedFactors && (
+                      <span className={`ml-1.5 font-semibold ${counted ? "text-low" : "text-mod"}`}>
+                        {counted ? (atLabel ? "recorded" : "live") : "sample data, not counted"}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+            {selectedScore !== null && activeLayer !== "overall" && (
+              <p className="mt-2 text-xs text-ink-soft">The map is showing the {activeLayerLabel.toLocaleLowerCase()} layer: {scoreWord(selectedScore).toLocaleLowerCase()} ({selectedScore}).</p>
+            )}
+            <p className="mt-2 text-xs text-ink-soft">
+              {verifiedCount} verified and {unverifiedCount} unconfirmed community reports · Updated {effectiveSelected.updated}
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">Scores run from 0 (lowest risk) to 100 (highest). “Sample data” values are placeholders and never change a rating.</p>
           </div>
-        </aside>
+        </details>
       )}
 
-      <div className={`w-64 bg-white/90 backdrop-blur-md border border-hairline rounded-xl shadow-md p-2.5 text-[11px]`}>
-        <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area{atLabel ? ` · ${atLabel}` : ""}</div>
-        <div className="grid grid-cols-10 gap-px">
-          {Array.from({ length: SCORE_CLASS_COUNT }, (_, riskClass) => (
-            <span key={riskClass} className="h-3" style={{ background: classColor(riskClass) }} title={`${riskClass * 10}–${riskClass === SCORE_CLASS_COUNT - 1 ? 100 : riskClass * 10 + 9}`} />
-          ))}
-          <span className="col-span-3 text-[10px] text-ink-soft">Low</span>
-          <span className="col-span-3 text-[10px] text-ink-soft">Moderate</span>
-          <span className="col-span-2 text-[10px] text-ink-soft">High</span>
-          <span className="col-span-2 text-[10px] text-ink-soft">Critical</span>
+      <div className="grid grid-cols-2 gap-2">
+        {onViewRiskDetails && (
+          <button className="min-h-11 rounded-box border border-hairline bg-surface text-sm font-semibold text-ink hover:bg-neutral-soft" type="button" onClick={onViewRiskDetails}>
+            Why this rating
+          </button>
+        )}
+        {onViewDashboard && (
+          <button className={`min-h-11 rounded-box bg-brand text-sm font-semibold text-white hover:bg-brand-hover${onViewRiskDetails ? "" : " col-span-2"}`} type="button" onClick={onViewDashboard}>
+            See conditions
+          </button>
+        )}
+      </div>
+    </>
+  );
+
+  const areaBody = selectedAreaInfo && areaMessage && (
+    <AreaDetails
+      info={selectedAreaInfo}
+      message={areaMessage}
+      timeLabel={atLabel}
+      weatherStatus={weatherStatus}
+      coverageRadiusMeters={APPROXIMATE_COVERAGE_RADIUS_METERS}
+      liveAlerts={liveAlerts}
+      onOpenLocation={onSelectLocation && ((location) => {
+        setAreaSelection(null);
+        onSelectLocation(location);
+      })}
+    />
+  );
+
+  const legend = (
+    <div className="pointer-events-auto w-64 max-w-[calc(100vw-5.5rem)] rounded-box border border-hairline bg-panel p-3 text-xs shadow-[var(--shadow-card)]" role="region" aria-label="Map legend">
+      <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area{atLabel ? ` · ${atLabel}` : ""}</div>
+      <div className="grid grid-cols-10 gap-px">
+        {Array.from({ length: SCORE_CLASS_COUNT }, (_, riskClass) => (
+          <span key={riskClass} className="h-3" style={{ background: classColor(riskClass) }} title={`${riskClass * 10}–${riskClass === SCORE_CLASS_COUNT - 1 ? 100 : riskClass * 10 + 9}`} />
+        ))}
+        <span className="col-span-3 text-ink-soft">Low</span>
+        <span className="col-span-3 text-ink-soft">Moderate</span>
+        <span className="col-span-2 text-ink-soft">High</span>
+        <span className="col-span-2 text-ink-soft">Critical</span>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-ink-soft">
+        <span className="h-3 w-6 shrink-0 border border-hairline" style={{ background: UNRATED_AREA_COLOR, opacity: 0.45 }} />
+        Gray: not rated (not the same as safe)
+      </div>
+      {activeLayer === "overall" && estimatedAreaCount > 0 && (
+        <div className="mt-1 flex items-center gap-2 text-ink-soft">
+          <span className="h-3 w-6 shrink-0 border border-dashed border-ink-soft/60" style={{ background: classColor(0), opacity: ESTIMATE_FILL_OPACITY + 0.2 }} />
+          Pale and dashed: partial estimate
         </div>
-        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-ink-soft">
-          <span className="h-3 w-6 border border-hairline" style={{ background: UNRATED_AREA_COLOR, opacity: 0.45 }} />
-          Not rated: no SafeGo data nearby (not safe)
+      )}
+      {hasUnratedSections && (
+        <div className="mt-1 flex items-center gap-2 text-ink-soft">
+          <span className="w-6 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: UNKNOWN_ROUTE_COLOR }} />
+          Gray dashed route: no data
         </div>
-        {activeLayer === "overall" && estimatedAreaCount > 0 && (
-          <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
-            <span className="h-3 w-6 border border-dashed border-ink-soft/60" style={{ background: classColor(0), opacity: ESTIMATE_FILL_OPACITY + 0.2 }} />
-            Pale, dashed: partial estimate (live weather and PAGASA alerts)
-          </div>
-        )}
-        {hasUnratedSections && (
-          <div className="flex items-center gap-2 mt-1 text-[10px] text-ink-soft">
-            <span className="w-6 border-t-[3px] border-dashed" style={{ borderColor: UNKNOWN_ROUTE_COLOR }} />
-            Route section without data (not rated safe)
-          </div>
-        )}
-        {areaInfos.length > 0 && (
-          <p className="mt-1.5 text-[10px] leading-snug text-ink">
-            {ratedAreaCount === 0 && estimatedAreaCount > 0 && activeLayer === "overall"
-              ? <>No Metro Manila area has a full rating yet: flood and road data is not live. <strong>{estimatedAreaCount}</strong> have a partial estimate.</>
-              : <>
-                <strong>{ratedAreaCount} of {areaInfos.length}</strong> Metro Manila areas rated
-                {activeLayer === "Weather" && liveAreaWeather
-                  ? " (live weather covers every area)."
-                  : activeLayer === "Official advisories" && liveActiveAlerts
-                    ? " (PAGASA alerts are checked for every area)."
-                    : estimatedAreaCount > 0
-                      ? <>; <strong>{estimatedAreaCount}</strong> more have a partial estimate.</>
-                      : "."}
-              </>}
-          </p>
-        )}
-        <p className="mt-1 text-[10px] leading-snug text-ink-soft">
-          {atLabel
-            ? `Rewound to ${atLabel}: recorded Open-Meteo weather for that hour${pastAlerts ? " and the PAGASA alerts in force then" : " (PAGASA alert history unavailable)"}, scored like now. Demo factors are not counted.`
-            : activeLayer === "Weather"
-            ? weatherStatus === "live"
-              ? "Open-Meteo model weather per city (per district in Manila), plus SafeGo readings where higher."
-              : weatherStatus === "off"
-                ? "Live weather is off while SafeGo shows demo conditions, so only SafeGo locations are rated."
-                : "Live weather is loading or unavailable; only SafeGo locations are rated."
+      )}
+      <p className="mt-2 leading-snug text-ink-soft">
+        {atLabel
+          ? `Showing recorded weather${pastAlerts ? " and PAGASA alerts" : ""} for ${atLabel}.`
+          : activeLayer === "Weather"
+            ? weatherStatus === "live" ? "Live weather for every area." : "Live weather is not available right now."
             : activeLayer === "Official advisories"
               ? liveActiveAlerts
-                ? `${liveActiveAlerts.length ? `${liveActiveAlerts.length} active PAGASA alert${liveActiveAlerts.length === 1 ? "" : "s"} touch Metro Manila.` : "No active PAGASA alert touches Metro Manila right now."} Areas take the highest alert severity covering them.`
-                : "PAGASA alerts are loading or unavailable; only SafeGo locations are rated."
-              : `Areas within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m of a SafeGo location take its highest score. Barangays; districts in Manila. Click an area for details.`}
-        </p>
-      </div>
-      </div>
+                ? (liveActiveAlerts.length ? `${liveActiveAlerts.length} PAGASA alert${liveActiveAlerts.length === 1 ? "" : "s"} over Metro Manila.` : "No PAGASA alert over Metro Manila right now.")
+                : "PAGASA alerts are not available right now."
+              : activeLayer === "overall"
+                ? (ratedAreaCount === 0 && estimatedAreaCount > 0
+                  ? "Ratings are partial: live weather and official alerts only."
+                  : `${ratedAreaCount} of ${areaInfos.length} areas have a full rating.`)
+                : "Only areas near a SafeGo location have this information."}
+        {" "}Tap an area for details.
+      </p>
+    </div>
+  );
+
+  const fabs = (
+    <>
+      {legendOpen && legend}
+      {locateMessage && (
+        <div className="pointer-events-auto max-w-56 rounded-box bg-inverse px-3 py-2 text-xs text-white shadow-[var(--shadow-card)]" role="status">{locateMessage}</div>
+      )}
+      <Fab label={legendOpen ? "Hide map legend" : "Show map legend"} active={legendOpen} onClick={() => setLegendOpen(!legendOpen)}>
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
+      </Fab>
+      <Fab label="Recenter the map" onClick={() => setFitNonce((nonce) => nonce + 1)}>
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+      </Fab>
+      <Fab label="Go to my location" onClick={locateMe}>
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" /></svg>
+      </Fab>
+    </>
+  );
+
+  const slider = showTimeline && (
+    <TimeSlider
+      start={timelineStart}
+      end={timelineEnd}
+      value={at}
+      onChange={setTimeCursor}
+      status={weatherTimeline ? "ready" : timelineFailed ? "unavailable" : "loading"}
+    />
+  );
+
+  const statusChip = notice
+    ? { tone: "bg-crit-soft text-crit", text: notice }
+    : mapError
+      ? null
+      : tileStatus === "degraded"
+        ? { tone: "bg-mod-soft text-mod", text: "The base map could not load. Risk shading still works." }
+        : !areas
+          ? { tone: "bg-panel text-ink-soft", text: "Loading Metro Manila areas…" }
+          : tileStatus === "loading"
+            ? { tone: "bg-panel text-ink-soft", text: "Loading the map…" }
+            : null;
+
+  const chips = (
+    <div
+      role="toolbar"
+      aria-label="What the map shows"
+      className="pointer-events-auto flex max-w-full shrink-0 items-center gap-1 overflow-x-auto rounded-full border border-hairline bg-panel px-1.5 py-1 shadow-[var(--shadow-card)] [scrollbar-width:none]"
+    >
+      {MAP_LAYERS.map((layer) => (
+        <button
+          key={layer.key}
+          type="button"
+          aria-pressed={layer.key === activeLayer}
+          className={`min-h-11 lg:min-h-8 whitespace-nowrap rounded-full px-3.5 text-sm lg:text-xs font-semibold transition-colors ${
+            layer.key === activeLayer ? "bg-brand text-white" : "text-ink hover:bg-surface"
+          }`}
+          onClick={() => setActiveLayer(layer.key)}
+        >
+          {layer.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const hint = (
+    <OnboardingHint>
+      <strong>Tip:</strong> tap any area or pin to see its conditions. Use the chips to switch what the map shows, and drag the timeline to look back up to 4 days.
+    </OnboardingHint>
+  );
+
+  return (
+    <div className="relative size-full overflow-hidden bg-surface">
+      <div className="live-map absolute inset-0 size-full z-0" ref={mapElementRef} />
+      {mapError && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-panel/90 p-6 text-center">
+          <strong className="text-base text-ink">The map could not load</strong>
+          <span className="text-sm text-ink-soft">Check your internet connection, then reload the page.</span>
+          <button type="button" className="mt-1 min-h-11 rounded-box bg-brand px-4 text-sm font-semibold text-white" onClick={() => window.location.reload()}>Reload</button>
+        </div>
+      )}
+
+      {isDesktop ? (
+        <div className="pointer-events-none absolute inset-0 z-[1000]">
+          <div className="absolute left-1/2 top-4 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 flex-col items-center gap-2">
+            {chips}
+            {statusChip && <div role="status" className={`pointer-events-auto rounded-full px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-card)] ${statusChip.tone}`}>{statusChip.text}</div>}
+          </div>
+
+          {(effectiveSelected || selectedAreaInfo) && (
+            <aside
+              className={`pointer-events-auto absolute right-4 top-16 w-[360px] overflow-y-auto rounded-2xl border border-hairline bg-panel p-4 shadow-[var(--shadow-card)] ${showTimeline ? "max-h-[calc(100%-12rem)]" : "max-h-[calc(100%-6rem)]"}`}
+              ref={cardRef}
+              aria-live="polite"
+              aria-label={selectedAreaInfo ? "Area details" : trip ? "Route risk" : "Location risk"}
+            >
+              {rewoundStrip}
+              <div className="mb-3 border-b border-hairline pb-3">{header}</div>
+              {areaBody || summary}
+            </aside>
+          )}
+
+          {/* Bottom-left, so the map controls and legend never sit under the details card. */}
+          <div className={`absolute left-4 flex w-[340px] max-w-[calc(100%-25rem)] [&>*]:max-w-full flex-col items-start gap-2 ${showTimeline ? "bottom-28" : "bottom-6"}`}>
+            {hint}
+            {fabs}
+          </div>
+          {slider && <div className="absolute inset-x-4 bottom-4">{slider}</div>}
+        </div>
+      ) : (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex flex-col gap-2 p-3">
+            {leftFloatingPanel}
+            {chips}
+            {statusChip && <div role="status" className={`pointer-events-auto self-center rounded-full px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-card)] ${statusChip.tone}`}>{statusChip.text}</div>}
+            {hint}
+          </div>
+          <BottomSheet
+            state={sheet}
+            onStateChange={setSheet}
+            bottomOffset={bottomInset}
+            label={selectedAreaInfo ? "Area details" : trip ? "Route risk" : "Location risk"}
+            header={header}
+            floating={fabs}
+          >
+            <div aria-live="polite">
+              {rewoundStrip}
+              {areaBody || summary}
+              {slider && <div className="mt-4">{slider}</div>}
+              {footer && <div className="mt-4">{footer}</div>}
+            </div>
+          </BottomSheet>
+        </>
+      )}
     </div>
   );
 }

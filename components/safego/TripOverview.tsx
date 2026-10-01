@@ -16,7 +16,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
   return (
     <section className="page max-w-[960px] mx-auto">
       {/* Google Maps Style Route Header */}
-      <div className="bg-white border border-hairline rounded-2xl p-5 mb-5 shadow-sm">
+      <div className="bg-panel border border-hairline rounded-2xl p-5 mb-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4 mb-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-soft mb-1">
@@ -43,7 +43,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
             </button>
             <button
               type="button"
-              className="px-4 py-2 bg-surface text-ink text-sm font-semibold rounded-xl hover:bg-neutral-200 flex items-center gap-1.5 border border-hairline transition-colors"
+              className="px-4 py-2 bg-surface text-ink text-sm font-semibold rounded-xl hover:bg-surface flex items-center gap-1.5 border border-hairline transition-colors"
               onClick={() => navigate("conditions")}
             >
               <Icon name="flood" />
@@ -85,7 +85,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
 
       {/* Google Maps Route Highlights Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <div className="bg-white border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
           <div className="size-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
             <Icon name="weather" />
           </div>
@@ -95,7 +95,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
           </div>
         </div>
 
-        <div className="bg-white border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
           <div className="size-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
             <Icon name="flood" />
           </div>
@@ -105,7 +105,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
           </div>
         </div>
 
-        <div className="bg-white border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
           <div className="size-10 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
             <Icon name="alert" />
           </div>
@@ -115,7 +115,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
           </div>
         </div>
 
-        <div className="bg-white border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-sm flex items-center gap-3">
           <div className="size-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
             <Icon name="school" />
           </div>

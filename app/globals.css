@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 .risk-hero.risk-unknown, .pill.unknown {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5e1;
+  background: var(--color-neutral-soft);
+  color: var(--color-ink-soft);
+  border-color: var(--color-hairline);
 }
-.risk-unknown .risk-level-name { color: #334155; font-size: clamp(1.3rem, 4vw, 2rem); }
+.risk-unknown .risk-level-name { color: var(--color-ink-soft); font-size: clamp(1.3rem, 4vw, 2rem); }
 .trip-coverage { margin-bottom: 22px; }
 .trip-coverage h2 { font-size: 1.1rem; font-weight: 700; }
 .trip-coverage p, .trip-coverage li { margin-top: 10px; line-height: 1.6; font-size: 0.875rem; }
@@ -14,12 +14,12 @@
 .trip-coverage meter::-moz-meter-bar { background: #64748b; }
 .trip-coverage summary { cursor: pointer; margin-top: 14px; font-weight: 600; }
 .trip-coverage ul { padding-left: 22px; list-style: disc; }
-.pilot-notice { padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; line-height: 1.5; font-size: 0.85rem; }
-.trip-routing-note { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; }
+.pilot-notice { padding: 14px; border: 1px solid var(--color-hairline); border-radius: 12px; background: var(--color-surface); line-height: 1.5; font-size: 0.85rem; }
+.trip-routing-note { padding: 8px 10px; border: 1px solid var(--color-hairline); border-radius: 12px; background: var(--color-surface); color: var(--color-ink-soft); }
 .validation-workbench { max-width: 1200px; margin: auto; padding: 20px; }
 .validation-controls { margin-top: 16px; }
 .validation-controls label { display: block; font-weight: 700; margin-bottom: 8px; }
-.validation-controls select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+.validation-controls select { width: 100%; padding: 12px; border: 1px solid var(--color-hairline); border-radius: 12px; background: var(--color-panel); color: var(--color-ink); }
 @source "../app/**/*.{ts,tsx}";
 @source "../components/**/*.{ts,tsx}";
 @source "../lib/**/*.{ts,tsx}";
@@ -27,14 +27,19 @@
 @theme {
   --font-sans: "Segoe UI", system-ui, sans-serif;
   --font-mono: Consolas, "Courier New", monospace;
+  /* Text, lines and backgrounds. --color-panel is the card colour; --color-inverse is a dark chip in both themes. */
   --color-ink: #1a1a1a;
-  --color-ink-soft: #5c5c5c;
+  --color-ink-soft: #595959;
   --color-hairline: #d9d9d9;
   --color-surface: #f5f5f5;
+  --color-panel: #ffffff;
+  --color-inverse: #1a1a1a;
   --color-nav: #1a1a1a;
   --color-nav-soft: #2a2a2a;
   --color-nav-text: #c8c8c8;
+  /* --color-brand fills buttons (white text on it); --color-brand-ink is brand-coloured text. */
   --color-brand: #1d4ed8;
+  --color-brand-ink: #1d4ed8;
   --color-brand-soft: #e8eefc;
   --color-brand-hover: #163ea8;
   --color-brand-muted: #93b4ff;
@@ -50,7 +55,61 @@
   --color-weather-soft: #e4eef6;
   --color-neutral: #555555;
   --color-neutral-soft: #ececec;
-  --radius-box: 4px;
+  /* One corner radius and one elevation for every card, field and button. */
+  --radius-box: 12px;
+  --shadow-card: 0 4px 16px rgb(0 0 0 / 12%);
+}
+
+/* Dark theme: follows the system unless the person picked a theme (data-theme on <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: #eceef1;
+    --color-ink-soft: #a9b0ba;
+    --color-hairline: #3a4048;
+    --color-surface: #14171b;
+    --color-panel: #1e2228;
+    --color-inverse: #0b0d10;
+    --color-brand-ink: #9db8ff;
+    --color-brand-soft: #1c2947;
+    --color-low: #5fd38d;
+    --color-low-soft: #13301f;
+    --color-mod: #f0c04a;
+    --color-mod-soft: #3a2d0c;
+    --color-high: #ff9d5c;
+    --color-high-soft: #3f2212;
+    --color-crit: #ff8a8a;
+    --color-crit-soft: #431818;
+    --color-weather: #7cc4f0;
+    --color-weather-soft: #12303f;
+    --color-neutral: #b5bcc6;
+    --color-neutral-soft: #2a2f36;
+    --shadow-card: 0 4px 18px rgb(0 0 0 / 50%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-ink: #eceef1;
+  --color-ink-soft: #a9b0ba;
+  --color-hairline: #3a4048;
+  --color-surface: #14171b;
+  --color-panel: #1e2228;
+  --color-inverse: #0b0d10;
+  --color-brand-ink: #9db8ff;
+  --color-brand-soft: #1c2947;
+  --color-low: #5fd38d;
+  --color-low-soft: #13301f;
+  --color-mod: #f0c04a;
+  --color-mod-soft: #3a2d0c;
+  --color-high: #ff9d5c;
+  --color-high-soft: #3f2212;
+  --color-crit: #ff8a8a;
+  --color-crit-soft: #431818;
+  --color-weather: #7cc4f0;
+  --color-weather-soft: #12303f;
+  --color-neutral: #b5bcc6;
+  --color-neutral-soft: #2a2f36;
+  --shadow-card: 0 4px 18px rgb(0 0 0 / 50%);
+  color-scheme: dark;
 }
 
 @layer base {
@@ -66,7 +125,7 @@
   }
 
   .place-results {
-    @apply z-40 mt-1 max-h-64 w-full list-none overflow-auto rounded-box border border-hairline bg-white p-0;
+    @apply z-40 mt-1 max-h-64 w-full list-none overflow-auto rounded-box border border-hairline bg-panel p-0;
   }
 
   .place-results li {
@@ -98,7 +157,7 @@
   }
 
   .data-status {
-    @apply mb-3 flex items-center gap-2.5 rounded-box border border-hairline bg-white px-3 py-2 text-left;
+    @apply mb-3 flex items-center gap-2.5 rounded-box border border-hairline bg-panel px-3 py-2 text-left;
   }
 
   .data-status.live {
@@ -134,7 +193,7 @@
   }
 
   .data-status button {
-    @apply cursor-pointer rounded-box border border-hairline bg-white px-2.5 py-1.5 text-[10.5px] font-semibold text-brand disabled:cursor-wait disabled:text-neutral-400;
+    @apply cursor-pointer rounded-box border border-hairline bg-panel px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-ink disabled:cursor-wait disabled:text-ink-soft;
   }
 
   .dashboard-data-status {
@@ -146,7 +205,7 @@
   }
 
   .trip-planner {
-    @apply rounded-box border border-hairline bg-white p-4 shadow-sm;
+    @apply rounded-box border border-hairline bg-panel p-4 shadow-sm;
   }
 
   .trip-input-row {
@@ -162,7 +221,7 @@
   }
 
   .trip-point-b {
-    @apply bg-ink;
+    @apply bg-inverse;
   }
 
   .trip-field {
@@ -174,7 +233,7 @@
   }
 
   .trip-field input {
-    @apply w-full rounded-box border border-hairline bg-white px-3 py-2.5 text-sm outline-none focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
+    @apply w-full rounded-box border border-hairline bg-panel px-3 py-2.5 text-sm outline-none focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
   }
 
   .trip-connector {
@@ -182,11 +241,11 @@
   }
 
   .remove-trip-stop {
-    @apply flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-hairline bg-white text-xl leading-none text-ink-soft hover:border-crit hover:bg-crit-soft hover:text-crit focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
+    @apply flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-hairline bg-panel text-xl leading-none text-ink-soft hover:border-crit hover:bg-crit-soft hover:text-crit focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-brand;
   }
 
   .add-trip-stop {
-    @apply ml-11 mt-3 flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[12px] font-semibold text-brand hover:text-brand-hover focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand;
+    @apply ml-11 mt-3 flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[12px] font-semibold text-brand-ink hover:text-brand-ink focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand;
   }
 
   .add-trip-stop span {
@@ -202,7 +261,7 @@
   }
 
   .example-trip {
-    @apply cursor-pointer rounded-box border border-hairline bg-white px-4 py-2.5 text-[12px] font-semibold text-brand;
+    @apply cursor-pointer rounded-box border border-hairline bg-panel px-4 py-2.5 text-[12px] font-semibold text-brand-ink;
   }
 
   .trip-error {
@@ -210,7 +269,7 @@
   }
 
   .trip-attribution {
-    @apply mt-3 text-[9.5px] leading-normal text-neutral-500;
+    @apply mt-3 text-[9.5px] leading-normal text-ink-soft;
   }
 
   .system-state {
@@ -218,11 +277,11 @@
   }
 
   .system-state-card {
-    @apply w-full max-w-[520px] rounded-box border border-hairline bg-white p-6 shadow-sm sm:p-8;
+    @apply w-full max-w-[520px] rounded-box border border-hairline bg-panel p-6 shadow-sm sm:p-8;
   }
 
   .system-state-kicker {
-    @apply mt-7 text-[10px] font-bold uppercase tracking-wider text-brand;
+    @apply mt-7 text-[10px] font-bold uppercase tracking-wider text-brand-ink;
   }
 
   .system-state-card h1 {
@@ -243,7 +302,7 @@
   }
 
   .system-state-actions a {
-    @apply bg-white text-brand;
+    @apply bg-panel text-brand-ink;
   }
 
   .trip-data-notice {
@@ -287,7 +346,7 @@
   }
 
   .section-title-copy > div > span {
-    @apply block text-[9px] font-bold uppercase tracking-wider text-brand;
+    @apply block text-[9px] font-bold uppercase tracking-wider text-brand-ink;
   }
 
   .section-title-copy h2 {
@@ -343,7 +402,7 @@
   }
 
   .brandmark .word span {
-    @apply text-brand;
+    @apply text-brand-ink;
   }
 
   .form-field label {
@@ -352,7 +411,7 @@
 
   .form-field input[type="text"],
   .form-field textarea {
-    @apply w-full rounded-box border border-hairline bg-white px-3 py-2.5 font-sans text-[13.5px] text-ink outline-none;
+    @apply w-full rounded-box border border-hairline bg-panel px-3 py-2.5 font-sans text-[13.5px] text-ink outline-none;
   }
 
   .form-field input:focus,
@@ -373,7 +432,7 @@
   }
 
   .sidenav {
-    @apply sticky top-0 hidden h-screen w-[380px] shrink-0 flex-col bg-white border-r border-hairline p-5 overflow-y-auto z-20 shadow-sm lg:flex;
+    @apply sticky top-0 hidden h-screen w-[380px] shrink-0 flex-col bg-panel border-r border-hairline p-5 overflow-y-auto z-20 shadow-sm lg:flex;
   }
 
   .sidenav .brandmark {
@@ -381,7 +440,7 @@
   }
 
   .change-loc {
-    @apply mt-3 cursor-pointer rounded-box border border-hairline bg-surface px-3 py-2 text-center text-xs font-semibold text-ink transition hover:border-brand hover:text-brand hover:bg-brand-soft;
+    @apply mt-3 cursor-pointer rounded-box border border-hairline bg-surface px-3 py-2 text-center text-xs font-semibold text-ink transition hover:border-brand hover:text-brand-ink hover:bg-brand-soft;
   }
 
   .sidenav .brandmark .word {
@@ -389,7 +448,7 @@
   }
 
   .sidenav .brandmark .word span {
-    @apply text-brand;
+    @apply text-brand-ink;
   }
 
   .main-col {
@@ -409,7 +468,7 @@
   }
 
   .page-eyebrow {
-    @apply mb-1 text-[11px] font-semibold uppercase tracking-wider text-brand;
+    @apply mb-1 text-[11px] font-semibold uppercase tracking-wider text-brand-ink;
   }
 
   .page-title {
@@ -421,7 +480,7 @@
   }
 
   .card {
-    @apply rounded-box border border-hairline bg-white;
+    @apply rounded-box border border-hairline bg-panel;
   }
 
   .card-pad {
@@ -481,7 +540,7 @@
   }
 
   .risk-hero {
-    @apply mb-[18px] rounded-box border border-hairline border-l-4 border-l-mod bg-white px-[22px] py-5;
+    @apply mb-[18px] rounded-box border border-hairline border-l-4 border-l-mod bg-panel px-[22px] py-5;
   }
 
   .risk-hero.risk-low {
@@ -529,7 +588,7 @@
   }
 
   .risk-hero-updated {
-    @apply mt-3 flex items-center gap-1.5 text-[11px] text-neutral-500;
+    @apply mt-3 flex items-center gap-1.5 text-[11px] text-ink-soft;
   }
 
   .gauge-wrap {
@@ -557,7 +616,7 @@
   }
 
   .icon-brand {
-    @apply bg-brand-soft text-brand;
+    @apply bg-brand-soft text-brand-ink;
   }
 
   .section-title {
@@ -565,7 +624,7 @@
   }
 
   .section-title .view-all {
-    @apply cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-brand;
+    @apply cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-brand-ink;
   }
 
   .source-strip {
@@ -589,7 +648,7 @@
   }
 
   .adv-item {
-    @apply mb-2 flex gap-3 rounded-box border border-hairline bg-white px-3.5 py-3;
+    @apply mb-2 flex gap-3 rounded-box border border-hairline bg-panel px-3.5 py-3;
   }
 
   .adv-item.mock {
@@ -617,7 +676,7 @@
   }
 
   .src-school {
-    @apply bg-brand-soft text-brand;
+    @apply bg-brand-soft text-brand-ink;
   }
 
   .src-gov {
@@ -641,15 +700,15 @@
   }
 
   .adv-time {
-    @apply shrink-0 whitespace-nowrap text-[11px] text-neutral-400;
+    @apply shrink-0 whitespace-nowrap text-[11px] text-ink-soft;
   }
 
   .report-row {
-    @apply mb-2 flex items-center gap-3 rounded-box border border-hairline bg-white px-3 py-2.5;
+    @apply mb-2 flex items-center gap-3 rounded-box border border-hairline bg-panel px-3 py-2.5;
   }
 
   .report-row .rtype {
-    @apply flex size-[34px] shrink-0 items-center justify-center rounded-box bg-brand-soft text-brand;
+    @apply flex size-[34px] shrink-0 items-center justify-center rounded-box bg-brand-soft text-brand-ink;
   }
 
   .report-row .rtype svg {
@@ -817,7 +876,7 @@
   }
 
   .leaflet-tooltip {
-    @apply rounded-box border-0 bg-ink px-2.5 py-2 text-[11.5px] text-white shadow-lg;
+    @apply rounded-box border-0 bg-inverse px-2.5 py-2 text-[11.5px] text-white shadow-lg;
   }
 
   .leaflet-tooltip-top::before {
@@ -850,7 +909,7 @@
   }
 
   .route-dot {
-    @apply absolute -left-[26px] top-0.5 flex size-5 items-center justify-center rounded-full border-2 border-brand bg-white;
+    @apply absolute -left-[26px] top-0.5 flex size-5 items-center justify-center rounded-full border-2 border-brand bg-panel;
   }
 
   .route-dot.end {
@@ -926,11 +985,11 @@
   }
 
   .type-chip {
-    @apply cursor-pointer rounded-box border border-hairline bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-soft;
+    @apply cursor-pointer rounded-box border border-hairline bg-panel px-3 py-2 text-[12.5px] font-semibold text-ink-soft;
   }
 
   .type-chip.selected {
-    @apply border-brand bg-brand-soft text-brand;
+    @apply border-brand bg-brand-soft text-brand-ink;
   }
 
   .submit-btn {
@@ -962,7 +1021,7 @@
   }
 
   .reporting-disabled > svg {
-    @apply mb-4 size-8 text-brand;
+    @apply mb-4 size-8 text-brand-ink;
   }
 
   .reporting-disabled h3 {
@@ -974,7 +1033,7 @@
   }
 
   .mock-note {
-    @apply mt-3 rounded-box border border-hairline bg-surface px-3 py-2 text-[11.5px] text-neutral-500;
+    @apply mt-3 rounded-box border border-hairline bg-surface px-3 py-2 text-[11.5px] text-ink-soft;
   }
 
   .nearby-universities {
@@ -1026,7 +1085,7 @@
   }
 
   .university-logo {
-    @apply grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-hairline bg-white p-1.5 shadow-sm;
+    @apply grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-hairline bg-panel p-1.5 shadow-sm;
   }
 
   .university-logo img {
@@ -1050,7 +1109,7 @@
   }
 
   .university-status.online {
-    @apply border-brand bg-brand-soft text-brand;
+    @apply border-brand bg-brand-soft text-brand-ink;
   }
 
   .university-status.unknown {
@@ -1078,7 +1137,7 @@
   }
 
   .university-meta {
-    @apply mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5 text-[10.5px] text-neutral-500;
+    @apply mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5 text-[10.5px] text-ink-soft;
   }
 
   .university-source,
@@ -1095,7 +1154,7 @@
   }
 
   .university-source-link {
-    @apply mt-3 flex min-h-10 items-center justify-between gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[11.5px] font-bold text-brand transition hover:border-brand hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2;
+    @apply mt-3 flex min-h-10 items-center justify-between gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-[11.5px] font-bold text-brand-ink transition hover:border-brand hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2;
   }
 
   .university-source-link span {
@@ -1107,7 +1166,7 @@
   }
 
   .university-disclaimer {
-    @apply mt-2.5 flex items-start gap-2 text-[10.5px] leading-relaxed text-neutral-500;
+    @apply mt-2.5 flex items-start gap-2 text-[10.5px] leading-relaxed text-ink-soft;
   }
 
   .university-disclaimer svg {
@@ -1116,7 +1175,7 @@
 
   .account-button,
   .side-account {
-    @apply rounded-full border border-brand/25 bg-white px-3.5 py-2 text-xs font-bold text-brand transition hover:border-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
+    @apply rounded-full border border-brand/25 bg-panel px-3.5 py-2 text-xs font-bold text-brand-ink transition hover:border-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
   }
 
   .account-backdrop {
@@ -1124,7 +1183,7 @@
   }
 
   .account-panel {
-    @apply max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-6;
+    @apply max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-panel p-5 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-6;
   }
 
   .account-head {
@@ -1132,15 +1191,15 @@
   }
 
   .account-head span {
-    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-brand;
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-brand-ink;
   }
 
   .account-head h2 {
-    @apply mt-1 text-2xl font-extrabold text-neutral-950;
+    @apply mt-1 text-2xl font-extrabold text-ink;
   }
 
   .account-head > button {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline text-xl text-neutral-600 hover:bg-neutral-100;
+    @apply flex size-9 shrink-0 items-center justify-center rounded-full border border-hairline text-xl text-ink-soft hover:bg-surface;
   }
 
   .account-form {
@@ -1148,11 +1207,11 @@
   }
 
   .account-form > p {
-    @apply mb-2 text-sm leading-relaxed text-neutral-600;
+    @apply mb-2 text-sm leading-relaxed text-ink-soft;
   }
 
   .account-form label {
-    @apply mt-1 text-xs font-bold text-neutral-800;
+    @apply mt-1 text-xs font-bold text-ink;
   }
 
   .account-form input {
@@ -1161,7 +1220,7 @@
 
   .account-form small,
   .account-field-help {
-    @apply text-[11px] leading-relaxed text-neutral-500;
+    @apply text-[11px] leading-relaxed text-ink-soft;
   }
 
   .account-identity {
@@ -1169,11 +1228,11 @@
   }
 
   .account-identity strong {
-    @apply text-sm text-neutral-950;
+    @apply text-sm text-ink;
   }
 
   .account-identity span {
-    @apply text-xs text-neutral-600;
+    @apply text-xs text-ink-soft;
   }
 
   .account-actions {
@@ -1185,7 +1244,7 @@
   }
 
   .account-signout {
-    @apply min-h-11 rounded-lg border border-hairline px-4 text-xs font-bold text-neutral-600 hover:bg-neutral-100;
+    @apply min-h-11 rounded-lg border border-hairline px-4 text-xs font-bold text-ink-soft hover:bg-surface;
   }
 
   .account-message {
@@ -1208,9 +1267,9 @@
 }
 
 .account-message.error {
-  color: #991b1b;
-  background: #fef2f2;
-  border-color: #fecaca;
+  color: var(--color-crit);
+  background: var(--color-crit-soft);
+  border-color: var(--color-crit);
 }
 
 .account-mode-tabs {
@@ -1219,22 +1278,49 @@
   gap: 4px;
   padding: 4px;
   margin-bottom: 18px;
-  border-radius: 10px;
-  background: #f1f5f9;
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 
 .account-mode-tabs button {
   min-height: 38px;
   border: 0;
   border-radius: 7px;
-  color: #475569;
+  color: var(--color-ink-soft);
   background: transparent;
   font-weight: 700;
   cursor: pointer;
 }
 
 .account-mode-tabs button[aria-selected="true"] {
-  color: #173ea5;
-  background: #fff;
+  color: var(--color-brand-ink);
+  background: var(--color-panel);
   box-shadow: 0 1px 3px rgb(15 23 42 / 14%);
 }
+
+/* Leaflet controls and tooltips follow the theme. */
+.leaflet-tooltip,
+.leaflet-bar a,
+.leaflet-container .leaflet-control-attribution {
+  background: var(--color-panel);
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+}
+.leaflet-tooltip-top::before { border-top-color: var(--color-panel); }
+.leaflet-container .leaflet-control-attribution a { color: var(--color-brand-ink); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .live-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.9) contrast(0.9);
+  }
+}
+:root[data-theme="dark"] .live-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.9) contrast(0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* Touch targets: at least 44px tall for the planner's controls. */
+.trip-planner input, .trip-planner .submit-btn, .trip-planner .example-trip, .trip-planner .add-trip-stop { min-height: 44px; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DashboardSnapshot,
   DataBackend,
@@ -28,7 +28,10 @@ import { RiskMap, type PreviewTripRoute } from "./RiskMap";
 import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
 import { AccountPanel, loadAccountSession } from "./AccountPanel";
-import { displayFactorName, riskLevelLabel, shortPlaceName } from "./labels";
+import { displayFactorName, shortPlaceName } from "./labels";
+import { activeUniversityAlerts } from "@/lib/safego/university-alerts";
+import { UniversityAlertCards } from "./UniversityAlertCards";
+import { RiskBadge, ThemeToggle, useIsDesktop, useSavedTheme } from "./ui";
 import type { AccountProfile } from "@/lib/account/types";
 
 const DETAIL_TABS: Array<{ key: ScreenKey; label: string }> = [
@@ -38,22 +41,8 @@ const DETAIL_TABS: Array<{ key: ScreenKey; label: string }> = [
   { key: "reports", label: "Reports" },
 ];
 
-const DESKTOP_QUERY = "(min-width: 1024px)";
-
-function subscribeToDesktopQuery(onChange: () => void) {
-  const query = window.matchMedia(DESKTOP_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-// Only one trip planner is mounted at a time, so route previews are fetched once.
-function useIsDesktop() {
-  return useSyncExternalStore(
-    subscribeToDesktopQuery,
-    () => window.matchMedia(DESKTOP_QUERY).matches,
-    () => true,
-  );
-}
+/** Height of the phone bottom tab bar; the map's sheet sits above it. */
+const MOBILE_NAV_HEIGHT = 56;
 
 interface DashboardEnvelope {
   data: DashboardSnapshot;
@@ -248,6 +237,16 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  // Phones: the planner opens from the floating search bar.
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [dismissedUniversities, setDismissedUniversities] = useState<ReadonlySet<string>>(() => new Set());
+  // Ticks every minute so expired announcements drop off without a reload.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useSavedTheme();
 
   const isDesktop = useIsDesktop();
   const refreshInFlight = useRef(false);
@@ -346,6 +345,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setTrip(analysis);
     setSelectedLocation(supportingLocation);
     setActiveScreen("overview");
+    setPlannerOpen(false);
     rescoreWithEstimate(analysis, snapshot);
   }, [locations, rescoreWithEstimate, sources, weatherUpdatedAt]);
   const selectLocation = useCallback((location: SafeGoLocation) => {
@@ -353,6 +353,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setTrip(null);
     setSelectedLocation(location);
     setActiveScreen("overview");
+    setPlannerOpen(false);
   }, []);
   const selectMapLocation = useCallback((location: SafeGoLocation) => {
     setSelectedLocation(location);
@@ -387,16 +388,27 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const hasSelection = Boolean(trip || selectedLocation);
   const detailTabs = DETAIL_TABS.filter((tab) =>
     tab.key !== "reports" || communityReportingEnabled || (trip ? trip.reports : detailLocation?.reports ?? []).length > 0);
-  const accountLabel = account ? `Hi, ${account.name}` : "Sign in";
+  const onMap = activeScreen === "overview" || activeScreen === "map";
+  const selectionTitle = trip
+    ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}`
+    : selectedLocation?.name ?? null;
+
+  // Active announcements from universities near the selected place, or along the trip.
+  const universityAlerts = useMemo(() => {
+    const places = trip ? trip.corridorLocations : detailLocation ? [detailLocation] : [];
+    return activeUniversityAlerts(
+      places.flatMap((place, index) => place.universities.map((university) => ({ university, area: shortPlaceName(place.name), proximity: index }))),
+      clock,
+      dismissedUniversities,
+    );
+  }, [clock, detailLocation, dismissedUniversities, trip]);
+  const dismissUniversity = useCallback((id: string) => {
+    setDismissedUniversities((current) => new Set(current).add(id));
+  }, []);
 
   const brandButton = (
-    <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip} aria-label="SafeGo home, start a new trip">
+    <button type="button" className="brandmark !mb-0 border-0 bg-transparent p-0 cursor-pointer text-left" onClick={startNewTrip} aria-label="SafeGo home, start a new search">
       <Brand compact />
-    </button>
-  );
-  const accountButton = (
-    <button className="account-button text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100" type="button" onClick={() => setAccountOpen(true)}>
-      {accountLabel}
     </button>
   );
   const planner = (
@@ -415,49 +427,81 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} />
   );
 
-  const mobilePlanner = isDesktop ? null : (
-    <div className="bg-white/95 backdrop-blur-md border border-hairline rounded-2xl shadow-xl p-3 [&_.trip-planner]:border-0 [&_.trip-planner]:p-1 [&_.trip-planner]:shadow-none">
-      <div className="flex items-center justify-between mb-2">
-        {brandButton}
-        <div className="flex items-center gap-1.5">
+  // Phones: a floating search bar that opens the planner, like a maps app.
+  const mobileSearch = isDesktop ? null : (
+    <div className="pointer-events-auto rounded-2xl border border-hairline bg-panel shadow-[var(--shadow-card)]">
+      <div className="flex items-center gap-1 p-1.5">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left hover:bg-surface"
+          aria-expanded={plannerOpen}
+          onClick={() => setPlannerOpen((open) => !open)}
+        >
+          <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+          <span className={`truncate text-sm ${selectionTitle ? "font-semibold text-ink" : "text-ink-soft"}`}>
+            {selectionTitle ?? "Search a place or plan a trip"}
+          </span>
+        </button>
+        <ThemeToggle />
+        <button
+          type="button"
+          className="size-11 shrink-0 rounded-full bg-brand-soft text-sm font-bold text-brand-ink"
+          onClick={() => setAccountOpen(true)}
+          aria-label={account ? `Account: ${account.name}` : "Sign in"}
+        >
+          {account ? account.name.slice(0, 1).toLocaleUpperCase() : (
+            <svg viewBox="0 0 24 24" className="mx-auto size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c.8-3.6 3.5-5.5 7-5.5s6.200 1.900 7 5.500" /></svg>
+          )}
+        </button>
+      </div>
+      {plannerOpen && (
+        <div className="max-h-[62vh] overflow-y-auto border-t border-hairline p-2 [&_.trip-planner]:border-0 [&_.trip-planner]:p-1 [&_.trip-planner]:shadow-none">
+          {planner}
           {hasSelection && (
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-hairline hover:bg-neutral-100 text-ink-soft" type="button" onClick={startNewTrip}>
-              New trip
+            <button type="button" className="mt-2 min-h-11 w-full rounded-box border border-hairline text-sm font-semibold text-ink hover:bg-surface" onClick={startNewTrip}>
+              Clear and start over
             </button>
           )}
-          {accountButton}
         </div>
-      </div>
-      {planner}
+      )}
     </div>
   );
 
+  const mobileTabs: Array<{ key: ScreenKey; label: string; icon: "map" | "risk" | "flood" | "alert" | "reports" }> = [
+    { key: "overview", label: "Map", icon: "map" },
+    { key: "risk", label: "Why", icon: "risk" },
+    { key: "conditions", label: "Conditions", icon: "flood" },
+    { key: "alerts", label: "Updates", icon: "alert" },
+    ...(detailTabs.some((tab) => tab.key === "reports") ? [{ key: "reports" as const, label: "Reports", icon: "reports" as const }] : []),
+  ];
+
   return (
     <>
-      <div id="app-shell" className="active w-screen h-screen overflow-hidden flex flex-row">
+      <div id="app-shell" className="active w-screen h-dvh overflow-hidden flex flex-row">
         <aside className="sidenav justify-between" aria-label="Trip planner">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-hairline">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-hairline">
               {brandButton}
-              {accountButton}
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <button className="min-h-9 rounded-full border border-hairline px-3 text-xs font-semibold text-ink hover:bg-surface" type="button" onClick={() => setAccountOpen(true)}>
+                  {account ? `Hi, ${account.name}` : "Sign in"}
+                </button>
+              </div>
             </div>
 
-            <h1 className="text-lg font-bold text-ink mb-0.5">Plan a trip & check risk</h1>
-            <p className="text-xs text-ink-soft mb-3">
-              Search Philippine roads, landmarks, or cities across the country.
-            </p>
+            <h1 className="text-lg font-bold text-ink">Check before you go</h1>
+            <p className="text-sm text-ink-soft mb-3">Search a place to see its conditions, or add a destination to check a trip.</p>
 
             {isDesktop && planner}
 
             {hasSelection && (
               <button type="button" className="change-loc w-full" onClick={startNewTrip}>
-                Plan another trip
+                Clear and start over
               </button>
             )}
 
-            <div className="text-[10px] font-bold text-ink-soft uppercase tracking-wider mt-5 mb-2">
-              Popular places
-            </div>
+            <div className="mt-5 mb-2 text-xs font-semibold text-ink-soft">Quick picks</div>
             <div className="place-chips flex flex-wrap gap-1.5">
               {locations.slice(0, 6).map((loc) => {
                 const active = !trip && loc.id === selectedLocation?.id;
@@ -465,8 +509,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                   <button
                     key={loc.id}
                     type="button"
-                    className={`text-[11px] border px-2.5 py-1 rounded-full font-medium transition-colors ${
-                      active ? "bg-brand-soft border-brand text-brand" : "bg-surface border-hairline hover:border-brand text-ink"
+                    className={`min-h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
+                      active ? "bg-brand-soft border-brand text-brand-ink" : "bg-surface border-hairline hover:border-brand text-ink"
                     }`}
                     aria-pressed={active}
                     onClick={() => selectLocation(loc)}
@@ -481,50 +525,53 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
           <div className="mt-5 [&_.data-status]:mb-0">{dataStatus}</div>
         </aside>
 
-        <main className="flex-1 relative h-screen overflow-hidden">
-          {activeScreen === "overview" || activeScreen === "map" ? (
+        <main className="flex-1 relative h-dvh overflow-hidden">
+          {onMap ? (
             <RiskMap
               locations={trip ? trip.corridorLocations : locations}
               selectedLocation={trip ? trip.corridorLocations.find((loc) => loc.id === selectedLocation?.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation}
               trip={trip}
               previewRoute={previewRoute}
-              leftFloatingPanel={mobilePlanner}
+              leftFloatingPanel={mobileSearch}
               onSelectLocation={trip ? selectMapLocation : selectLocation}
               onViewDashboard={() => navigate("conditions")}
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
               liveWeather={!apiUnavailable && sources.some((source) => source.key === "open-meteo" && source.status === "active")}
               liveAlerts={!apiUnavailable && sources.some((source) => source.key === "pagasa-cap" && source.status === "active")}
+              universityAlerts={universityAlerts}
+              onDismissUniversity={dismissUniversity}
+              footer={<div className="[&_.data-status]:mb-0">{dataStatus}</div>}
+              notice={apiUnavailable ? "Can’t reach SafeGo’s server. Retrying; ratings may be out of date." : null}
+              bottomInset={isDesktop ? 0 : MOBILE_NAV_HEIGHT}
             />
           ) : (
-            <div className="main-col h-screen overflow-y-auto" ref={detailScrollRef}>
-              <div className="bg-white/90 backdrop-blur-md border-b border-hairline sticky top-0 z-30">
-                <div className="mx-auto max-w-[1120px] px-3.5 lg:px-7 pt-3 flex items-center justify-between gap-3">
+            <div className="main-col h-dvh overflow-y-auto pb-16 lg:pb-0" ref={detailScrollRef}>
+              <div className="bg-panel border-b border-hairline sticky top-0 z-30">
+                <div className="mx-auto max-w-[1120px] px-3.5 lg:px-7 py-2 flex items-center justify-between gap-3">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-hover hover:underline shrink-0"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-brand-ink hover:underline shrink-0"
                     onClick={() => navigate("overview")}
                   >
-                    ← Back to map
+                    ← Map
                   </button>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-semibold text-ink truncate">
-                      {trip ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}` : detailLocation?.name}
-                    </span>
+                    <span className="text-sm font-semibold text-ink truncate">{selectionTitle ?? detailLocation?.name}</span>
                     {trip ? (
-                      <span className={`pill ${trip.riskKey} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(trip.riskName)}{trip.corridorLocations.some((location) => location.risk.basis === "partial") ? " (partial)" : ""}</span>
+                      <RiskBadge size="sm" level={trip.riskKey} partial={trip.corridorLocations.some((location) => location.risk.basis === "partial")} />
                     ) : detailLocation && (
-                      <span className={`pill ${detailLocation.risk.basis === "none" ? "unknown" : detailLocation.risk.key} text-xs font-bold shrink-0`}><span className="dot" />{riskLevelLabel(detailLocation.risk.name)}{detailLocation.risk.basis === "partial" ? " (partial)" : ""}</span>
+                      <RiskBadge size="sm" level={detailLocation.risk.basis === "none" ? "unknown" : detailLocation.risk.key} partial={detailLocation.risk.basis === "partial"} />
                     )}
                   </div>
                 </div>
-                <nav className="mx-auto max-w-[1120px] px-3.5 lg:px-7 py-2.5 flex gap-1 overflow-x-auto" aria-label="Result details">
+                <nav className="mx-auto hidden max-w-[1120px] gap-1 overflow-x-auto px-7 pb-2.5 lg:flex" aria-label="Result details">
                   {detailTabs.map((tab) => (
                     <button
                       key={tab.key}
                       type="button"
-                      className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
-                        tab.key === activeScreen ? "bg-brand text-white" : "text-ink hover:bg-neutral-100"
+                      className={`min-h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-colors ${
+                        tab.key === activeScreen ? "bg-brand text-white" : "text-ink hover:bg-surface"
                       }`}
                       aria-current={tab.key === activeScreen ? "page" : undefined}
                       onClick={() => navigate(tab.key)}
@@ -539,10 +586,11 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               {activeScreen === "alerts" && (
                 <section className="page">
                   <PageHeader
-                    eyebrow={trip ? "Route announcements" : "Area announcements"}
-                    title={trip ? "Announcements near this trip" : "Announcements for this area"}
-                    subtitle={trip ? "Official and local updates linked to locations along this route." : `${detailLocation?.name ?? "Area"}. Newest announcements first.`}
+                    eyebrow={trip ? "Along this trip" : "For this area"}
+                    title="Announcements and alerts"
+                    subtitle={trip ? "Official updates for places along this route." : `${detailLocation?.name ?? "This area"}. Newest first.`}
                   />
+                  <UniversityAlertCards alerts={universityAlerts} limit={universityAlerts.length} onDismiss={dismissUniversity} />
                   <Advisories items={trip ? trip.advisories : detailLocation?.advisories ?? []} />
                 </section>
               )}
@@ -561,6 +609,25 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
           )}
         </main>
       </div>
+
+      {/* Phones: bottom tab bar. The map's sheet sits just above it. */}
+      <nav className="fixed inset-x-0 bottom-0 z-[1200] flex border-t border-hairline bg-panel lg:hidden" style={{ height: MOBILE_NAV_HEIGHT }} aria-label="Sections">
+        {mobileTabs.map((tab) => {
+          const active = tab.key === "overview" ? onMap : tab.key === activeScreen;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold [&_svg]:size-5 ${active ? "text-brand-ink" : "text-ink-soft"}`}
+              aria-current={active ? "page" : undefined}
+              onClick={() => navigate(tab.key)}
+            >
+              <Icon name={tab.icon} />
+              <span className="truncate">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       <AccountPanel
         key={`${account?.email ?? "guest"}-${accountOpen}`}
