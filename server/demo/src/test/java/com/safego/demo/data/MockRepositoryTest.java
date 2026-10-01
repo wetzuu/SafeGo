@@ -18,7 +18,7 @@ class MockRepositoryTest {
     void mockRepositoryExposesEveryPresetLocation() {
         List<LocationSummary> locations = MockRepository.listLocations();
 
-        assertEquals(7, locations.size());
+        assertEquals(20, locations.size());
         assertTrue(locations.stream().allMatch(l -> l.coordinates().length == 2));
         assertTrue(locations.stream().allMatch(l -> l.risk().percentage() >= 0));
     }

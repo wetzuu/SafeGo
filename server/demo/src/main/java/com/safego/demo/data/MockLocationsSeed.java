@@ -23,8 +23,224 @@ public final class MockLocationsSeed {
             cloneEspana(espana, "katipunan", "Katipunan Avenue, Quezon City", "Quezon City",
                 List.of("katipunan", "quezon city", "qc", "ateneo", "up diliman"),
                 new double[]{14.6405, 121.0741}),
-            buildPasig()
+            buildPasig(),
+            createFloodProneLocation(
+                "marikina-riverbanks", "Marikina Riverbanks, Marikina", "Marikina",
+                List.of("marikina", "riverbanks", "marikina river", "tumana", "provident"),
+                new double[]{14.6346, 121.0963},
+                "Marikina River overflow", "Waist-deep in low river parks · road closure near bridge",
+                "Marikina River water levels elevated. Riverbanks park submerged; riverside access roads closed or impassable to light vehicles.",
+                78,
+                List.of(
+                    new RoutePoint("start", "North approach", "J.P. Rizal St.", "Water ponding near curb"),
+                    new RoutePoint("mid", "Watched", "Marikina Riverbanks Center", "Waist-deep flooding in low sections"),
+                    new RoutePoint("end", "South exit", "Marcos Highway bridge", "Bridge passable, slow movement")
+                ),
+                "Submerged riverside park walkway"
+            ),
+            createFloodProneLocation(
+                "malabon-dampalit", "C-4 Road / Dampalit, Malabon", "Malabon",
+                List.of("malabon", "dampalit", "c4", "tullahan", "concepcion", "hulong duhat"),
+                new double[]{14.6645, 120.9575},
+                "Tullahan River tidal overflow", "Knee- to waist-deep (~45cm) · high tide convergence",
+                "High tide combined with monsoon runoff has caused tidal overflow along C-4 and Dampalit. Light vehicles not passable.",
+                76,
+                List.of(
+                    new RoutePoint("start", "Approach", "Gov. Pascual Ave.", "Gutters overflowing"),
+                    new RoutePoint("mid", "Watched", "C-4 Road / Dampalit Bridge", "Knee- to waist-deep water"),
+                    new RoutePoint("end", "Exit", "Toward Navotas boundary", "Impassable to light vehicles")
+                ),
+                "Deep tidal flood on roadway"
+            ),
+            createFloodProneLocation(
+                "navotas-nbbs", "North Bay Blvd. South (NBBS), Navotas", "Navotas",
+                List.of("navotas", "nbbs", "r10", "fish port", "san rafael"),
+                new double[]{14.6441, 120.9535},
+                "Coastal ponding along R-10", "Knee-deep (~35cm) · coastal gate overflow",
+                "High tide backflow along Manila Bay dikes has flooded North Bay Boulevard South. Commercial and fish port traffic delayed.",
+                70,
+                List.of(
+                    new RoutePoint("start", "North approach", "Honorio Lopez Blvd.", "Ankle-deep ponding"),
+                    new RoutePoint("mid", "Watched", "NBBS / Navotas Fish Port complex", "Knee-deep tidal water"),
+                    new RoutePoint("end", "South exit", "R-10 toward Tondo", "Heavy vehicle traffic only")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "valenzuela-malinta", "MacArthur Highway, Malinta, Valenzuela", "Valenzuela",
+                List.of("valenzuela", "malinta", "macarthur", "dalandanan", "karuhatan"),
+                new double[]{14.6933, 120.9634},
+                "MacArthur Hwy. knee-deep flood", "Knee-deep (~40cm) · slow drainage near Malinta junction",
+                "Continuous rain and runoff have overwhelmed roadside drainage along MacArthur Highway in Malinta. Light vehicles advised to divert.",
+                72,
+                List.of(
+                    new RoutePoint("start", "North approach", "MacArthur / Dalandanan", "Water ponding in right lanes"),
+                    new RoutePoint("mid", "Watched", "Malinta junction / People's Park", "Knee-deep standing water"),
+                    new RoutePoint("end", "South exit", "Toward Karuhatan", "Passable with extreme caution")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "qc-araneta", "G. Araneta Ave. / Talayan, Quezon City", "Quezon City",
+                List.of("araneta", "talayan", "tatalon", "quezon city", "qc", "maria clara", "e rodriguez"),
+                new double[]{14.6385, 121.0030},
+                "San Juan River catch basin flooding", "Waist-deep (~70cm) · impassable to all light vehicles",
+                "San Juan River overflow has turned G. Araneta Avenue near Talayan into a deep flood basin. Road is closed to light traffic.",
+                85,
+                List.of(
+                    new RoutePoint("start", "Approach", "Del Monte Ave. corner Araneta", "Ankle-deep water spreading"),
+                    new RoutePoint("mid", "Watched", "G. Araneta Ave. near Talayan creek", "Waist-deep flood · vehicles stalled"),
+                    new RoutePoint("end", "Exit", "Toward Quezon Ave. underpass", "Traffic diversion in effect")
+                ),
+                "Submerged vehicle on G. Araneta"
+            ),
+            createFloodProneLocation(
+                "mandaluyong-maysilo", "Maysilo Circle, Mandaluyong", "Mandaluyong",
+                List.of("mandaluyong", "maysilo", "boni", "plainview", "city hall"),
+                new double[]{14.5772, 121.0347},
+                "Maysilo Circle flood basin", "Knee-deep (~35cm) · pumping stations operating",
+                "Water ponding around Maysilo Circle in front of the City Hall. Pumping stations active; slow movement along Boni Avenue.",
+                66,
+                List.of(
+                    new RoutePoint("start", "West approach", "Boni Ave. near San Francisco", "Ankle-deep water"),
+                    new RoutePoint("mid", "Watched", "Maysilo Circle roundabout", "Knee-deep water in inner lanes"),
+                    new RoutePoint("end", "East exit", "Boni Ave. toward EDSA", "Slow moving but passable")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "san-juan-river", "F. Manalo / San Juan River, San Juan", "San Juan",
+                List.of("san juan", "manalo", "san juan river", "batis", "progreso"),
+                new double[]{14.6042, 121.0267},
+                "San Juan Riverbank overflow", "Shin- to knee-deep (~30cm) · rapid river rise",
+                "River levels along San Juan River have spilled over low embankments near F. Manalo Street. Use elevated routes.",
+                68,
+                List.of(
+                    new RoutePoint("start", "Approach", "N. Domingo St.", "Passable, wet pavement"),
+                    new RoutePoint("mid", "Watched", "F. Manalo St. near riverbank", "Shin- to knee-deep water"),
+                    new RoutePoint("end", "Exit", "Blumentritt St.", "Water receding slowly")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "paranaque-sucat", "Dr. A. Santos Ave. (Sucat), Parañaque", "Parañaque",
+                List.of("paranaque", "parañaque", "sucat", "kabihasnan", "santos"),
+                new double[]{14.4988, 120.9882},
+                "Sucat / Kabihasnan tidal flood", "Ankle- to knee-deep (~25cm) · slow drainage",
+                "Rainfall combined with Parañaque River high tide causes localized flooding along Dr. A. Santos Avenue near Kabihasnan.",
+                62,
+                List.of(
+                    new RoutePoint("start", "West approach", "Quirino Ave. / Kabihasnan", "Knee-deep near bridge"),
+                    new RoutePoint("mid", "Watched", "Dr. A. Santos Ave. near SM Sucat", "Ankle-deep water in outer lanes"),
+                    new RoutePoint("end", "East exit", "Sucat interchange approach", "Passable, heavy congestion")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "pasay-rotonda", "Taft Ave. / EDSA Rotonda, Pasay", "Pasay",
+                List.of("pasay", "rotonda", "taft", "edsa", "baclaran", "malibay"),
+                new double[]{14.5378, 120.9995},
+                "Pasay Rotonda flash ponding", "Shin-deep (~20cm) · drainage backup at transit hub",
+                "Heavy surface runoff has backed up drainage around the MRT/LRT Pasay Rotonda intersection. Expect heavy delays.",
+                58,
+                List.of(
+                    new RoutePoint("start", "North approach", "Taft Ave. near Zamora", "Ponding in curb lanes"),
+                    new RoutePoint("mid", "Watched", "Taft / EDSA Rotonda underpass", "Shin-deep water near stairs"),
+                    new RoutePoint("end", "South exit", "Toward Baclaran", "Slow movement, passable")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "taguig-c6", "C-6 Road / Hagonoy, Taguig", "Taguig",
+                List.of("taguig", "c6", "hagonoy", "lakeshore", "lower bicutan"),
+                new double[]{14.5098, 121.0742},
+                "Laguna Lake shoreline flood watch", "Knee-deep (~35cm) · lake water spillover",
+                "High water levels in Laguna de Bay have pushed lake water over roadside sections of C-6 Road in Hagonoy. Light vehicles avoid.",
+                70,
+                List.of(
+                    new RoutePoint("start", "North approach", "C-6 Lakeshore entrance", "Water reaching shoulder"),
+                    new RoutePoint("mid", "Watched", "C-6 Hagonoy low dike section", "Knee-deep lake overflow"),
+                    new RoutePoint("end", "South exit", "Toward Lower Bicutan", "Single lane passable")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "laspinas-zapote", "Alabang–Zapote Road, Zapote, Las Piñas", "Las Piñas",
+                List.of("las pinas", "las piñas", "zapote", "alabang zapote", "talaba"),
+                new double[]{14.4635, 120.9765},
+                "Zapote River bridge overflow", "Knee-deep (~40cm) · critical bottleneck",
+                "Zapote River has overflowed near the Las Piñas–Bacoor boundary, flooding Alabang–Zapote Road. Traffic severely gridlocked.",
+                74,
+                List.of(
+                    new RoutePoint("start", "East approach", "Alabang–Zapote near Diego Cera", "Water ponding in center"),
+                    new RoutePoint("mid", "Watched", "Zapote Bridge junction", "Knee-deep flooding across lanes"),
+                    new RoutePoint("end", "West exit", "Toward Aguinaldo Hwy.", "Heavy vehicle traffic only")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "muntinlupa-bayanan", "National Road, Bayanan, Muntinlupa", "Muntinlupa",
+                List.of("muntinlupa", "bayanan", "alabang", "putatan", "poblacion"),
+                new double[]{14.4081, 121.0415},
+                "Bayanan lakeshore ponding", "Ankle- to shin-deep (~20cm) · lake backflow",
+                "Prolonged rains and high lake levels in Laguna de Bay cause water to pond along National Road in Bayanan.",
+                56,
+                List.of(
+                    new RoutePoint("start", "North approach", "National Road near Alabang viaduct", "Passable, wet pavement"),
+                    new RoutePoint("mid", "Watched", "National Road, Bayanan market", "Shin-deep standing water"),
+                    new RoutePoint("end", "South exit", "Toward Putatan / City Hall", "Slow moving but clear")
+                ),
+                null
+            ),
+            createFloodProneLocation(
+                "caloocan-monumento", "Monumento / Samson Road, Caloocan", "Caloocan",
+                List.of("caloocan", "kalookan", "monumento", "samson", "mcu", "edsa"),
+                new double[]{14.6575, 120.9836},
+                "Monumento Circle road ponding", "Ankle- to shin-deep (~20cm) · drain blockage",
+                "Surface runoff has accumulated around the Monumento roundabout and Samson Road. Transit and jeepney queues delayed.",
+                54,
+                List.of(
+                    new RoutePoint("start", "East approach", "EDSA toward Monumento", "Ponding in outer bus lane"),
+                    new RoutePoint("mid", "Watched", "Monumento Circle / Samson Rd.", "Shin-deep flood at corner"),
+                    new RoutePoint("end", "West exit", "Samson Rd. toward Malabon", "Passable with delay")
+                ),
+                null
+            )
         );
+    }
+
+    public static SafeGoLocation createFloodProneLocation(
+            String id, String name, String city, List<String> aliases, double[] coordinates,
+            String floodTitle, String floodMeta, String riskSummary, int floodScore,
+            List<RoutePoint> points, String hazardTitle) {
+        int weatherScore = 55;
+        int advisoryScore = 65;
+        String floodPill = floodScore >= 80 ? "crit" : floodScore >= 60 ? "high" : floodScore >= 30 ? "mod" : "low";
+        String floodPillText = floodScore >= 80 ? "Critical" : floodScore >= 60 ? "High" : "Elevated";
+        List<RiskFactor> factors = List.of(
+            new RiskFactor("Weather", weatherScore, "mod", "Moderate", "Rain continuing over " + city + ". Weather system active across Metro Manila.", "weather", "icon-weather"),
+            new RiskFactor("Flood / roads", floodScore, floodPill, floodPillText, floodTitle + ": " + floodMeta + ".", "flood", "icon-alert"),
+            new RiskFactor("Official advisories", advisoryScore, "high", "Elevated", "City flood bulletin and PAGASA rainfall advisory active for " + city + ".", "alert", "icon-alert"),
+            new RiskFactor("School status", 20, "low", "Normal", "Classes subject to local LGU suspension announcements.", "school", "icon-ok"),
+            new RiskFactor("Community reports", 40, "mod", "Active", "Community reports received and being monitored.", "reports", "icon-neutral")
+        );
+        List<Advisory> advisories = List.of(
+            new Advisory("gov", city, city + " DRRMO Flood Advisory", floodTitle + " reported. Motorists are advised to seek alternate routes.", "6:10 AM", DEMO_DATE, true, null),
+            new Advisory("weather", "PAGASA", "Metro Manila Rainfall Advisory", "Moderate to heavy rainfall expected over low-lying areas.", "6:15 AM", DEMO_DATE, true, null)
+        );
+        List<CommunityReport> reports = List.of(
+            new CommunityReport("Flooding", floodTitle, name + " · 6:15 AM", "verified", "Verified")
+        );
+        List<Hazard> floods = List.of(new Hazard(floodTitle, floodMeta, "icon-alert"));
+        List<Hazard> hazards = hazardTitle != null ? List.of(new Hazard(hazardTitle, "Reported 6:10 AM · Verified", null)) : List.of();
+        List<Stat> stats = List.of(
+            new Stat("Weather", "Rain, 25°C", "Active rain system", "weather", "icon-weather"),
+            new Stat("School status", "Monitor LGUs", "Check city DRRMO bulletin", "school", "icon-ok"),
+            new Stat("Road condition", floodTitle, floodMeta, "flood", "icon-alert"),
+            new Stat("Latest advisory", "Flood watch", city + " DRRMO alert", "alert", "icon-alert")
+        );
+        return create(id, name, city, aliases, coordinates, "6:40 AM", riskSummary, "Flood hazard · delays",
+            stats, factors, advisories, List.of(), reports, points, floods, hazards);
     }
 
     public static SafeGoLocation create(

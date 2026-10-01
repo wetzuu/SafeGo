@@ -46,7 +46,7 @@ public class AlertsController {
         PagasaCapService.Result result = dashboard.pagasaAlerts();
         List<ActiveAlert> alerts = new ArrayList<>();
         for (PagasaCapService.CapAlert alert : result.alerts()) metroManilaView(alert).ifPresent(alerts::add);
-        return LocationsController.noStore(ApiResponse.ok(
+        return ApiResponse.noStore(ApiResponse.ok(
             Map.of("alerts", alerts, "source", result.status()), dashboard.backend()));
     }
 
@@ -72,7 +72,7 @@ public class AlertsController {
         Set<String> used = new HashSet<>();
         hours.forEach(hour -> used.addAll(hour.alertIds()));
         List<ActiveAlert> alerts = views.values().stream().filter(view -> used.contains(view.id())).toList();
-        return LocationsController.noStore(ApiResponse.ok(
+        return ApiResponse.noStore(ApiResponse.ok(
             Map.of("alerts", alerts, "hours", hours, "source", recent.status()), dashboard.backend()));
     }
 

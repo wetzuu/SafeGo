@@ -20,4 +20,10 @@ public final class ApiResponse {
     public static Map<String, Object> error(String code, String message) {
         return Map.of("error", Map.of("code", code, "message", message));
     }
+
+    public static org.springframework.http.ResponseEntity<Object> noStore(Object body) {
+        return org.springframework.http.ResponseEntity.ok()
+            .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(body);
+    }
 }

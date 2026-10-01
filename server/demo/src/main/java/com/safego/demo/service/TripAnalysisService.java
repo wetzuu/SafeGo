@@ -13,13 +13,31 @@ import java.util.stream.Collectors;
 @Service
 public class TripAnalysisService {
 
-    public static final String PILOT_ID = "manila-makati-v1";
-    public static final String PILOT_NAME = "Manila–Makati–Pasig pilot";
+    public static final String PILOT_ID = "ncr-pilot-v1";
+    public static final String PILOT_NAME = "Metro Manila pilot";
     public static final double PILOT_RADIUS_METERS = 850.0;
     public static final int PILOT_MIN_COVERAGE_PCT = 90;
     public static final double SAMPLE_LENGTH_METERS = 100.0;
-    public static final List<String> PILOT_LOCATION_IDS =
-        List.of("espana", "lerma", "quiapo", "mapua-makati", "ortigas-pasig");
+    public static final List<String> PILOT_LOCATION_IDS = List.of(
+        "espana",
+        "lerma",
+        "quiapo",
+        "mapua-makati",
+        "ortigas-pasig",
+        "marikina-riverbanks",
+        "malabon-dampalit",
+        "navotas-nbbs",
+        "valenzuela-malinta",
+        "qc-araneta",
+        "mandaluyong-maysilo",
+        "san-juan-river",
+        "paranaque-sucat",
+        "pasay-rotonda",
+        "taguig-c6",
+        "laspinas-zapote",
+        "muntinlupa-bayanan",
+        "caloocan-monumento"
+    );
 
     public TripAnalysis assessTrip(
             ResolvedPlace origin, ResolvedPlace dest, RouteResult route,

@@ -32,7 +32,7 @@ public class AreaWeatherController {
             return ResponseEntity.status(400).body(ApiResponse.error("invalid_points", e.getMessage()));
         }
         AreaWeatherService.Result result = areaWeather.readings(body.points());
-        return LocationsController.noStore(ApiResponse.ok(
+        return ApiResponse.noStore(ApiResponse.ok(
             Map.of("readings", result.readings(), "source", result.source()), dashboard.backend()));
     }
 
@@ -45,7 +45,7 @@ public class AreaWeatherController {
             return ResponseEntity.status(400).body(ApiResponse.error("invalid_points", e.getMessage()));
         }
         AreaWeatherService.TimelineResult result = areaWeather.timeline(body.points());
-        return LocationsController.noStore(ApiResponse.ok(
+        return ApiResponse.noStore(ApiResponse.ok(
             Map.of("timelines", result.timelines(), "source", result.source()), dashboard.backend()));
     }
 
@@ -58,7 +58,7 @@ public class AreaWeatherController {
             return ResponseEntity.status(400).body(ApiResponse.error("invalid_points", e.getMessage()));
         }
         AreaWeatherService.HistoryResult result = areaWeather.history(body.points());
-        return LocationsController.noStore(ApiResponse.ok(
+        return ApiResponse.noStore(ApiResponse.ok(
             Map.of("history", result.history(), "source", result.source()), dashboard.backend()));
     }
 }
