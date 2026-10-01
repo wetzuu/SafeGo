@@ -79,8 +79,8 @@ function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: stri
 function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor: FactorName }) {
   if (!location.risk.countedFactors) return null;
   return location.risk.countedFactors.includes(factor)
-    ? <span className="text-[10px] font-bold uppercase text-low">Live</span>
-    : <span className="text-[10px] font-bold uppercase text-mod">Demo · not counted</span>;
+    ? <span className="text-[10px] font-bold text-low">Live</span>
+    : <span className="text-[10px] font-bold text-mod">Demo · not counted</span>;
 }
 
 function BasisNote({ location }: { location: SafeGoLocation }) {
@@ -239,6 +239,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [accountOpen, setAccountOpen] = useState(false);
   // Phones: the planner opens from the floating search bar.
   const [plannerOpen, setPlannerOpen] = useState(false);
+  // Desktop: the map draws its legend into the sidebar.
+  const [legendSlot, setLegendSlot] = useState<HTMLDivElement | null>(null);
   const [dismissedUniversities, setDismissedUniversities] = useState<ReadonlySet<string>>(() => new Set());
   // Ticks every minute so expired announcements drop off without a reload.
   const [clock, setClock] = useState(() => Date.now());
@@ -496,13 +498,12 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <button className="min-h-9 rounded-full border border-hairline px-3 text-xs font-semibold text-ink hover:bg-surface" type="button" onClick={() => setAccountOpen(true)}>
-                  {account ? `Hi, ${account.name}` : "Sign in"}
+                  {account ? account.name : "Sign in"}
                 </button>
               </div>
             </div>
 
-            <h1 className="text-lg font-bold text-ink">Check before you go</h1>
-            <p className="text-sm text-ink-soft mb-3">Search a place to see its conditions, or add a destination to check a trip.</p>
+            <h1 className="mb-3 text-base font-semibold text-ink">Check a place or a trip</h1>
 
             {isDesktop && planner}
 
@@ -512,25 +513,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               </button>
             )}
 
-            <div className="mt-5 mb-2 text-xs font-semibold text-ink-soft">Quick picks</div>
-            <div className="place-chips flex flex-wrap gap-1.5">
-              {locations.slice(0, 6).map((loc) => {
-                const active = !trip && loc.id === selectedLocation?.id;
-                return (
-                  <button
-                    key={loc.id}
-                    type="button"
-                    className={`min-h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
-                      active ? "bg-brand-soft border-brand text-brand-ink" : "bg-surface border-hairline hover:border-brand text-ink"
-                    }`}
-                    aria-pressed={active}
-                    onClick={() => selectLocation(loc)}
-                  >
-                    {shortPlaceName(loc.name)}
-                  </button>
-                );
-              })}
-            </div>
+            <div className="mt-5 empty:hidden" ref={setLegendSlot} />
           </div>
 
           <div className="mt-5 [&_.data-status]:mb-0">{dataStatus}</div>
@@ -555,6 +538,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               footer={<div className="[&_.data-status]:mb-0">{dataStatus}</div>}
               notice={apiUnavailable ? "Can’t reach SafeGo’s server. Retrying; ratings may be out of date." : null}
               bottomInset={isDesktop ? 0 : MOBILE_NAV_HEIGHT}
+              legendSlot={isDesktop ? legendSlot : null}
             />
           ) : (
             <div className="main-col h-dvh overflow-y-auto pb-16 lg:pb-0" ref={detailScrollRef}>

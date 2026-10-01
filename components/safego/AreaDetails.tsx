@@ -106,7 +106,7 @@ export function AreaDetails({
         <div className="mt-3 space-y-2">
           {advisory.alerts.map((alert) => (
             <div key={alert.id} className="rounded-box border border-brand/30 bg-brand-soft p-3">
-              <div className="text-xs font-bold uppercase tracking-wide text-brand-ink">{timeLabel ? "Official alert then" : "Official alert"} · PAGASA</div>
+              <div className="text-xs font-bold text-brand-ink">{timeLabel ? "Official alert then" : "Official alert"} · PAGASA</div>
               <a className="text-sm font-semibold text-ink underline-offset-2 hover:underline" href={alert.sourceUrl} target="_blank" rel="noreferrer">
                 {alert.headline}
               </a>

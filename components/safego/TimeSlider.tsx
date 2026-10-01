@@ -57,7 +57,7 @@ export function TimeSlider({
   const ticks = useMemo(() => dayTicks(start, end), [start, end]);
 
   return (
-    <div className="pointer-events-auto rounded-2xl border border-hairline bg-panel/95 backdrop-blur-md shadow-xl px-3 py-2">
+    <div className="pointer-events-auto rounded-box border border-hairline bg-panel shadow-[var(--shadow-card)] px-3 py-2">
       <div className="flex items-center gap-3">
         <button
           type="button"

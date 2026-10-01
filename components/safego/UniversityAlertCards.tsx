@@ -30,7 +30,7 @@ export function UniversityAlertCards({
             // Fixed strong colours with white text: the same high contrast in light and dark themes.
             className={`relative rounded-box p-3 pr-10 text-white shadow-[var(--shadow-card)] ${suspended ? "bg-[#b42318]" : "bg-[#1d4ed8]"}`}
           >
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold">
               <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 10.5 12 5l8 5.5M6 10v8h12v-8" />
               </svg>

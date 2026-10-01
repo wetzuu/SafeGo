@@ -152,9 +152,6 @@
     @apply px-3.5 py-2.5 text-[13px] text-ink-soft;
   }
 
-  .place-chips {
-    @apply flex flex-wrap gap-2;
-  }
 
   .data-status {
     @apply mb-3 flex items-center gap-2.5 rounded-box border border-hairline bg-panel px-3 py-2 text-left;
@@ -189,11 +186,11 @@
   }
 
   .data-status-copy span {
-    @apply text-[10.5px] leading-normal text-ink-soft;
+    @apply text-[11px] leading-normal text-ink-soft;
   }
 
   .data-status button {
-    @apply cursor-pointer rounded-box border border-hairline bg-panel px-2.5 py-1.5 text-[10.5px] font-semibold text-brand-ink disabled:cursor-wait disabled:text-ink-soft;
+    @apply cursor-pointer rounded-box border border-hairline bg-panel px-2.5 py-1.5 text-[11px] font-semibold text-brand-ink disabled:cursor-wait disabled:text-ink-soft;
   }
 
   .dashboard-data-status {
@@ -229,7 +226,7 @@
   }
 
   .trip-field label {
-    @apply mb-1 block text-[10.5px] font-bold uppercase tracking-wide text-ink-soft;
+    @apply mb-1 block text-[11px] font-bold text-ink-soft;
   }
 
   .trip-field input {
@@ -281,7 +278,7 @@
   }
 
   .system-state-kicker {
-    @apply mt-7 text-[10px] font-bold uppercase tracking-wider text-brand-ink;
+    @apply mt-7 text-[11px] font-bold text-brand-ink;
   }
 
   .system-state-card h1 {
@@ -330,7 +327,7 @@
   }
 
   .overview-safety-note {
-    @apply mt-4 border-t border-hairline pt-3 text-[10.5px] leading-normal text-ink-soft;
+    @apply mt-4 border-t border-hairline pt-3 text-[11px] leading-normal text-ink-soft;
   }
 
   .section-title-copy {
@@ -346,7 +343,7 @@
   }
 
   .section-title-copy > div > span {
-    @apply block text-[9px] font-bold uppercase tracking-wider text-brand-ink;
+    @apply block text-[11px] font-bold text-brand-ink;
   }
 
   .section-title-copy h2 {
@@ -374,7 +371,7 @@
   }
 
   .route-factor-pills span {
-    @apply rounded-sm bg-surface px-2 py-1 text-[10px] text-ink-soft;
+    @apply rounded-sm bg-surface px-2 py-1 text-[11px] text-ink-soft;
   }
 
   .brandmark {
@@ -468,7 +465,7 @@
   }
 
   .page-eyebrow {
-    @apply mb-1 text-[11px] font-semibold uppercase tracking-wider text-brand-ink;
+    @apply mb-1 text-[11px] font-semibold text-brand-ink;
   }
 
   .page-title {
@@ -516,7 +513,7 @@
   }
 
   .pill {
-    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-bold;
   }
 
   .pill.low {
@@ -568,7 +565,7 @@
   }
 
   .risk-hero-q {
-    @apply mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-soft;
+    @apply mb-1.5 text-xs font-semibold text-ink-soft;
   }
 
   .risk-level-row {
@@ -668,11 +665,11 @@
   }
 
   .src-tag {
-    @apply rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
+    @apply rounded-sm px-1.5 py-0.5 text-[11px] font-bold;
   }
 
   .advisory-demo-tag {
-    @apply rounded-sm border border-mod bg-mod-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-mod;
+    @apply rounded-sm border border-mod bg-mod-soft px-1.5 py-0.5 text-[11px] font-bold text-mod;
   }
 
   .src-school {
@@ -730,7 +727,7 @@
   }
 
   .status-chip {
-    @apply whitespace-nowrap rounded-sm px-2 py-0.5 text-[10.5px] font-bold uppercase;
+    @apply whitespace-nowrap rounded-sm px-2 py-0.5 text-[11px] font-bold;
   }
 
   .status-pending {
@@ -885,7 +882,7 @@
 
   .map-evidence-legend,
   .map-evidence {
-    @apply mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline pt-3 text-[10.5px] text-ink-soft;
+    @apply mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline pt-3 text-[11px] text-ink-soft;
   }
 
   .map-evidence .mono {
@@ -933,7 +930,7 @@
   }
 
   .route-node .rn-label {
-    @apply text-[11px] font-bold uppercase tracking-wide text-ink-soft;
+    @apply text-[11px] font-bold text-ink-soft;
   }
 
   .route-node .rn-name {
@@ -977,7 +974,7 @@
   }
 
   .report-label-row span {
-    @apply text-[10px] text-ink-soft;
+    @apply text-[11px] text-ink-soft;
   }
 
   .type-chip-row {
@@ -1093,7 +1090,7 @@
   }
 
   .university-status {
-    @apply flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10.5px] font-bold;
+    @apply flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold;
   }
 
   .university-status svg {
@@ -1137,7 +1134,7 @@
   }
 
   .university-meta {
-    @apply mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5 text-[10.5px] text-ink-soft;
+    @apply mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5 text-[11px] text-ink-soft;
   }
 
   .university-source,
@@ -1166,7 +1163,7 @@
   }
 
   .university-disclaimer {
-    @apply mt-2.5 flex items-start gap-2 text-[10.5px] leading-relaxed text-ink-soft;
+    @apply mt-2.5 flex items-start gap-2 text-[11px] leading-relaxed text-ink-soft;
   }
 
   .university-disclaimer svg {
@@ -1191,7 +1188,7 @@
   }
 
   .account-head span {
-    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-brand-ink;
+    @apply text-[11px] font-bold text-brand-ink;
   }
 
   .account-head h2 {

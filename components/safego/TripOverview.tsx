@@ -19,8 +19,8 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
       <div className="bg-panel border border-hairline rounded-2xl p-5 mb-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-hairline pb-4 mb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-soft mb-1">
-              <span>Driving Route</span>
+            <div className="flex items-center gap-2 text-xs font-semibold text-ink-soft mb-1">
+              <span>Driving route</span>
               <span>•</span>
               <span>{distanceKm} km</span>
               {trip.roadNames.length > 0 && (
@@ -30,7 +30,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
                 </>
               )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-ink">Trip Safety Assessment</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-ink">Trip safety check</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -39,7 +39,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
               onClick={() => navigate("map")}
             >
               <Icon name="map" />
-              <span>View Map</span>
+              <span>View map</span>
             </button>
             <button
               type="button"
@@ -56,7 +56,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
         <div className={`risk-hero risk-${trip.riskKey} rounded-xl !p-5`}>
           <div className="risk-hero-top">
             <div>
-              <div className="risk-hero-q text-xs uppercase tracking-wide">Overall Travel Risk</div>
+              <div className="risk-hero-q text-xs">Overall travel risk</div>
               <div className="risk-level-row my-1">
                 <div className="risk-level-name text-2xl font-bold">{trip.riskName}</div>
                 {trip.overallRiskScore !== null && (
@@ -90,7 +90,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
             <Icon name="weather" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Weather</div>
+            <div className="text-[11px] font-semibold text-ink-soft">Weather</div>
             <div className="text-sm font-bold text-ink truncate">{weatherStat?.value ?? "Monitored"}</div>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
             <Icon name="flood" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Road & Flood</div>
+            <div className="text-[11px] font-semibold text-ink-soft">Roads and flooding</div>
             <div className="text-sm font-bold text-ink truncate">{floodStat?.value ?? "Clear"}</div>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
             <Icon name="alert" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Advisories</div>
+            <div className="text-[11px] font-semibold text-ink-soft">Advisories</div>
             <div className="text-sm font-bold text-ink truncate">{trip.advisories.length} Active</div>
           </div>
         </div>
@@ -120,7 +120,7 @@ export function TripOverview({ trip, navigate }: { trip: TripAnalysis; navigate:
             <Icon name="school" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-ink-soft uppercase tracking-wide">School Status</div>
+            <div className="text-[11px] font-semibold text-ink-soft">Schools</div>
             <div className="text-sm font-bold text-ink truncate">{universities.length ? `${universities.length} Campuses` : "Normal"}</div>
           </div>
         </div>

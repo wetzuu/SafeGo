@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CircleMarker, GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
@@ -156,6 +157,8 @@ export interface RiskMapProps {
   notice?: string | null;
   /** Space taken by a bottom tab bar on phones, so the sheet sits above it. */
   bottomInset?: number;
+  /** When set, the legend is rendered into this element (the desktop sidebar) instead of over the map. */
+  legendSlot?: HTMLElement | null;
 }
 
 export function RiskMap({
@@ -175,6 +178,7 @@ export function RiskMap({
   footer,
   notice = null,
   bottomInset = 0,
+  legendSlot = null,
 }: RiskMapProps) {
   const isDesktop = useIsDesktop();
   const [sheet, setSheet] = useState<SheetState>("peek");
@@ -807,7 +811,7 @@ export function RiskMap({
   const header = (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="text-xs font-semibold uppercase tracking-wide text-ink-soft truncate">{kicker}</div>
+        <div className="text-xs font-semibold text-ink-soft truncate">{kicker}</div>
         <h3 className="text-base font-bold text-ink truncate">{title}</h3>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <RiskBadge level={headMessage.level} partial={headPartial} />
@@ -851,7 +855,7 @@ export function RiskMap({
         {latestAdvisory && (
           <div className="mb-3 rounded-box border border-brand/30 bg-brand-soft p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wide text-brand-ink">
+              <span className="text-xs font-bold text-brand-ink">
                 {atLabel ? "Official alert then" : "Official alert"}{latestAdvisory.isMock ? " · Demo" : ""}
               </span>
               {onViewAnnouncements && at === null && (
@@ -938,7 +942,7 @@ export function RiskMap({
   );
 
   const legend = (
-    <div className="pointer-events-auto w-64 max-w-[calc(100vw-5.5rem)] rounded-box border border-hairline bg-panel p-3 text-xs shadow-[var(--shadow-card)]" role="region" aria-label="Map legend">
+    <div className={legendSlot ? "rounded-box border border-hairline bg-panel p-3 text-xs" : "pointer-events-auto w-64 max-w-[calc(100vw-5.5rem)] rounded-box border border-hairline bg-panel p-3 text-xs shadow-[var(--shadow-card)]"} role="region" aria-label="Map legend">
       <div className="font-bold text-ink mb-1.5">{activeLayerLabel} by area{atLabel ? ` · ${atLabel}` : ""}</div>
       <div className="grid grid-cols-10 gap-px">
         {Array.from({ length: SCORE_CLASS_COUNT }, (_, riskClass) => (
@@ -986,13 +990,13 @@ export function RiskMap({
 
   const fabs = (
     <>
-      {legendOpen && legend}
+      {legendSlot ? createPortal(legend, legendSlot) : legendOpen && legend}
       {locateMessage && (
         <div className="pointer-events-auto max-w-56 rounded-box bg-inverse px-3 py-2 text-xs text-white shadow-[var(--shadow-card)]" role="status">{locateMessage}</div>
       )}
-      <Fab label={legendOpen ? "Hide map legend" : "Show map legend"} active={legendOpen} onClick={() => setLegendOpen(!legendOpen)}>
+      {!legendSlot && <Fab label={legendOpen ? "Hide map legend" : "Show map legend"} active={legendOpen} onClick={() => setLegendOpen(!legendOpen)}>
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
-      </Fab>
+      </Fab>}
       <Fab label="Recenter the map" onClick={() => setFitNonce((nonce) => nonce + 1)}>
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
       </Fab>
