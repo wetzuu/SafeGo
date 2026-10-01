@@ -34,9 +34,15 @@ for (const port of [3000, 8080]) {
   }
 }
 
+const args = process.argv.slice(2);
+const useWebpack =
+  args.includes("--webpack") ||
+  Boolean(process.env.npm_config_webpack && process.env.npm_config_webpack !== "false");
+const nextArgs = ["dev", ...(useWebpack ? ["--webpack"] : []), ...args.filter((arg) => arg !== "--webpack")];
+
 const children = [
   spawn(process.execPath, [join(root, "scripts", "java-api.mjs")], { cwd: root, stdio: "inherit" }),
-  spawn(process.execPath, [join(root, "node_modules", "next", "dist", "bin", "next"), "dev"], { cwd: root, stdio: "inherit" }),
+  spawn(process.execPath, [join(root, "node_modules", "next", "dist", "bin", "next"), ...nextArgs], { cwd: root, stdio: "inherit" }),
 ];
 
 let stopping = false;

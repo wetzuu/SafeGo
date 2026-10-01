@@ -6,7 +6,8 @@
 // - City of Manila districts: OpenStreetMap via Nominatim (© OpenStreetMap contributors, ODbL).
 //
 // Run with: npm run data:boundaries
-import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,21 +51,26 @@ function roundGeometry(geometry) {
   if (!geometry) return null;
   const ring = (points) => points.map(([lon, lat]) => [round(lon), round(lat)]);
   if (geometry.type === "Polygon") return { type: "Polygon", coordinates: geometry.coordinates.map(ring) };
-  if (geometry.type === "MultiPolygon") return { type: "MultiPolygon", coordinates: geometry.coordinates.map((polygon) => polygon.map(ring)) };
+  if (geometry.type === "MultiPolygon") {
+    const validPolys = geometry.coordinates.filter((poly) => areaKm2({ type: "Polygon", coordinates: poly }) >= 0.05);
+    const coordinates = (validPolys.length ? validPolys : geometry.coordinates).map((polygon) => polygon.map(ring));
+    if (coordinates.length === 1) return { type: "Polygon", coordinates: coordinates[0] };
+    return { type: "MultiPolygon", coordinates };
+  }
   return null;
 }
 
 async function psaBarangays() {
   const cityNames = new Map();
   for (const district of NCR_DISTRICTS) {
-    const cities = await getJson(`${PSA_BASE}/provdists/medres/municities-provdist-${district}.0.01.json`);
+    const cities = await getJson(`${PSA_BASE}/provdists/hires/municities-provdist-${district}.0.1.json`);
     for (const feature of cities.features) cityNames.set(feature.properties.adm3_psgc, feature.properties.adm3_en);
   }
 
   const areas = [];
   for (const psgc of cityNames.keys()) {
     if (psgc === MANILA_PSGC) continue;
-    const barangays = await getJson(`${PSA_BASE}/municities/medres/bgysubmuns-municity-${psgc}.0.01.json`);
+    const barangays = await getJson(`${PSA_BASE}/municities/hires/bgysubmuns-municity-${psgc}.0.1.json`);
     for (const feature of barangays.features ?? []) {
       const geometry = roundGeometry(feature.geometry);
       if (!geometry) continue;
@@ -83,6 +89,18 @@ async function psaBarangays() {
 }
 
 async function manilaDistricts() {
+  if (existsSync(output)) {
+    try {
+      const existing = JSON.parse(await readFile(output, "utf8"));
+      const cached = existing.features?.filter((f) => f.properties?.city === "City of Manila") ?? [];
+      if (cached.length === MANILA_DISTRICTS.length) {
+        return cached.map((f) => {
+          const geometry = roundGeometry(f.geometry);
+          return { ...f.properties, geometry, areaKm2: Math.round(areaKm2(geometry) * 100) / 100 };
+        });
+      }
+    } catch {}
+  }
   const areas = [];
   for (const district of MANILA_DISTRICTS) {
     // Nominatim allows at most one request per second.
