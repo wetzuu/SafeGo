@@ -1,4 +1,5 @@
 import type { UniversityAlert } from "@/lib/safego/university-alerts";
+import { primarySourceFor } from "@/lib/safego/university-sources";
 
 /**
  * Prominent cards for active nearby-university announcements. Renders nothing at all when there are
@@ -24,6 +25,7 @@ export function UniversityAlertCards({
     <section className="mb-3 space-y-2" aria-label="University announcements near you">
       {shown.map(({ university, area }) => {
         const suspended = university.status === "suspended";
+        const officialSource = primarySourceFor(university);
         return (
           <article
             key={university.id}
@@ -47,6 +49,11 @@ export function UniversityAlertCards({
             {university.announcementVerified && university.announcementUrl && (
               <a className="mt-1.5 inline-block text-xs font-bold underline underline-offset-2" href={university.announcementUrl} target="_blank" rel="noreferrer">
                 Read the official post
+              </a>
+            )}
+            {!university.announcementUrl && officialSource && (
+              <a className="mt-1.5 inline-block text-xs font-bold underline underline-offset-2" href={officialSource.url} target="_blank" rel="noreferrer">
+                Check {officialSource.name}
               </a>
             )}
             {onDismiss && (

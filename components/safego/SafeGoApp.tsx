@@ -13,6 +13,7 @@ import type {
   FactorName,
   SafeGoLocation,
   ScreenKey,
+  UniversityStatus,
 } from "@/lib/safego/types";
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
@@ -31,6 +32,7 @@ import { AccountPanel, loadAccountSession } from "./AccountPanel";
 import { displayFactorName, shortPlaceName } from "./labels";
 import { activeUniversityAlerts } from "@/lib/safego/university-alerts";
 import { UniversityAlertCards } from "./UniversityAlertCards";
+import { UniversitySourceDirectory } from "./UniversitySourceDirectory";
 import { RiskBadge, ThemeToggle, useIsDesktop, useSavedTheme } from "./ui";
 import type { AccountProfile } from "@/lib/account/types";
 
@@ -57,7 +59,7 @@ function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavail
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
   const label = apiUnavailable ? "Live updates unavailable" : live ? "Live weather" : degraded ? "Showing saved conditions" : backend === "mock" ? "Demo information" : "Saved conditions";
-  const detail = apiUnavailable ? "You can still explore the demo, but check official sources before traveling." : live && updated ? `Open-Meteo · checked ${updated}${backend === "mock" ? " · other conditions are demo data" : ""}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "mock" ? "For exploring SafeGo only" : "Check official sources for the latest information";
+  const detail = apiUnavailable ? "You can still explore the demo, but check official sources before traveling." : live && updated ? `${weather?.name ?? "Weather provider"} · checked ${updated}${backend === "mock" ? " · other conditions are demo data" : ""}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "mock" ? "For exploring SafeGo only" : "Check official sources for the latest information";
 
   return <div className={`data-status${!apiUnavailable && live ? " live" : apiUnavailable || degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
@@ -415,6 +417,12 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       dismissedUniversities,
     );
   }, [clock, detailLocation, dismissedUniversities, trip]);
+  const nearbyUniversities = useMemo(() => {
+    const places = trip ? trip.corridorLocations : detailLocation ? [detailLocation] : [];
+    return Array.from(new Map(
+      places.flatMap((place) => place.universities).map((university) => [university.id, university] as const),
+    ).values()) as UniversityStatus[];
+  }, [detailLocation, trip]);
   const dismissUniversity = useCallback((id: string) => {
     setDismissedUniversities((current) => new Set(current).add(id));
   }, []);
@@ -516,7 +524,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
             <div className="mt-5 empty:hidden" ref={setLegendSlot} />
           </div>
 
-          <div className="mt-5 [&_.data-status]:mb-0">{dataStatus}</div>
+          <div className="mb-10 mt-5 [&_.data-status]:mb-0">{dataStatus}</div>
         </aside>
 
         <main className="flex-1 relative h-dvh overflow-hidden">
@@ -587,6 +595,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                   />
                   <UniversityAlertCards alerts={universityAlerts} limit={universityAlerts.length} onDismiss={dismissUniversity} />
                   <Advisories items={trip ? trip.advisories : detailLocation?.advisories ?? []} />
+                  <UniversitySourceDirectory universities={nearbyUniversities} />
                 </section>
               )}
               {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : detailLocation && <LocationConditions location={detailLocation} />)}

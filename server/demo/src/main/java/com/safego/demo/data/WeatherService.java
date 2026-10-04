@@ -2,6 +2,7 @@ package com.safego.demo.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.safego.demo.model.Hazard;
 import com.safego.demo.model.RiskFactor;
 import com.safego.demo.model.SafeGoLocation;
@@ -22,6 +23,10 @@ public class WeatherService {
 
     private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+    private static final Object OPEN_METEO_GATE = new Object();
+    private static final long MIN_REQUEST_GAP_MS = 900;
+    private static long nextOpenMeteoRequestAt;
+    private volatile String currentProviderName = "Open-Meteo forecast models";
     private static final String WEATHER_FIELDS =
         "temperature_2m,relative_humidity_2m,precipitation,rain,showers,weather_code,wind_speed_10m,wind_gusts_10m";
     // Rain over the past day and the next three hours, so scoring can see accumulation and what's coming.
@@ -55,7 +60,15 @@ public class WeatherService {
         String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
             + "&current=" + URLEncoder.encode(WEATHER_FIELDS, StandardCharsets.UTF_8) + HOURLY_RAIN + "&timezone=Asia%2FManila";
 
-        JsonNode payload = request(url);
+        JsonNode payload;
+        try {
+            payload = request(url);
+            currentProviderName = "Open-Meteo forecast models";
+        } catch (IllegalStateException error) {
+            if (!error.getMessage().contains("HTTP 429") && !error.getMessage().contains("rate limited")) throw error;
+            currentProviderName = "MET Norway forecast (Open-Meteo fallback)";
+            return fetchMetNorwayReadings(coordinates);
+        }
         List<JsonNode> observations = new ArrayList<>();
         if (payload.isArray()) payload.forEach(observations::add);
         else observations.add(payload);
@@ -82,6 +95,99 @@ public class WeatherService {
             ));
         }
         return readings;
+    }
+
+    public String currentProviderName() {
+        return currentProviderName;
+    }
+
+    /** Current global forecast fallback used only while Open-Meteo is rate limited. */
+    private List<Reading> fetchMetNorwayReadings(List<double[]> coordinates) throws Exception {
+        List<Reading> readings = new ArrayList<>();
+        for (double[] coordinate : coordinates) {
+            String url = String.format(Locale.ROOT,
+                "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.4f&lon=%.4f",
+                coordinate[0], coordinate[1]);
+            JsonNode payload = requestMetNorway(url);
+            JsonNode timeseries = payload.path("properties").path("timeseries");
+            if (!timeseries.isArray() || timeseries.isEmpty()) {
+                throw new IllegalStateException("MET Norway response is missing forecast data.");
+            }
+
+            JsonNode first = timeseries.get(0);
+            JsonNode details = first.path("data").path("instant").path("details");
+            if (!details.path("air_temperature").isNumber() || !details.path("wind_speed").isNumber()) {
+                throw new IllegalStateException("MET Norway response is missing current weather fields.");
+            }
+
+            double windSpeedKph = details.path("wind_speed").asDouble() * 3.6;
+            double gustKph = details.path("wind_speed_of_gust").asDouble(details.path("wind_speed").asDouble()) * 3.6;
+            double currentRain = precipitation(first);
+            int weatherCode = metNorwayWeatherCode(first.path("data").path("next_1_hours").path("summary").path("symbol_code").asText());
+
+            ObjectNode current = mapper.createObjectNode();
+            current.put("time", first.path("time").asText());
+            current.put("interval", 3600);
+            current.put("weather_code", weatherCode);
+            current.put("temperature_2m", details.path("air_temperature").asDouble());
+            current.put("precipitation", currentRain);
+            current.put("wind_speed_10m", windSpeedKph);
+            current.put("wind_gusts_10m", gustKph);
+
+            ObjectNode hourly = mapper.createObjectNode();
+            var times = hourly.putArray("time");
+            var rain = hourly.putArray("precipitation");
+            String currentHour = first.path("time").asText().substring(0, 13) + ":00";
+            times.add(currentHour);
+            rain.add(0);
+            for (int index = 1; index < Math.min(4, timeseries.size()); index++) {
+                JsonNode hour = timeseries.get(index);
+                times.add(hour.path("time").asText().substring(0, 13) + ":00");
+                rain.add(precipitation(hour));
+            }
+
+            readings.add(new Reading(
+                RainfallScoring.assess(current, hourly),
+                details.path("air_temperature").asDouble(),
+                windSpeedKph,
+                gustKph,
+                first.path("time").asText()
+            ));
+        }
+        return readings;
+    }
+
+    private JsonNode requestMetNorway(String url) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+        connection.setConnectTimeout(10_000);
+        connection.setReadTimeout(15_000);
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("User-Agent", "SafeGo/0.1 local-development");
+        try {
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) throw new IllegalStateException("Weather fallback returned HTTP " + code + ".");
+            try (var body = connection.getInputStream()) {
+                return mapper.readTree(body);
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private static double precipitation(JsonNode hour) {
+        return hour.path("data").path("next_1_hours").path("details").path("precipitation_amount").asDouble(0);
+    }
+
+    private static int metNorwayWeatherCode(String symbol) {
+        String value = symbol.toLowerCase(Locale.ROOT);
+        if (value.contains("thunder")) return 95;
+        if (value.contains("heavyrain")) return 65;
+        if (value.contains("rainshowers")) return 80;
+        if (value.contains("rain")) return 61;
+        if (value.contains("fog")) return 45;
+        if (value.contains("cloudy")) return 3;
+        if (value.contains("fair")) return 1;
+        return 0;
     }
 
     /** Scored weather for every hour of the last {@code days} days up to now, oldest first, at each coordinate. */
@@ -167,22 +273,59 @@ public class WeatherService {
     }
 
     private JsonNode request(String url) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
-        connection.setConnectTimeout(8_000);
-        connection.setReadTimeout(8_000);
-        connection.setRequestProperty("Accept", "application/json");
-        connection.setRequestProperty("User-Agent", "SafeGo/0.1");
-        try {
-            int code = connection.getResponseCode();
-            if (code < 200 || code >= 300) {
-                throw new IllegalStateException("Source returned HTTP " + code + ".");
+        // The map, dashboard and four-day timeline can initialize together. Serialize those calls
+        // and honor 429 Retry-After responses instead of sending a burst that extends throttling.
+        synchronized (OPEN_METEO_GATE) {
+            for (int attempt = 0; attempt < 3; attempt++) {
+                waitForOpenMeteoSlot();
+                HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+                connection.setConnectTimeout(10_000);
+                connection.setReadTimeout(15_000);
+                connection.setRequestProperty("Accept", "application/json");
+                connection.setRequestProperty("User-Agent", "SafeGo/0.1 (weather; contact in app configuration)");
+                try {
+                    int code = connection.getResponseCode();
+                    nextOpenMeteoRequestAt = System.currentTimeMillis() + MIN_REQUEST_GAP_MS;
+                    if (code == 429 && attempt < 2) {
+                        nextOpenMeteoRequestAt = System.currentTimeMillis() + retryAfterMillis(connection, attempt);
+                        continue;
+                    }
+                    if (code < 200 || code >= 300) {
+                        throw new IllegalStateException("Source returned HTTP " + code + ".");
+                    }
+                    try (var body = connection.getInputStream()) {
+                        return mapper.readTree(body);
+                    }
+                } finally {
+                    connection.disconnect();
+                }
             }
-            try (var body = connection.getInputStream()) {
-                return mapper.readTree(body);
-            }
-        } finally {
-            connection.disconnect();
+            throw new IllegalStateException("Open-Meteo remained rate limited after retrying.");
         }
+    }
+
+    private static void waitForOpenMeteoSlot() throws InterruptedException {
+        long wait = nextOpenMeteoRequestAt - System.currentTimeMillis();
+        if (wait > 0) {
+            try {
+                Thread.sleep(wait);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw interrupted;
+            }
+        }
+    }
+
+    private static long retryAfterMillis(HttpURLConnection connection, int attempt) {
+        String value = connection.getHeaderField("Retry-After");
+        if (value != null) {
+            try {
+                return Math.clamp(Long.parseLong(value.trim()) * 1_000, 1_000, 15_000);
+            } catch (NumberFormatException ignored) {
+                // Fall back to a short exponential delay when the header is an HTTP date.
+            }
+        }
+        return 1_500L << attempt;
     }
 
     public static int scoreWeather(int code, double rain, double gust) {

@@ -89,7 +89,7 @@ public class AreaWeatherService {
                     reading.temperatureCelsius(), reading.windGustKph(), a.currentRateMmPerHour(), a.lastHourMm(),
                     a.pastThreeHoursMm(), a.pastDayMm(), a.nextThreeHoursMm(), a.pagasaLevel(), reading.observedAt()));
             }
-            Result result = new Result(List.copyOf(readings), new SourceStatus("open-meteo", "Open-Meteo forecast models",
+            Result result = new Result(List.copyOf(readings), new SourceStatus("open-meteo", weather.currentProviderName(),
                 "weather", "active", Instant.now().toString(), null, null));
             cache.put(cacheKey, new CachedResult(System.currentTimeMillis() + CACHE_MS, result));
             return result;

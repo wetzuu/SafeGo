@@ -518,10 +518,11 @@ export function RiskMap({
       .catch(() => {
         if (!cancelled) setWeatherFailed(true);
       });
-    void load();
+    const initialLoad = window.setTimeout(() => void load(), 800);
     const timer = window.setInterval(() => void load(), 10 * 60 * 1000);
     return () => {
       cancelled = true;
+      window.clearTimeout(initialLoad);
       window.clearInterval(timer);
     };
   }, [liveWeather, weatherPoints]);
@@ -529,15 +530,18 @@ export function RiskMap({
   useEffect(() => {
     if (!liveWeather || !weatherPoints.length) return;
     let cancelled = false;
-    fetchAreaWeatherHistory(weatherPoints)
-      .then((history) => {
-        if (!cancelled) setAreaHistory(history);
-      })
-      .catch(() => {
-        // Past days are optional; the day picker stays hidden until history loads.
-      });
+    const initialLoad = window.setTimeout(() => {
+      fetchAreaWeatherHistory(weatherPoints)
+        .then((history) => {
+          if (!cancelled) setAreaHistory(history);
+        })
+        .catch(() => {
+          // Past days are optional; the day picker stays hidden until history loads.
+        });
+    }, 2_000);
     return () => {
       cancelled = true;
+      window.clearTimeout(initialLoad);
     };
   }, [liveWeather, weatherPoints]);
 
@@ -565,10 +569,11 @@ export function RiskMap({
           });
       }
     };
-    load();
+    const initialLoad = window.setTimeout(load, 3_500);
     const timer = window.setInterval(load, 15 * 60 * 1000);
     return () => {
       cancelled = true;
+      window.clearTimeout(initialLoad);
       window.clearInterval(timer);
     };
   }, [areas, liveAlerts, liveWeather, timelinePoints]);

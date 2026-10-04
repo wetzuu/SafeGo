@@ -108,7 +108,7 @@ public class DashboardService {
             try {
                 locations = weatherService.fetchAndApplyWeather(locations);
                 weatherUpdatedAt = Instant.now().toString();
-                sources.add(new SourceStatus("open-meteo", "Open-Meteo forecast models", "weather", "active",
+                sources.add(new SourceStatus("open-meteo", weatherService.currentProviderName(), "weather", "active",
                     weatherUpdatedAt, null, null));
             } catch (Exception e) {
                 sources.add(OperationalFeedService.status("open-meteo", "Open-Meteo forecast models", "weather", "degraded",
