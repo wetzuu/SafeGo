@@ -13,8 +13,7 @@ export interface AreaFactorReading {
   name: FactorName;
   /** null means SafeGo has no reading for this area, which is not the same as zero. */
   score: number | null;
-  /** "demo": a placeholder value shown for context but never counted in the score. */
-  source: "location" | "live-weather" | "live-alerts" | "demo" | "none";
+  source: "location" | "live-weather" | "live-alerts" | "none";
 }
 
 export interface AreaAnalysis {
@@ -44,7 +43,9 @@ export function analyzeArea(
     const factors: AreaFactorReading[] = AREA_FACTORS.map((name) => {
       const factor = source!.factors.find((candidate) => candidate.name === name);
       if (!factor) return { name, score: null, source: "none" };
-      return { name, score: factor.score, source: counted.has(name) ? "location" : "demo" };
+      return counted.has(name)
+        ? { name, score: factor.score, source: "location" }
+        : { name, score: null, source: "none" };
     });
     const score = Math.max(source.risk.percentage, weather?.score ?? 0, advisory?.score ?? 0);
     const band = riskBand(score);

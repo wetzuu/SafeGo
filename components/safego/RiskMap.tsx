@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CircleMarker, GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
-import { areaCenter, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT, type AreaCollection } from "@/lib/safego/area-scoring";
+import { areaCenter, areaContains, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT } from "@/lib/safego/area-scoring";
 import { NCR_CITIES } from "@/lib/safego/ncr-cities";
 import {
   fetchAreaWeather,
-  fetchAreaWeatherHistory,
   weatherGroupKey,
   weatherSamplePoints,
   type AreaWeather,
@@ -22,6 +21,7 @@ import {
   HOUR_MS,
   locationAt,
   timelineLabel,
+  timelineDays,
   TIMELINE_HOURS,
   weatherAt,
   type AlertsTimeline,
@@ -30,6 +30,7 @@ import {
 import { assessTrip } from "@/lib/trips/trip-assessment";
 import { makeRouteEstimate } from "@/lib/trips/route-estimate";
 import { describeLocation, describeRisk, scoreWord } from "@/lib/safego/plain-language";
+import { estimateFloodRoadRisk } from "@/lib/safego/flood-road-estimate";
 import type { UniversityAlert } from "@/lib/safego/university-alerts";
 import { TimeSlider } from "./TimeSlider";
 import { UniversityAlertCards } from "./UniversityAlertCards";
@@ -46,7 +47,7 @@ import { displayFactorName, shortPlaceName } from "./labels";
 const MAP_LAYERS: MapLayer[] = [
   { key: "overall", label: "Overall risk" },
   { key: "Weather", label: "Weather" },
-  { key: "Flood / roads", label: "Flood & roads" },
+  { key: "Flood / roads", label: "Flood & Road Risk" },
   { key: "Official advisories", label: "Announcements" },
   { key: "School status", label: "Nearby university" },
   { key: "Community reports", label: "Community" },
@@ -105,7 +106,7 @@ function makeTooltip(title: string, detail: string) {
   return wrapper;
 }
 
-/** A location's score for a map layer, or null when it is not rated or the factor is demo data. */
+/** A location's score for a map layer, or null when the factor has no connected current source. */
 function layerScore(location: SafeGoLocation, layer: MapLayerKey): number | null {
   if (layer === "overall") return location.risk.basis === "none" ? null : location.risk.percentage;
   if (location.risk.countedFactors && !location.risk.countedFactors.includes(layer)) return null;
@@ -144,7 +145,7 @@ export interface RiskMapProps {
   onViewDashboard?: () => void;
   onViewRiskDetails?: () => void;
   onViewAnnouncements?: () => void;
-  /** Fetch live weather for every area; off while SafeGo shows demo conditions. */
+  /** Fetch live weather for every area. */
   liveWeather?: boolean;
   /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
   liveAlerts?: boolean;
@@ -290,6 +291,7 @@ export function RiskMap({
       const nearest = nearestPoint(geometry, locations);
       const overallMeasured = activeLayer === "overall" ? measured : scoreArea(geometry, overallPoints, APPROXIMATE_COVERAGE_RADIUS_METERS);
       const advisory = areaAlerts ? alertsCovering(areaCenters[index], areaAlerts) : null;
+      const floodRoadEstimate = estimateFloodRoadRisk(weather, advisory ? { score: advisory.score, count: advisory.alerts.length } : null);
       const analysis = analyzeArea(overallMeasured ? byId.get(overallMeasured.sourceId) ?? null : null, weather, advisory);
       // Weather and PAGASA alerts are the factors SafeGo can read everywhere. The overall layer shows
       // partial estimates for uncovered areas; the flood, university and community layers only rate covered areas.
@@ -297,6 +299,8 @@ export function RiskMap({
         ? Math.max(measured?.score ?? 0, weather.score)
         : activeLayer === "Official advisories" && advisory
           ? Math.max(measured?.score ?? 0, advisory.score)
+          : activeLayer === "Flood / roads"
+            ? measured?.score ?? floodRoadEstimate?.score ?? null
           : activeLayer === "overall"
             ? analysis.score
             : measured?.score ?? null;
@@ -310,32 +314,42 @@ export function RiskMap({
         pastDay,
         weatherLabel: weatherLabels.get(key) ?? properties.city,
         displayScore,
-        estimated: activeLayer === "overall" && analysis.kind === "partial-estimate",
+        estimated: (activeLayer === "overall" && analysis.kind === "partial-estimate")
+          || (activeLayer === "Flood / roads" && measured === null && floodRoadEstimate !== null),
         analysis,
         advisory,
+        floodRoadEstimate,
         nearest: nearest ? { location: nearest.point, distanceMeters: nearest.distanceMeters } : null,
       };
     });
-  }, [activeLayer, areaAlerts, areaHistory, areaWeatherAt, areas, cursorDate, liveWeather, locations, weatherPoints]);
+  }, [activeLayer, areaAlerts, areaCenters, areaHistory, areaWeatherAt, areas, cursorDate, liveWeather, locations, weatherPoints]);
   const selectedAreaInfo = selectedAreaIndex === null ? null : areaInfos[selectedAreaIndex] ?? null;
+  const selectedLocationAreaInfo = useMemo(() => {
+    if (!effectiveSelected) return null;
+    const index = areas.features.findIndex((feature) => areaContains(feature.geometry, effectiveSelected.coordinates));
+    return index < 0 ? null : areaInfos[index] ?? null;
+  }, [areaInfos, areas, effectiveSelected]);
   const ratedAreaCount = areaInfos.filter((info) => info.displayScore !== null && !info.estimated).length;
   const estimatedAreaCount = areaInfos.filter((info) => info.estimated).length;
   const areaLayerRef = useRef<GeoJSONLayer | null>(null);
   const routeLayerRef = useRef<LayerGroup | null>(null);
   const atLabelRef = useRef(atLabel);
-  atLabelRef.current = atLabel;
   const activeLayerLabelRef = useRef(activeLayerLabel);
-  activeLayerLabelRef.current = activeLayerLabel;
   const activeLayerRef = useRef(activeLayer);
-  activeLayerRef.current = activeLayer;
   const areaInfosRef = useRef(areaInfos);
-  areaInfosRef.current = areaInfos;
   const selectedAreaIndexRef = useRef(selectedAreaIndex);
-  selectedAreaIndexRef.current = selectedAreaIndex;
   const effectiveSelectedIdRef = useRef(effectiveSelected?.id);
-  effectiveSelectedIdRef.current = effectiveSelected?.id;
   const selectionContextRef = useRef(selectionContext);
-  selectionContextRef.current = selectionContext;
+
+  useEffect(() => {
+    atLabelRef.current = atLabel;
+    activeLayerLabelRef.current = activeLayerLabel;
+    activeLayerRef.current = activeLayer;
+    areaInfosRef.current = areaInfos;
+    selectedAreaIndexRef.current = selectedAreaIndex;
+    effectiveSelectedIdRef.current = effectiveSelected?.id;
+    selectionContextRef.current = selectionContext;
+  }, [activeLayer, activeLayerLabel, areaInfos, atLabel, effectiveSelected?.id, selectedAreaIndex, selectionContext]);
 
   const bounds: Array<[number, number]> = useMemo(
     () => liveTrip?.routeCoordinates.length
@@ -528,24 +542,6 @@ export function RiskMap({
   }, [liveWeather, weatherPoints]);
 
   useEffect(() => {
-    if (!liveWeather || !weatherPoints.length) return;
-    let cancelled = false;
-    const initialLoad = window.setTimeout(() => {
-      fetchAreaWeatherHistory(weatherPoints)
-        .then((history) => {
-          if (!cancelled) setAreaHistory(history);
-        })
-        .catch(() => {
-          // Past days are optional; the day picker stays hidden until history loads.
-        });
-    }, 2_000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(initialLoad);
-    };
-  }, [liveWeather, weatherPoints]);
-
-  useEffect(() => {
     if (!liveWeather || !areas || !timelinePoints.length) return;
     let cancelled = false;
     const load = () => {
@@ -553,6 +549,7 @@ export function RiskMap({
         .then((value) => {
           if (cancelled) return;
           setWeatherTimeline(value);
+          setAreaHistory(new Map([...value].map(([key, hours]) => [key, timelineDays(hours)])));
           setTimelineEnd(currentHour());
           setTimelineFailed(false);
         })
@@ -630,6 +627,8 @@ export function RiskMap({
     const layer = activeLayerRef.current;
     const detail = info.displayScore === null
       ? `Not rated: no SafeGo data within ${APPROXIMATE_COVERAGE_RADIUS_METERS} m. Not rated does not mean safe.`
+      : layer === "Flood / roads" && info.estimated && info.floodRoadEstimate
+        ? `Flood & Road Risk: ${info.displayScore}/100 weather-based likelihood. ${info.floodRoadEstimate.why} Flooding, passability and closures are not confirmed.`
       : info.estimated
         ? `Partial estimate: ${info.displayScore}/100 from ${at ? "recorded" : "live"} weather${info.advisory ? " and PAGASA alerts" : ""}. Street flooding and roads not checked.`
         : info.measured && info.measuredSource && info.measured.score >= info.displayScore
@@ -809,9 +808,20 @@ export function RiskMap({
       ? `Route · ${(trip.coverage.totalMeters / 1000).toFixed(1)} km`
       : effectiveSelected ? `Area · ${effectiveSelected.city}` : "";
   const areaMessage = selectedAreaInfo ? describeArea(selectedAreaInfo) : null;
-  const headMessage = areaMessage ?? message;
-  const headScore = selectedAreaInfo ? selectedAreaInfo.analysis.score : overallScore;
-  const headPartial = selectedAreaInfo ? selectedAreaInfo.analysis.kind === "partial-estimate" : overallBasis === "partial";
+  const activeFloodEstimate = activeLayer === "Flood / roads"
+    ? (selectedAreaInfo ?? selectedLocationAreaInfo)?.floodRoadEstimate ?? null
+    : null;
+  const floodMessage = activeFloodEstimate ? {
+    level: activeFloodEstimate.riskKey,
+    headline: `${activeFloodEstimate.label} flood & road likelihood`,
+    why: activeFloodEstimate.why,
+    action: activeFloodEstimate.action,
+    caveat: activeFloodEstimate.limitation,
+  } : null;
+  const headMessage = floodMessage ?? areaMessage ?? message;
+  const headScore = activeFloodEstimate?.score ?? (selectedAreaInfo ? selectedAreaInfo.analysis.score : overallScore);
+  const headPartial = activeFloodEstimate ? true : selectedAreaInfo ? selectedAreaInfo.analysis.kind === "partial-estimate" : overallBasis === "partial";
+  const summaryMessage = floodMessage ?? message;
 
   const header = (
     <div className="flex items-start justify-between gap-3">
@@ -850,9 +860,9 @@ export function RiskMap({
 
   const summary = (
     <>
-      <p className="text-sm text-ink leading-snug">{message.why}</p>
-      <p className="mt-1.5 text-sm text-ink leading-snug"><strong>What to do:</strong> {message.action}</p>
-      {message.caveat && <p className="mt-1.5 text-xs text-ink-soft leading-snug">{message.caveat}</p>}
+      <p className="text-sm text-ink leading-snug">{summaryMessage.why}</p>
+      <p className="mt-1.5 text-sm text-ink leading-snug"><strong>What to do:</strong> {summaryMessage.action}</p>
+      {summaryMessage.caveat && <p className="mt-1.5 text-xs text-ink-soft leading-snug">{summaryMessage.caveat}</p>}
 
       <div className="mt-3">
         {at === null && <UniversityAlertCards alerts={universityAlerts} onDismiss={onDismissUniversity} onViewAll={onViewAnnouncements} />}
@@ -861,7 +871,7 @@ export function RiskMap({
           <div className="mb-3 rounded-box border border-brand/30 bg-brand-soft p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-brand-ink">
-                {atLabel ? "Official alert then" : "Official alert"}{latestAdvisory.isMock ? " · Demo" : ""}
+                {atLabel ? "Official alert then" : "Official alert"}
               </span>
               {onViewAnnouncements && at === null && (
                 <button type="button" className="min-h-9 text-xs font-bold text-brand-ink hover:underline" onClick={onViewAnnouncements}>
@@ -898,7 +908,7 @@ export function RiskMap({
                     <strong className="font-semibold">{scoreWord(factor.score)}</strong> ({factor.score})
                     {effectiveSelected.risk.countedFactors && (
                       <span className={`ml-1.5 font-semibold ${counted ? "text-low" : "text-mod"}`}>
-                        {counted ? (atLabel ? "recorded" : "live") : "sample data, not counted"}
+                        {counted ? (atLabel ? "recorded" : "live") : "unavailable"}
                       </span>
                     )}
                   </span>
@@ -962,10 +972,10 @@ export function RiskMap({
         <span className="h-3 w-6 shrink-0 border border-hairline" style={{ background: UNRATED_AREA_COLOR, opacity: 0.45 }} />
         Gray: not rated (not the same as safe)
       </div>
-      {activeLayer === "overall" && estimatedAreaCount > 0 && (
+      {(activeLayer === "overall" || activeLayer === "Flood / roads") && estimatedAreaCount > 0 && (
         <div className="mt-1 flex items-center gap-2 text-ink-soft">
           <span className="h-3 w-6 shrink-0 border border-dashed border-ink-soft/60" style={{ background: classColor(0), opacity: ESTIMATE_FILL_OPACITY + 0.2 }} />
-          Pale and dashed: partial estimate
+          Pale and dashed: {activeLayer === "Flood / roads" ? "weather-based estimate" : "partial estimate"}
         </div>
       )}
       {hasUnratedSections && (
@@ -983,6 +993,10 @@ export function RiskMap({
               ? liveActiveAlerts
                 ? (liveActiveAlerts.length ? `${liveActiveAlerts.length} PAGASA alert${liveActiveAlerts.length === 1 ? "" : "s"} over Metro Manila.` : "No PAGASA alert over Metro Manila right now.")
                 : "PAGASA alerts are not available right now."
+              : activeLayer === "Flood / roads"
+                ? weatherStatus === "live"
+                  ? "Current rainfall-based likelihood. This does not confirm flooding, passability, traffic, or closures."
+                  : "Flood and road likelihood is unavailable because current weather could not be loaded."
               : activeLayer === "overall"
                 ? (ratedAreaCount === 0 && estimatedAreaCount > 0
                   ? "Ratings are partial: live weather and official alerts only."

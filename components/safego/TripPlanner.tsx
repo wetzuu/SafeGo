@@ -22,7 +22,7 @@ function friendlyRouteError(status: number) {
   if (status === 400) return "Check both place names and try again.";
   if (status === 404) return "We couldn’t find a road route between those places. Try nearby landmarks or roads.";
   if (status === 422) return "SafeGo cannot check that trip yet. Try searching for specific Philippine landmarks or roads.";
-  return "SafeGo couldn’t check this route right now. Try again, or open the demo trip.";
+  return "SafeGo couldn’t check this route right now. Check your connection and try again.";
 }
 
 function normalized(value: string) {
@@ -66,7 +66,6 @@ export function TripPlanner({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [preferSavedDemo, setPreferSavedDemo] = useState(false);
   const [preview, setPreview] = useState<{ key: string; distanceKm: number; durationMin: number; roadNames: string[] } | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,7 +146,6 @@ export function TripPlanner({
       stopIndex === index ? value : stop,
     ));
     setSavedStops((current) => current.map((place, stopIndex) => stopIndex === index ? null : place));
-    setPreferSavedDemo(false);
     setError("");
     searchPlaces(value);
   }
@@ -238,7 +236,7 @@ export function TripPlanner({
     setActiveInputIndex(null);
   }
 
-  async function analyzeRoute(origin: string, destination: string, useSavedDemo: boolean, resolved = savedStops) {
+  async function analyzeRoute(origin: string, destination: string, resolved = savedStops) {
     if (activeRequest.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -251,7 +249,6 @@ export function TripPlanner({
         body: JSON.stringify({
           origin,
           destination,
-          preferSavedDemo: useSavedDemo,
           originCoordinates: resolved[0]?.coordinates ?? null,
           destinationCoordinates: resolved[1]?.coordinates ?? null,
         }),
@@ -296,30 +293,19 @@ export function TripPlanner({
       return;
     }
 
-    await analyzeRoute(stops[0], stops[1], preferSavedDemo);
+    await analyzeRoute(stops[0], stops[1]);
   }
 
   function addDestination() {
     setStops((current) => current.length === 1 ? [...current, account?.home ?? ""] : current);
     setSavedStops((current) => current.length === 1 ? [...current, account?.homePlace ?? null] : current);
-    setPreferSavedDemo(false);
     setError("");
   }
 
   function removeDestination() {
     setStops((current) => [current[0]]);
     setSavedStops((current) => [current[0]]);
-    setPreferSavedDemo(false);
     setError("");
-  }
-
-  async function runExample() {
-    const origin = "España Blvd., Sampaloc";
-    const destination = "Lerma St., Sampaloc";
-    setStops([origin, destination]);
-    setSavedStops([null, null]);
-    setPreferSavedDemo(true);
-    await analyzeRoute(origin, destination, true, [null, null]);
   }
 
   return (
@@ -414,7 +400,6 @@ export function TripPlanner({
         <button className="submit-btn" type="submit" disabled={loading}>
           {loading ? "Checking…" : hasDestination ? "Check this route" : "Check this area"}
         </button>
-        <button className="example-trip" type="button" onClick={() => void runExample()} disabled={loading}>Try an example trip</button>
       </div>
       {error && <div className="trip-error" role="alert">{error}</div>}
       <p className="trip-attribution">Road and map data © OpenStreetMap contributors.</p>

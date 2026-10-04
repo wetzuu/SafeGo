@@ -4,6 +4,7 @@ import type { AreaAdvisory } from "@/lib/safego/area-alerts";
 import type { AreaProperties, AreaScore } from "@/lib/safego/area-scoring";
 import { pastDayLabel, type AreaWeather, type DayWeather } from "@/lib/safego/area-weather";
 import { scoreWord, type RiskMessage } from "@/lib/safego/plain-language";
+import type { FloodRoadEstimate } from "@/lib/safego/flood-road-estimate";
 import type { SafeGoLocation } from "@/lib/safego/types";
 import { displayFactorName, shortPlaceName } from "./labels";
 import { RiskBadge } from "./ui";
@@ -28,6 +29,8 @@ export interface AreaInfo {
   analysis: AreaAnalysis;
   /** Active PAGASA alerts covering the area; null when alerts are unavailable. */
   advisory: AreaAdvisory | null;
+  /** Current weather-based flood/road likelihood; never a claim that a road is passable. */
+  floodRoadEstimate: FloodRoadEstimate | null;
   nearest: { location: SafeGoLocation; distanceMeters: number } | null;
 }
 
@@ -93,7 +96,7 @@ export function AreaDetails({
   liveAlerts: boolean;
   onOpenLocation?: (location: SafeGoLocation) => void;
 }) {
-  const { properties, analysis, advisory, measuredDistanceMeters, weather, nearest } = info;
+  const { properties, analysis, advisory, measuredDistanceMeters, weather, nearest, floodRoadEstimate } = info;
   const linkedLocation = analysis.source ?? nearest?.location ?? null;
 
   return (
@@ -101,6 +104,21 @@ export function AreaDetails({
       <p className="text-sm text-ink leading-snug">{message.why}</p>
       <p className="mt-1.5 text-sm text-ink leading-snug"><strong>What to do:</strong> {message.action}</p>
       {message.caveat && <p className="mt-1.5 text-xs text-ink-soft leading-snug">{message.caveat}</p>}
+
+      {floodRoadEstimate && (
+        <div className="mt-3 rounded-box border border-hairline bg-surface p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-ink-soft">Flood &amp; Road Risk</div>
+              <div className="mt-0.5 text-sm font-semibold text-ink">Weather-based likelihood · {floodRoadEstimate.label}</div>
+            </div>
+            <RiskBadge level={floodRoadEstimate.riskKey} label={`${floodRoadEstimate.score}/100`} size="sm" partial />
+          </div>
+          <p className="mt-2 text-xs text-ink"><strong>Why:</strong> {floodRoadEstimate.why}</p>
+          <p className="mt-1 text-xs text-ink"><strong>What to do:</strong> {floodRoadEstimate.action}</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-ink-soft">{floodRoadEstimate.limitation}</p>
+        </div>
+      )}
 
       {advisory && advisory.alerts.length > 0 && (
         <div className="mt-3 space-y-2">
@@ -153,7 +171,7 @@ export function AreaDetails({
           ) : (
             <span className="text-ink-soft">
               {weatherStatus === "loading" ? "Loading live weather…"
-                : weatherStatus === "off" ? "Live weather is off while SafeGo shows sample conditions."
+                : weatherStatus === "off" ? "Live weather is turned off. No weather condition is substituted."
                   : "Live weather is unavailable right now. Try again in a few minutes."}
             </span>
           )}
@@ -176,15 +194,14 @@ export function AreaDetails({
           </p>
           {analysis.factors.map((factor) => {
             const live = factor.source === "live-weather" || factor.source === "live-alerts" || factor.source === "location";
-            const tag = factor.source === "demo" ? "sample data, not counted"
-              : factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts) ? "PAGASA"
+            const tag = factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts) ? "PAGASA"
                 : live ? (timeLabel ? "recorded" : "live") : "";
             return (
               <div key={factor.name} className="flex items-center justify-between gap-2 border-b border-hairline/60 py-1.5 last:border-b-0">
                 <span>{displayFactorName(factor.name)}</span>
-                <span className={`text-right ${factor.score === null || factor.source === "demo" ? "text-ink-soft" : "text-ink"}`}>
+                <span className={`text-right ${factor.score === null ? "text-ink-soft" : "text-ink"}`}>
                   {factor.score === null ? "No data" : <><strong className="font-semibold">{scoreWord(factor.score)}</strong> ({factor.score})</>}
-                  {tag && <span className={`ml-1.5 font-semibold ${factor.source === "demo" ? "text-mod" : "text-low"}`}>{tag}</span>}
+                  {tag && <span className="ml-1.5 font-semibold text-low">{tag}</span>}
                 </span>
               </div>
             );
@@ -209,7 +226,7 @@ export function AreaDetails({
             </ul>
           ) : (
             <span className="text-ink-soft">
-              {weatherStatus === "off" ? "Weather history is off while SafeGo shows sample conditions." : "Weather history is loading or unavailable."}
+              {weatherStatus === "off" ? "Weather history is turned off." : "Weather history is loading or unavailable."}
             </span>
           )}
           <p className="mt-2 text-ink-soft">Each day is rated by its worst weather, such as one thunderstorm hour.</p>

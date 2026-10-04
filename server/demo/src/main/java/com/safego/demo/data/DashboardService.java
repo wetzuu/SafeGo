@@ -38,15 +38,15 @@ public class DashboardService {
 
         String mode = System.getenv().getOrDefault("SAFEGO_DATA_MODE", "auto").trim().toLowerCase(Locale.ROOT);
         String url = System.getenv("DATABASE_URL");
-        if (!List.of("auto", "mock", "database").contains(mode)) {
-            throw new IllegalArgumentException("SAFEGO_DATA_MODE must be auto, mock, or database.");
+        if (!List.of("auto", "local", "database").contains(mode)) {
+            throw new IllegalArgumentException("SAFEGO_DATA_MODE must be auto, local, or database.");
         }
         if (mode.equals("database") && (url == null || url.isBlank())) {
             throw new IllegalArgumentException("DATABASE_URL is required for database mode.");
         }
         boolean useDatabase = mode.equals("database") || (mode.equals("auto") && url != null && !url.isBlank());
         this.database = useDatabase ? new PostgresRepository(url) : null;
-        this.backend = useDatabase ? "database" : "mock";
+        this.backend = useDatabase ? "database" : "local";
     }
 
     public String backend() {
@@ -55,8 +55,31 @@ public class DashboardService {
 
     public List<SafeGoLocation> canonicalLocations() {
         return database == null
-            ? MockRepository.listDashboardLocations()
+            ? liveCatalog(MockRepository.listDashboardLocations())
             : database.listDashboardLocations();
+    }
+
+    /** Keep the built-in places as geographic anchors, but remove every seeded condition and announcement. */
+    private static List<SafeGoLocation> liveCatalog(List<SafeGoLocation> locations) {
+        return locations.stream().map(location -> {
+            List<RiskFactor> factors = List.of(
+                unavailableFactor("Weather", "weather"),
+                unavailableFactor("Flood / roads", "flood"),
+                unavailableFactor("Official advisories", "alert"),
+                unavailableFactor("School status", "school"),
+                unavailableFactor("Community reports", "reports")
+            );
+            return new SafeGoLocation(
+                location.id(), location.name(), location.city(), location.aliases(), location.coordinates(),
+                "Awaiting live update", "SafeGo is waiting for current sources.", "Not rated",
+                List.of(), factors, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                RiskModel.analyzeRisk(factors, "SafeGo is waiting for current sources.", "Not rated")
+            );
+        }).toList();
+    }
+
+    private static RiskFactor unavailableFactor(String name, String icon) {
+        return new RiskFactor(name, 0, "low", "Unavailable", "No current source is connected for this factor.", icon, "icon-neutral");
     }
 
     public synchronized DashboardSnapshot snapshot(boolean refresh) {
@@ -67,7 +90,7 @@ public class DashboardService {
         List<SafeGoLocation> locations = canonicalLocations();
 
         List<SourceStatus> sources = new ArrayList<>(
-            database == null ? MockRepository.listSourceStatuses() : database.listSourceStatuses()
+            database == null ? List.of() : database.listSourceStatuses()
         );
         sources.removeIf(source -> List.of("official-advisories", "flood-road", "open-meteo", PagasaCapService.SOURCE_KEY).contains(source.key()));
 

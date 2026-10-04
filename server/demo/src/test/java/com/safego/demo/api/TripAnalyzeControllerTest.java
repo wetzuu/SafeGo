@@ -50,19 +50,4 @@ class TripAnalyzeControllerTest {
         assertEquals("lerma st", TripAnalyzeController.normalize("Lerma St."));
     }
 
-    @Test
-    void analyzesValidSavedDemoTrip() {
-        ResponseEntity<Object> response = controller.analyze(Map.of(
-            "origin", " España ",
-            "destination", " Lerma ",
-            "preferSavedDemo", true
-        ));
-
-        assertEquals(200, response.getStatusCode().value());
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body = (Map<String, Object>) response.getBody();
-        assertNotNull(body);
-        assertNotNull(body.get("data"));
-        assertNotNull(body.get("meta"));
-    }
 }

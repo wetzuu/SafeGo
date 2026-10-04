@@ -1,10 +1,9 @@
 // Starts SafeGo for a presentation: the production web build plus the Java API, then opens the browser.
 //
 //   npm run presentation            build if needed, start, open http://localhost:3000
-//   npm run presentation:offline    same, with live weather and PAGASA alerts turned off
 //   npm run presentation:build      build ahead of time (web + Java) and exit
 //
-// Flags: --offline, --rebuild (force a fresh web build), --build-only, --no-open.
+// Flags: --rebuild (force a fresh web build), --build-only, --no-open.
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
@@ -14,7 +13,6 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
 const args = new Set(process.argv.slice(2));
-const offline = args.has("--offline");
 const buildOnly = args.has("--build-only");
 const nextBin = join(root, "node_modules", "next", "dist", "bin", "next");
 const standalone = join(root, ".next", "standalone");
@@ -25,12 +23,6 @@ const url = "http://localhost:3000";
 for (const file of [".env.local", ".env"]) {
   const path = join(root, file);
   if (existsSync(path)) process.loadEnvFile(path);
-}
-if (offline) {
-  process.env.SAFEGO_DATA_MODE = "mock";
-  process.env.SAFEGO_WEATHER_PROVIDER = "disabled";
-  process.env.SAFEGO_PAGASA_CAP_FEED_URL = "disabled";
-  process.env.SAFEGO_DEMO_ROUTE_FALLBACK = "true";
 }
 
 function fail(message) {
@@ -135,9 +127,7 @@ if (buildOnly) {
 }
 
 // --- start both servers ---
-console.log(offline
-  ? "\nStarting SafeGo in OFFLINE mode: stored demo conditions, no live weather or PAGASA alerts."
-  : "\nStarting SafeGo (production build)…");
+console.log("\nStarting SafeGo (production build)…");
 const children = [
   spawn(process.execPath, [join(root, "scripts", "java-api.mjs")], { cwd: root, stdio: "inherit", env: process.env }),
   spawn(process.execPath, [server], {

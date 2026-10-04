@@ -1,4 +1,4 @@
-import { LOCATIONS } from "../safego/locations.ts";
+import { LOCATION_CATALOG } from "../safego/location-catalog.ts";
 import type { SafeGoLocation } from "../safego/types.ts";
 import type {
   CommunityReportInput,
@@ -31,18 +31,18 @@ function summarize(location: SafeGoLocation): LocationSummary {
 
 export class MockSafeGoRepository implements SafeGoRepository {
   async listLocations() {
-    return LOCATIONS.map(summarize);
+    return LOCATION_CATALOG.map(summarize);
   }
 
   async listDashboardLocations() {
-    return LOCATIONS.map((location) => ({
+    return LOCATION_CATALOG.map((location) => ({
       ...location,
       reports: reportsFor(location),
     }));
   }
 
   async getLocationRisk(id: string): Promise<LocationRiskDetails | null> {
-    const location = LOCATIONS.find((candidate) => candidate.id === id);
+    const location = LOCATION_CATALOG.find((candidate) => candidate.id === id);
     if (!location) return null;
 
     return {
@@ -55,21 +55,11 @@ export class MockSafeGoRepository implements SafeGoRepository {
   }
 
   async listSourceStatuses(): Promise<SourceStatus[]> {
-    return [
-      {
-        key: "prototype-mock",
-        name: "SafeGo prototype dataset",
-        kind: "mock",
-        status: "mock",
-        lastSuccessAt: null,
-        lastFailureAt: null,
-        errorMessage: null,
-      },
-    ];
+    return [];
   }
 
   async submitCommunityReport(input: CommunityReportInput) {
-    const location = LOCATIONS.find((candidate) => candidate.id === input.locationId);
+    const location = LOCATION_CATALOG.find((candidate) => candidate.id === input.locationId);
     if (!location) return null;
 
     const report = {

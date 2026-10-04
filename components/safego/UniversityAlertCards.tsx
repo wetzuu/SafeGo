@@ -37,7 +37,6 @@ export function UniversityAlertCards({
                 <path d="M4 10.5 12 5l8 5.5M6 10v8h12v-8" />
               </svg>
               <span>{suspended ? "Classes suspended" : "Classes moved online"}</span>
-              {university.isMock && <span className="rounded bg-white/25 px-1.5 py-0.5 text-[10px]">Demo example</span>}
             </div>
             <h4 className="mt-1 text-sm font-bold leading-snug">{university.name}</h4>
             <p className="mt-0.5 text-xs leading-snug text-white/90">{university.statusLabel}. {university.announcement}</p>

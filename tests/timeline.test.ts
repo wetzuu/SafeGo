@@ -8,6 +8,7 @@ import {
   locationAt,
   manilaTime,
   weatherAt,
+  timelineDays,
   type AlertsTimeline,
   type HourWeather,
 } from "../lib/safego/timeline.ts";
@@ -29,6 +30,15 @@ test("weatherAt picks the latest hour at or before the time, in Manila time", ()
   assert.equal(reading?.condition, "Thunderstorm");
   assert.equal(reading?.nextThreeHoursMm, 4, "what fell afterwards is known for past hours");
   assert.equal(weatherAt(hours, manilaTime("2026-09-29T13:00")), null, "before the timeline starts");
+});
+
+test("timelineDays builds daily logs from the same rewind payload", () => {
+  const days = timelineDays(hours, manilaTime("2026-09-30T10:00"));
+  assert.equal(days.length, 1);
+  assert.equal(days[0].date, "2026-09-29");
+  assert.equal(days[0].score, 80);
+  assert.equal(days[0].rainMm, 6);
+  assert.equal(days[0].condition, "Thunderstorm");
 });
 
 const alert = (id: string, severityScore: number): ActiveAlert => ({

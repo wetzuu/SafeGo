@@ -7,9 +7,9 @@ export function getRepository(): RepositoryContext {
   const configuredMode = process.env.SAFEGO_DATA_MODE?.trim().toLowerCase();
   const mode = configuredMode || "auto";
 
-  if (!new Set(["auto", "mock", "database"]).has(mode)) {
+  if (!new Set(["auto", "local", "database"]).has(mode)) {
     throw new Error(
-      "SAFEGO_DATA_MODE must be one of: auto, mock, or database.",
+      "SAFEGO_DATA_MODE must be one of: auto, local, or database.",
     );
   }
 
@@ -24,5 +24,5 @@ export function getRepository(): RepositoryContext {
 
   return useDatabase
     ? { backend: "database", repository: new PostgresSafeGoRepository() }
-    : { backend: "mock", repository: new MockSafeGoRepository() };
+    : { backend: "local", repository: new MockSafeGoRepository() };
 }

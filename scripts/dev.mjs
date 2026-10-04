@@ -29,7 +29,7 @@ function portAvailable(port) {
 
 for (const port of [3000, 8080]) {
   if (!await portAvailable(port)) {
-    console.error(`SafeGo cannot start because port ${port} is already in use. Stop the older demo process and run npm run dev again.`);
+    console.error(`SafeGo cannot start because port ${port} is already in use. Stop the older SafeGo process and run npm run dev again.`);
     process.exit(1);
   }
 }
@@ -64,9 +64,6 @@ Promise.all([
 ]).then(([webReady, apiReady]) => {
   if (webReady && apiReady) {
     console.log("\nSafeGo is ready: http://localhost:3000");
-    if (process.env.SAFEGO_WEATHER_PROVIDER === "disabled") {
-      console.log("Offline demo mode: stored conditions and the saved example route are in use.");
-    }
   } else if (!stopping) {
     console.error("SafeGo startup timed out. Check the Java and Next.js messages above.");
   }

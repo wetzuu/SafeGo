@@ -23,8 +23,7 @@ class TripAssessmentTest {
         List<SafeGoLocation> initialLocations = MockRepository.listDashboardLocations();
         ResolvedPlace origin = new ResolvedPlace("España", ESPANA, "preset", "espana", true);
         ResolvedPlace destination = new ResolvedPlace("Lerma", LERMA, "preset", "lerma", true);
-        TripAnalyzeController.RouteResult route = TripAnalyzeController.savedDemoRoute(ESPANA, LERMA);
-        assertNotNull(route);
+        TripAnalyzeController.RouteResult route = route();
 
         TripAnalysis initial = controller.assessTrip(origin, destination, route, initialLocations);
 
@@ -50,7 +49,7 @@ class TripAssessmentTest {
         assertTrue(refreshed.reports().isEmpty());
         assertEquals(initial.routeCoordinates().length, refreshed.routeCoordinates().length);
         assertEquals(initial.origin().label(), refreshed.origin().label());
-        assertEquals("saved-demo", refreshed.routingSource());
+        assertEquals("osrm", refreshed.routingSource());
     }
 
     @Test
@@ -58,8 +57,7 @@ class TripAssessmentTest {
         List<SafeGoLocation> initialLocations = MockRepository.listDashboardLocations();
         ResolvedPlace origin = new ResolvedPlace("España", ESPANA, "preset", "espana", true);
         ResolvedPlace destination = new ResolvedPlace("Lerma", LERMA, "preset", "lerma", true);
-        TripAnalyzeController.RouteResult route = TripAnalyzeController.savedDemoRoute(ESPANA, LERMA);
-        assertNotNull(route);
+        TripAnalyzeController.RouteResult route = route();
 
         TripAnalysis initial = controller.assessTrip(origin, destination, route, initialLocations);
         TripAnalysis refreshed = controller.assessTrip(initial.origin(), initial.destination(), route, List.of());
@@ -67,5 +65,11 @@ class TripAssessmentTest {
         assertNull(refreshed.overallRiskScore());
         assertEquals("unknown", refreshed.riskKey());
         assertTrue(refreshed.corridorLocations().isEmpty());
+    }
+
+    private static TripAnalyzeController.RouteResult route() {
+        return new TripAnalyzeController.RouteResult(
+            new double[][] {ESPANA, {14.609, 120.9895}, LERMA},
+            List.of("España Boulevard", "Lerma Street"), "osrm");
     }
 }

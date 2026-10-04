@@ -6,7 +6,7 @@ import type {
   SafeGoLocation,
 } from "../safego/types.ts";
 
-export type DataBackend = "mock" | "database";
+export type DataBackend = "local" | "database";
 
 export interface LocationSummary {
   id: string;
@@ -36,7 +36,7 @@ export interface CommunityReportInput {
   description: string;
 }
 
-export type SourceHealth = "mock" | "active" | "degraded" | "disabled";
+export type SourceHealth = "active" | "degraded" | "disabled";
 
 export interface SourceStatus {
   key: string;

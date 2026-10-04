@@ -54,7 +54,7 @@ export function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[nu
   if (!inArea) return null;
   let highest = 0;
   for (const location of pilotLocations) {
-    // Only live factors can vouch for calm conditions; demo placeholders never count.
+    // Only live factors can vouch for calm conditions; unavailable factors never count.
     const counted = location.risk.countedFactors;
     const factors = location.factors.filter((factor) =>
       CALM_FACTORS.includes(factor.name) && (!counted || counted.includes(factor.name)));

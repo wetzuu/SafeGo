@@ -34,6 +34,7 @@ test("a location is described from its counted factors only", () => {
 
 const university = (id: string, status: UniversityStatus["status"], date: string, isMock = false): UniversityStatus => ({
   id, name: id, logoPath: "", logoAlt: "", status, statusLabel: status, announcement: "", date, time: "6:00 AM", isMock,
+  announcementVerified: !isMock,
 });
 const alert = (item: UniversityStatus, proximity = 0): UniversityAlert => ({ university: item, area: "Area", proximity });
 const now = Date.parse("2026-10-01T08:00:00+08:00");
@@ -55,5 +56,5 @@ test("expired and dismissed announcements disappear; nothing is returned when no
   assert.deepEqual(activeUniversityAlerts([old], now), []);
   assert.deepEqual(activeUniversityAlerts([current], now, new Set(["current"])), []);
   assert.deepEqual(activeUniversityAlerts([current, current], now).length, 1, "duplicates collapse");
-  assert.equal(activeUniversityAlerts([alert(university("demo", "online", "Sep 14, 2026", true))], now).length, 1, "demo entries do not expire");
+  assert.equal(activeUniversityAlerts([alert(university("demo", "online", "Sep 14, 2026", true))], now).length, 0, "demo entries never appear");
 });

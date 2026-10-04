@@ -1,5 +1,5 @@
 import type { ActiveAlert, AreaAdvisory } from "./area-alerts.ts";
-import type { AreaWeather, WeatherSamplePoint } from "./area-weather.ts";
+import type { AreaWeather, DayWeather, WeatherSamplePoint } from "./area-weather.ts";
 import { honestLocation } from "./honest-risk.ts";
 import { riskBand } from "./risk-model.ts";
 import type { FactorName, RiskFactor, SafeGoLocation } from "./types.ts";
@@ -70,6 +70,42 @@ export function weatherAt(hours: HourWeather[] | undefined, at: number): AreaWea
   };
 }
 
+/** Builds the four complete daily summaries from the same hourly payload used by the rewind map. */
+export function timelineDays(hours: HourWeather[] | undefined, now = Date.now()): DayWeather[] {
+  if (!hours?.length) return [];
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(now));
+  const groups = new Map<string, HourWeather[]>();
+  for (const hour of hours) {
+    const date = hour.time.slice(0, 10);
+    if (date >= today) continue;
+    groups.set(date, [...(groups.get(date) ?? []), hour]);
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => right.localeCompare(left))
+    .slice(0, 4)
+    .map(([date, day]) => {
+      const worst = day.reduce((top, item) => item.score > top.score ? item : top);
+      const rain = day.reduce((total, item) => total + item.rainMm, 0);
+      const peakThree = day.reduce((highest, item) => Math.max(highest, item.threeHourMm), 0);
+      const level = day.some((item) => item.pagasaLevel === "red") ? "red"
+        : day.some((item) => item.pagasaLevel === "orange") ? "orange"
+          : day.some((item) => item.pagasaLevel === "yellow") ? "yellow" : null;
+      return {
+        date,
+        score: worst.score,
+        driver: worst.driver === "past-hour" ? "peak-hour" : worst.driver,
+        condition: worst.condition,
+        rainMm: Math.round(rain * 10) / 10,
+        peakHourMm: Math.max(...day.map((item) => item.rainMm)),
+        peakThreeHoursMm: peakThree,
+        temperatureMaxCelsius: Math.max(...day.map((item) => item.temperatureCelsius)),
+        temperatureMinCelsius: Math.min(...day.map((item) => item.temperatureCelsius)),
+        gustMaxKph: Math.max(...day.map((item) => item.gustKph)),
+        pagasaLevel: level,
+      };
+    });
+}
+
 /** PAGASA alerts that were in force at `at`. */
 export function alertsAt(timeline: AlertsTimeline | null, at: number): ActiveAlert[] | null {
   if (!timeline) return null;
@@ -95,8 +131,7 @@ function factorAt(name: FactorName, score: number, description: string, previous
 
 /**
  * A location as it was at a past moment: weather and PAGASA alerts from that time, every other
- * factor left as a demo placeholder, then rescored with the same honest rule as now (only the
- * factors known for that time count).
+ * unavailable factors ignored, then rescored with the same honest rule as now.
  */
 export function locationAt(
   location: SafeGoLocation,
@@ -107,7 +142,7 @@ export function locationAt(
   const factors = location.factors.map((factor) => {
     if (factor.name === "Weather" && weather) {
       return factorAt("Weather", weather.score,
-        `${timeLabel}: ${weather.condition}, ${weather.lastHourMm.toFixed(1)} mm rain in the hour, ${weather.pastThreeHoursMm.toFixed(1)} mm over 3 h, gusts ${Math.round(weather.windGustKph)} km/h. Open-Meteo model.`,
+        `${weather.condition}. Recorded ${timeLabel}: ${weather.lastHourMm.toFixed(1)} mm rain in the hour, ${weather.pastThreeHoursMm.toFixed(1)} mm over 3 h, gusts ${Math.round(weather.windGustKph)} km/h. Open-Meteo model.`,
         factor);
     }
     if (factor.name === "Official advisories" && advisory) {

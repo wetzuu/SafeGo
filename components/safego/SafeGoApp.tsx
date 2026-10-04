@@ -58,15 +58,15 @@ function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavail
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
-  const label = apiUnavailable ? "Live updates unavailable" : live ? "Live weather" : degraded ? "Showing saved conditions" : backend === "mock" ? "Demo information" : "Saved conditions";
-  const detail = apiUnavailable ? "You can still explore the demo, but check official sources before traveling." : live && updated ? `${weather?.name ?? "Weather provider"} · checked ${updated}${backend === "mock" ? " · other conditions are demo data" : ""}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "mock" ? "For exploring SafeGo only" : "Check official sources for the latest information";
+  const label = apiUnavailable ? "Live updates unavailable" : live ? "Live weather" : degraded ? "Some live sources unavailable" : "Waiting for live information";
+  const detail = apiUnavailable ? "SafeGo cannot reach its live services. Check official sources before travelling." : live && updated ? `${weather?.name ?? "Weather provider"} · checked ${updated}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "database" ? "No current update is available" : "No saved conditions are being substituted";
 
   return <div className={`data-status${!apiUnavailable && live ? " live" : apiUnavailable || degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
 
 function Advisories({ items }: { items: Advisory[] }) {
   if (!items.length) return <p className="empty-note">SafeGo has no announcements to show for this area. Check official channels for the latest updates.</p>;
-  return <div className="advisory-list">{items.map((item) => <article className={`adv-item${item.isMock ? " mock" : ""}`} key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-meta-row"><div className="adv-tags"><span className={`src-tag src-${item.source}`}>{item.label}</span>{item.isMock && <span className="advisory-demo-tag">Demo</span>}</div><time className="adv-time mono">{item.date ? `${item.date} · ` : ""}{item.time}</time></div>{item.sourceUrl ? <a className="adv-title source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">{item.title}</a> : <div className="adv-title">{item.title}</div>}<div className="adv-desc">{item.description}</div></div></article>)}</div>;
+  return <div className="advisory-list">{items.filter((item) => !item.isMock).map((item) => <article className="adv-item" key={`${item.source}-${item.title}`}><div className={`source-strip strip-${item.source}`} /><div className="adv-body"><div className="adv-meta-row"><div className="adv-tags"><span className={`src-tag src-${item.source}`}>{item.label}</span></div><time className="adv-time mono">{item.date ? `${item.date} · ` : ""}{item.time}</time></div>{item.sourceUrl ? <a className="adv-title source-link" href={item.sourceUrl} target="_blank" rel="noreferrer">{item.title}</a> : <div className="adv-title">{item.title}</div>}<div className="adv-desc">{item.description}</div></div></article>)}</div>;
 }
 
 function Reports({ items }: { items: CommunityReport[] }) {
@@ -82,12 +82,12 @@ function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor
   if (!location.risk.countedFactors) return null;
   return location.risk.countedFactors.includes(factor)
     ? <span className="text-[10px] font-bold text-low">Live</span>
-    : <span className="text-[10px] font-bold text-mod">Demo · not counted</span>;
+    : <span className="text-[10px] font-bold text-ink-soft">Unavailable</span>;
 }
 
 function BasisNote({ location }: { location: SafeGoLocation }) {
   if (location.risk.basis === "partial") {
-    return <div className="calculation-rule">Partial rating: only live factors are counted. Factors marked “Demo · not counted” are placeholders shown for context. This is not a full travel rating.</div>;
+    return <div className="calculation-rule">Partial rating: only connected live factors are counted. Missing factors are not treated as safe.</div>;
   }
   if (location.risk.basis === "none") {
     return <div className="calculation-rule">Not rated: SafeGo has no live data for this location right now. Not rated does not mean safe.</div>;
@@ -109,7 +109,7 @@ function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
       </div>
     </div>
     <div className="section-title">What SafeGo considered</div>
-    <div>{location.factors.map((factor) => {
+    <div>{location.factors.filter((factor) => !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name)).map((factor) => {
       const counted = !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name);
       return <article className={`card factor-card${counted ? "" : " opacity-70"}`} key={factor.name}>
         <div className={`factor-icon ${factor.tone}`}><Icon name={factor.icon} /></div>
@@ -125,7 +125,7 @@ function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
     })}</div>
     <div className="card card-pad mb-[22px] result-explanation">
       <h2>How to use this result</h2>
-      <p>SafeGo gives more importance to flooding and road conditions, then considers weather, official updates, community observations, and nearby school information. Only factors backed by live data are counted; the rest are shown for context.</p>
+      <p>SafeGo gives more importance to flooding and road conditions, then considers weather, official updates, community observations, and nearby school information. Only factors backed by current connected data are shown and counted.</p>
       {location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}
       <p><strong>This is not permission to travel.</strong> Conditions can change quickly, so check current government and school announcements before leaving.</p>
     </div>
@@ -146,7 +146,7 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
         <RiskGauge score={trip.overallRiskScore} size={190} />
         <div className="risk-level-name md">{trip.riskName}{partial ? " (partial)" : ""}</div>
         <p className="gauge-caption">This result uses the parts of the route where SafeGo has information. Missing information is never treated as low risk.</p>
-        {partial && <div className="calculation-rule">Partial rating: places along this route count only their live factors. Demo placeholders are shown below but not counted, so this is not a full travel rating.</div>}
+        {partial && <div className="calculation-rule">Partial rating: places along this route count only their connected live factors. Missing information is not treated as safe.</div>}
         {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
       </div>
     </div>}
@@ -162,10 +162,10 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
           </div>
           <p className="factor-desc">{location.risk.summary}</p>
           <p className="route-weather-detail"><strong>Weather:</strong> {location.factors.find((factor) => factor.name === "Weather")?.description}</p>
-          <div className="route-factor-pills">{location.factors.map((factor) => {
+          <div className="route-factor-pills">{location.factors.filter((factor) => !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name)).map((factor) => {
             const counted = !location.risk.countedFactors || location.risk.countedFactors.includes(factor.name);
             return <span key={factor.name} className={counted ? "" : "opacity-60"}>
-              {displayFactorName(factor.name)}: <strong className={counted ? "" : "line-through"}>{factor.score}</strong>{counted ? "" : " (demo, not counted)"}
+              {displayFactorName(factor.name)}: <strong>{factor.score}</strong>
             </span>;
           })}</div>
         </div>

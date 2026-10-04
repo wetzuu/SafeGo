@@ -15,7 +15,7 @@ import { applyFloodRoadObservations, applyOfficialAdvisories } from "./operation
 import { getRepository } from "./repository.ts";
 
 type DashboardResult = {
-  backend: "mock" | "database";
+  backend: "local" | "database";
   snapshot: DashboardSnapshot;
 };
 

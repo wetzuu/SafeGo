@@ -19,10 +19,8 @@ test("validates endpoints before calling trip services", () => {
   if (!same.ok) assert.equal(same.code, "SAME_LOCATION");
 });
 
-test("normalizes endpoints and requires an explicit demo flag", () => {
+test("normalizes endpoints and ignores removed demo flags", () => {
   assert.deepEqual(parseTripInput({ origin: " España ", destination: " Lerma ", preferSavedDemo: "true" }), {
-    ok: true, data: { origin: "España", destination: "Lerma", preferSavedDemo: false },
+    ok: true, data: { origin: "España", destination: "Lerma" },
   });
-  const demo = parseTripInput({ origin: "España", destination: "Lerma", preferSavedDemo: true });
-  assert.equal(demo.ok && demo.data.preferSavedDemo, true);
 });

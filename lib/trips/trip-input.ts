@@ -1,5 +1,5 @@
 type TripInputResult =
-  | { ok: true; data: { origin: string; destination: string; preferSavedDemo: boolean } }
+  | { ok: true; data: { origin: string; destination: string } }
   | { ok: false; code: string; message: string };
 
 export function parseTripInput(value: unknown): TripInputResult {
@@ -15,5 +15,5 @@ export function parseTripInput(value: unknown): TripInputResult {
   if (origin.toLocaleLowerCase() === destination.toLocaleLowerCase()) {
     return { ok: false, code: "SAME_LOCATION", message: "Origin and destination must be different." };
   }
-  return { ok: true, data: { origin, destination, preferSavedDemo: body.preferSavedDemo === true } };
+  return { ok: true, data: { origin, destination } };
 }

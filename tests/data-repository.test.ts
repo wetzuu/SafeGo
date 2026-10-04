@@ -1,19 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { MockSafeGoRepository } from "../lib/data/mock-repository.ts";
-import { isAreaDashboardLocation } from "../lib/trips/pilot.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATION_CATALOG } from "../lib/safego/location-catalog.ts";
 
-test("mock repository exposes every preset location", async () => {
+test("local repository exposes geographic anchors without seeded conditions", async () => {
   const repository = new MockSafeGoRepository();
   const locations = await repository.listLocations();
 
-  assert.equal(locations.length, LOCATIONS.length);
+  assert.equal(locations.length, LOCATION_CATALOG.length);
   assert.ok(locations.every((location) => location.coordinates.length === 2));
   assert.ok(locations.every((location) => location.risk.percentage >= 0));
 });
 
-test("mock repository returns calculated risk details", async () => {
+test("local repository returns unrated location details", async () => {
   const repository = new MockSafeGoRepository();
   const result = await repository.getLocationRisk("espana");
 
@@ -21,57 +20,26 @@ test("mock repository returns calculated risk details", async () => {
   assert.equal(result.location.id, "espana");
   assert.equal(result.factors.length, 5);
   assert.equal(result.assessment.modelVersion, "1.0.0");
-  assert.equal(result.assessment.percentage, 54);
-  assert.ok(result.advisories.every((advisory) =>
-    advisory.isMock && advisory.date === "Sep 14, 2026",
-  ));
-  assert.ok(result.advisories.some((advisory) =>
-    advisory.label === "PAGASA" && advisory.isMock,
-  ));
+  assert.equal(result.assessment.percentage, 0);
+  assert.deepEqual(result.advisories, []);
 });
 
-test("Pasig exposes area-specific nearby university statuses", async () => {
+test("local catalog does not expose seeded university statuses", async () => {
   const repository = new MockSafeGoRepository();
   const locations = await repository.listDashboardLocations();
   const pasig = locations.find((location) => location.id === "ortigas-pasig");
 
   assert.ok(pasig);
   assert.equal(pasig.city, "Pasig");
-  assert.equal(pasig.universities.length, 2);
-  assert.ok(pasig.universities.every((university) => university.isMock));
-  assert.ok(pasig.universities.some((university) => university.status === "suspended"));
-  assert.ok(pasig.universities.every((university) =>
-    university.campus?.toLocaleLowerCase().includes("pasig")
-      || university.campus?.toLocaleLowerCase().includes("ortigas"),
-  ));
+  assert.deepEqual(pasig.universities, []);
 });
 
-test("every supported dashboard area has university statuses and only verified posts are linked", async () => {
-  const repository = new MockSafeGoRepository();
-  const areas = (await repository.listDashboardLocations()).filter(isAreaDashboardLocation);
-
-  assert.equal(areas.length, 5);
-  assert.ok(areas.every((area) => area.universities.length > 0));
-  const universities = areas.flatMap((area) => area.universities);
-  assert.ok(universities.every((university) =>
-    university.logoPath.startsWith("/university-logos/")
-      && university.logoAlt.length > 0,
-  ));
-  const linked = universities.filter((university) => university.announcementUrl);
-  assert.equal(linked.length, 1);
-  assert.ok(linked.every((university) =>
-    university.announcementVerified
-      && !university.isMock
-      && university.announcementUrl?.startsWith("https://www.facebook.com/"),
-  ));
-});
-
-test("mock repository returns null for an unknown location", async () => {
+test("local repository returns null for an unknown location", async () => {
   const repository = new MockSafeGoRepository();
   assert.equal(await repository.getLocationRisk("not-a-location"), null);
 });
 
-test("mock repository stores new reports as unverified", async () => {
+test("local repository stores new reports as unverified", async () => {
   const repository = new MockSafeGoRepository();
   const report = await repository.submitCommunityReport({
     locationId: "mapua-makati",

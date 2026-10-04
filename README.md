@@ -2,7 +2,7 @@
 
 Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo identifies the connecting roads, estimates the risks along them, and displays color-coded route sections on a real interactive map.
 
-The current build combines OSRM road geometry, submit-only OpenStreetMap geocoding, live modeled weather from Open-Meteo, and SafeGo’s stored risk locations. It can ingest approved normalized official-advisory and flood/road feeds when configured; otherwise those signals keep their stored fallbacks. Community submission remains disabled until moderation exists.
+The current build combines live OSRM road geometry, OpenStreetMap geocoding, modeled weather, PAGASA alerts, and optional approved operational feeds. Missing sources remain unavailable; SafeGo does not substitute seeded conditions or saved routes. Community submission remains disabled until moderation exists.
 
 SafeGo is informational only. It does not declare class suspensions. Follow official school and government announcements.
 
@@ -19,10 +19,9 @@ Or double-click **`Start SafeGo.cmd`** on Windows. This builds the production we
 
 - `npm run doctor`: checks Node, JDK 21, packages, builds, ports and internet access to the live sources.
 - `npm run stop` (or **`Stop SafeGo.cmd`**): frees ports 3000 and 8080 when an older SafeGo is still running.
-- `npm run presentation:offline`: no live weather or PAGASA alerts, for venues without reliable internet.
 - `npm run presentation:build`: build everything ahead of time.
 
-See [`docs/DEMO_CHECKLIST.md`](docs/DEMO_CHECKLIST.md) for the pre-presentation checklist and a suggested demo flow.
+Use `npm run check:all` before presenting to run the web checks, Java tests, and risk validation.
 
 ### Developing (Next.js + Java API)
 
@@ -46,16 +45,13 @@ npm run dev
 
 Open `http://localhost:3000` in your browser. The UI runs on port 3000 and the Java API on port 8080. The first run downloads Gradle dependencies and may take a few minutes. Keep the terminal open. If port 3000 is already in use, stop the older Next.js server or open the port shown in the terminal.
 
-For a connection-independent presentation after dependencies have been cached,
-run `npm run dev:offline` and use the built-in example trip. See
-[`docs/DEMO_CHECKLIST.md`](docs/DEMO_CHECKLIST.md) for the complete pre-demo and
-fallback checklist. API readiness is available at `GET /api/health`.
+SafeGo now requires internet access for live weather, PAGASA alerts, geocoding, map tiles, and routing. If a source is unavailable, the interface says so instead of loading example data. API readiness is available at `GET /api/health`.
 
-For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows stored demo data but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.
+For separate terminals, run `npm run dev:api` and `npm run dev:web`. `npm run dev:web` alone shows the location catalog but cannot fetch live weather or analyze trips. The Java launcher reads `.env` and `.env.local` from the project root.
 
-Before a presentation, run `npm run check:demo` (lint, types, tests, production build, Java tests and risk validation), then start with `npm run presentation` as described above. `npm run demo` is an alias for `npm run presentation`.
+Before a presentation, run `npm run check:all`, then start with `npm run presentation` as described above.
 
-The default `.env.example` configuration uses `SAFEGO_DATA_MODE=mock` for a stable demo. If the variable is omitted, `auto` mode uses PostgreSQL only when `DATABASE_URL` is configured and otherwise falls back to the built-in dataset.
+The default `.env.example` configuration uses `SAFEGO_DATA_MODE=local`, which contains geographic anchors only. If the variable is omitted, `auto` mode uses PostgreSQL only when `DATABASE_URL` is configured and otherwise uses the same live-only local catalog.
 
 The dashboard requests a fresh snapshot when it opens, when the user presses Refresh, and every five minutes while the page remains open. Set `SAFEGO_WEATHER_PROVIDER=disabled` for fully offline development.
 
@@ -67,7 +63,7 @@ Requires Java 21. From `server/demo/`:
 ./gradlew bootRun
 ```
 
-The server starts on port 8080. All `/api/*` requests are forwarded to it by Next.js. It loads the built-in dataset or the existing PostgreSQL/PostGIS schema, applies live weather and configured feeds, and calculates route risks.
+The server starts on port 8080. All `/api/*` requests are forwarded to it by Next.js. It loads the location catalog or PostgreSQL/PostGIS records, applies live weather and configured feeds, and calculates route risks.
 
 Refer to `server/API.md` for the API documentation.
 
@@ -81,7 +77,7 @@ npm run db:setup
 npm run dev
 ```
 
-Set `SAFEGO_DATA_MODE=database` to require the database. Use `mock` to force the local fixtures, or `auto` to use the database only when `DATABASE_URL` is present.
+Set `SAFEGO_DATA_MODE=database` to require the database. Use `local` for geographic anchors only, or `auto` to use the database when `DATABASE_URL` is present.
 
 The database commands are repeatable: migrations are recorded in `schema_migrations`, and seeding replaces each preset location's observations, advisories, reports, and current assessment without duplicating them. Database mode also persists accounts, sessions, and the canonical coordinates resolved for each saved Home and School.
 
@@ -90,7 +86,7 @@ staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
 
 ## Flow
 
-1. Check a supported area such as Pasig, optionally add a destination, or load the stable España-to-Lerma pilot example.
+1. Search a supported area, then optionally add a destination.
 2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
 3. Review the route score, compact map, road conditions, announcements, and major roads.
 4. Select **Plan another trip** to start again.
@@ -119,7 +115,7 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 ## Application structure
 
 - `components/safego/` contains the React interface and interactive map.
-- `lib/safego/locations.ts` is the current mock-data source.
+- `lib/safego/locations.ts` supplies geographic anchor metadata; `location-catalog.ts` strips seeded conditions before runtime.
 - `lib/safego/risk-model.ts` contains the versioned risk calculation.
 - `lib/safego/types.ts` defines the shared domain contracts for future APIs.
 - `server/demo/` contains the active Java API, repositories, providers, and risk calculation.
@@ -139,12 +135,12 @@ the local database-only setup.
 | --- | --- |
 | `GET /api/locations` | Lists map/search locations with coordinates and current risk |
 | `GET /api/locations/:id/risk` | Returns the assessment, factors, advisories, and reports for one location |
-| `GET /api/sources/status` | Shows whether feeds are mock, active, degraded, or disabled |
+| `GET /api/sources/status` | Shows whether feeds are active, degraded, or disabled |
 | `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
 | `POST /api/trips/analyze` | Resolves A and B, identifies connecting roads, and calculates route risk |
 | `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
 
-Responses include `meta.backend` (`mock` or `database`) and `meta.generatedAt`. The dashboard service keeps an assembled snapshot in memory for one minute, while successful OSRM routes are cached for ten minutes. The UI starts with local fixtures for an instant render and replaces them with `/api/dashboard` results when available.
+Responses include `meta.backend` (`local` or `database`) and `meta.generatedAt`. The dashboard service keeps an assembled snapshot in memory for one minute, while successful OSRM routes are cached for ten minutes. The UI starts with geographic anchors only and replaces them with `/api/dashboard` live results when available.
 
 ## Live weather normalization
 

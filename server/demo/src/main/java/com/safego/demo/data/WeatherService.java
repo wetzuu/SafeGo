@@ -195,7 +195,7 @@ public class WeatherService {
         if (coordinates.isEmpty()) return List.of();
         String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
         String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
-        String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
+        String url = "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
             + "&hourly=" + URLEncoder.encode("weather_code,precipitation,wind_gusts_10m,temperature_2m", StandardCharsets.UTF_8)
             + "&past_days=" + days + "&forecast_days=1&timezone=Asia%2FManila";
 
@@ -218,7 +218,7 @@ public class WeatherService {
         if (coordinates.isEmpty()) return List.of();
         String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
         String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
-        String url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
+        String url = "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
             + "&daily=" + URLEncoder.encode("weather_code,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_gusts_10m_max", StandardCharsets.UTF_8)
             + "&hourly=precipitation&past_days=" + days + "&forecast_days=1&timezone=Asia%2FManila";
 

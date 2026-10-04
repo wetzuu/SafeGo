@@ -12,10 +12,10 @@ const quiapo = LOCATIONS.find((location) => location.id === "quiapo") ?? LOCATIO
 const factor = (name: FactorName) => quiapo.factors.find((candidate) => candidate.name === name)!.score;
 
 test("live factors follow active sources and the real database", () => {
-  assert.deepEqual([...liveFactorNames([source("open-meteo"), source("pagasa-cap")], "mock")].sort(), ["Official advisories", "Weather"]);
-  assert.equal(liveFactorNames([source("open-meteo", "degraded")], "mock").size, 0);
+  assert.deepEqual([...liveFactorNames([source("open-meteo"), source("pagasa-cap")], "local")].sort(), ["Official advisories", "Weather"]);
+  assert.equal(liveFactorNames([source("open-meteo", "degraded")], "local").size, 0);
   assert.ok(liveFactorNames([], "database").has("Community reports"));
-  assert.ok(liveFactorNames([source("flood-road")], "mock").has("Flood / roads"));
+  assert.ok(liveFactorNames([source("flood-road")], "local").has("Flood / roads"));
 });
 
 test("with some live factors the score is the highest live factor, never a demo one", () => {
@@ -45,7 +45,7 @@ test("with no live factor the location is not rated", () => {
 });
 
 test("honestSnapshot rescores every location from the snapshot's own sources", () => {
-  const snapshot = honestSnapshot({ locations: LOCATIONS, sources: [source("open-meteo")], weatherUpdatedAt: null }, "mock");
+  const snapshot = honestSnapshot({ locations: LOCATIONS, sources: [source("open-meteo")], weatherUpdatedAt: null }, "local");
   assert.ok(snapshot.locations.every((location) => location.risk.basis === "partial"));
   assert.ok(snapshot.locations.every((location) =>
     location.risk.percentage === location.factors.find((candidate) => candidate.name === "Weather")!.score));
@@ -68,7 +68,7 @@ test("routes treat unrated locations as uncovered and need live flood data for a
 });
 
 test("dashboard merge preserves local locations omitted by the backend", () => {
-  const live = liveFactorNames([source("open-meteo")], "mock");
+  const live = liveFactorNames([source("open-meteo")], "local");
   const backendSubset = LOCATIONS.slice(0, 5);
   const byId = new Map(backendSubset.map((loc) => [loc.id, loc]));
 

@@ -131,7 +131,7 @@ export function AccountPanel({ open, account, onClose, onAccount }: {
         <div className="account-actions"><button className="submit-btn" type="submit" disabled={working}>{working ? "Saving…" : "Save places"}</button><button className="account-signout" type="button" onClick={() => void signOut()} disabled={working}>Sign out</button></div>
         {message && <div className="account-message" role="status">{message}</div>}
         {error && <div className="account-message error" role="alert">{error}</div>}
-        <small>{account.persistence === "database" ? "Saved places are stored in your SafeGo account." : "Demo-mode accounts last until the Java server restarts. Use database mode for persistence."}</small>
+        <small>{account.persistence === "database" ? "Saved places are stored in your SafeGo account." : "This local account lasts until the Java server restarts. Connect the database for persistence."}</small>
       </form>}
     </section>
   </div>;

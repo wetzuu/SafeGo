@@ -9,11 +9,10 @@ import type { TripAnalysis } from "./types.ts";
 export async function analyzeTrip(
   originQuery: string,
   destinationQuery: string,
-  options: { preferSavedDemo?: boolean } = {},
-): Promise<{ analysis: TripAnalysis; backend: "mock" | "database" }> {
+): Promise<{ analysis: TripAnalysis; backend: "local" | "database" }> {
   const { backend, snapshot } = await getDashboardSnapshot();
   const origin = await resolvePlace(originQuery, snapshot.locations);
   const destination = await resolvePlace(destinationQuery, snapshot.locations);
-  const route = await fetchDrivingRoute(origin.coordinates, destination.coordinates, options);
+  const route = await fetchDrivingRoute(origin.coordinates, destination.coordinates);
   return { backend, analysis: assessTrip({ origin, destination, ...route }, snapshot) };
 }

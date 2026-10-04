@@ -47,7 +47,7 @@ export interface RiskAssessment {
    * Undefined for assessments that never pass through that step (e.g. validation scenarios).
    */
   basis?: "full" | "partial" | "none";
-  /** Factors counted in `percentage`; the rest are demo placeholders shown for context only. */
+  /** Factors counted in `percentage`; unavailable factors are never treated as zero risk. */
   countedFactors?: FactorName[];
 }
 

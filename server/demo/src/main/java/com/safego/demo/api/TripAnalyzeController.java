@@ -2,7 +2,6 @@ package com.safego.demo.api;
 
 import com.safego.demo.data.DashboardService;
 import com.safego.demo.model.*;
-import com.safego.demo.service.DemoRoutes;
 import com.safego.demo.service.GeocodingService;
 import com.safego.demo.service.RoutingService;
 import com.safego.demo.service.TripAnalysisService;
@@ -55,7 +54,6 @@ public class TripAnalyzeController {
         String destination = clean(body.get("destination"));
         Object originCoordinates = body.get("originCoordinates");
         Object destinationCoordinates = body.get("destinationCoordinates");
-        boolean preferDemo = Boolean.TRUE.equals(body.get("preferSavedDemo"));
 
         if (origin.isEmpty() || destination.isEmpty()
                 || origin.length() > 160 || destination.length() > 160) {
@@ -70,7 +68,7 @@ public class TripAnalyzeController {
 
             ResolvedPlace originPlace = resolveSubmittedPlace(origin, originCoordinates, locations);
             ResolvedPlace destPlace = resolveSubmittedPlace(destination, destinationCoordinates, locations);
-            RouteResult route = routingService.fetchRoute(originPlace.coordinates(), destPlace.coordinates(), preferDemo);
+            RouteResult route = routingService.fetchRoute(originPlace.coordinates(), destPlace.coordinates());
 
             TripAnalysis analysis = assessTrip(originPlace, destPlace, route, locations);
 
@@ -103,10 +101,6 @@ public class TripAnalyzeController {
             ResolvedPlace origin, ResolvedPlace dest, RouteResult route,
             List<SafeGoLocation> locations, List<SourceStatus> sources) {
         return tripAnalysisService.assessTrip(origin, dest, route, locations, sources);
-    }
-
-    public static RouteResult savedDemoRoute(double[] origin, double[] dest) {
-        return DemoRoutes.savedDemoRoute(origin, dest);
     }
 
     public static double distanceKm(double[] a, double[] b) {

@@ -32,15 +32,9 @@ public class RoutingService {
         this.routeCache = new ConcurrentHashMap<>();
     }
 
-    public RouteResult fetchRoute(double[] origin, double[] dest, boolean preferDemo) throws Exception {
+    public RouteResult fetchRoute(double[] origin, double[] dest) throws Exception {
         String base = System.getenv("SAFEGO_ROUTING_BASE_URL");
         if (base == null) base = OSRM_BASE;
-        boolean fallbackEnabled = !"false".equals(System.getenv("SAFEGO_DEMO_ROUTE_FALLBACK"));
-
-        if (fallbackEnabled && preferDemo) {
-            RouteResult demo = DemoRoutes.savedDemoRoute(origin, dest);
-            if (demo != null) return demo;
-        }
 
         String key = base + ":" + origin[1] + "," + origin[0] + ";" + dest[1] + "," + dest[0];
         TimedValue<RouteResult> cached = routeCache.get(key);
@@ -48,17 +42,9 @@ public class RoutingService {
             return cached.value();
         }
 
-        try {
-            RouteResult route = queryOsrm(base, origin, dest);
-            routeCache.put(key, new TimedValue<>(route, System.currentTimeMillis() + ROUTE_CACHE_MS));
-            return route;
-        } catch (Exception e) {
-            if (fallbackEnabled) {
-                RouteResult demo = DemoRoutes.savedDemoRoute(origin, dest);
-                if (demo != null) return demo;
-            }
-            throw e;
-        }
+        RouteResult route = queryOsrm(base, origin, dest);
+        routeCache.put(key, new TimedValue<>(route, System.currentTimeMillis() + ROUTE_CACHE_MS));
+        return route;
     }
 
     @SuppressWarnings("unchecked")

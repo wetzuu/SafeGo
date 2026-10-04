@@ -22,7 +22,7 @@ export function expiresAt(university: UniversityStatus): number | null {
 /**
  * Announcements worth interrupting the traveller for: classes suspended or moved online, still in
  * force, and not dismissed. Ordered by urgency, then by how close the campus area is.
- * Demo entries have no real date, so they never expire and are labelled as demos where shown.
+ * Only verified, non-demo announcements can interrupt the traveller.
  */
 export function activeUniversityAlerts(
   candidates: UniversityAlert[],
@@ -34,8 +34,8 @@ export function activeUniversityAlerts(
     .filter(({ university }) => {
       if (seen.has(university.id) || dismissed.has(university.id)) return false;
       seen.add(university.id);
+      if (university.isMock || !university.announcementVerified) return false;
       if (university.status !== "suspended" && university.status !== "online") return false;
-      if (university.isMock) return true;
       const expiry = expiresAt(university);
       return expiry === null || expiry > now;
     })
