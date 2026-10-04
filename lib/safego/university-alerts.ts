@@ -19,10 +19,35 @@ export function expiresAt(university: UniversityStatus): number | null {
   return Number.isFinite(posted) ? posted + VALID_FOR_MS : null;
 }
 
+/** A made-up announcement, so people can see what a real one looks like. Always marked as a sample. */
+export function sampleUniversityAlert(area: string, now: number): UniversityAlert {
+  const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(now));
+  return {
+    area,
+    proximity: -1,
+    university: {
+      id: SAMPLE_ANNOUNCEMENT_ID,
+      name: "Mapúa University",
+      campus: "Intramuros, Manila",
+      logoPath: "/university-logos/mapua.webp",
+      logoAlt: "Mapúa University logo",
+      status: "suspended",
+      statusLabel: "Classes suspended",
+      announcement: "Classes at all levels are suspended today because of heavy rain and flooding near campus. Offices stay open.",
+      date,
+      time: "5:30 AM",
+      isMock: true,
+      sourceName: "Sample",
+    },
+  };
+}
+
+export const SAMPLE_ANNOUNCEMENT_ID = "sample-announcement";
+
 /**
  * Announcements worth interrupting the traveller for: classes suspended or moved online, still in
  * force, and not dismissed. Ordered by urgency, then by how close the campus area is.
- * Only verified, non-demo announcements can interrupt the traveller.
+ * Demo entries never appear. An announcement must be verified, or be a report that links to its source.
  */
 export function activeUniversityAlerts(
   candidates: UniversityAlert[],
@@ -34,7 +59,7 @@ export function activeUniversityAlerts(
     .filter(({ university }) => {
       if (seen.has(university.id) || dismissed.has(university.id)) return false;
       seen.add(university.id);
-      if (university.isMock || !university.announcementVerified) return false;
+      if (university.isMock || !(university.announcementVerified || university.announcementUrl)) return false;
       if (university.status !== "suspended" && university.status !== "online") return false;
       const expiry = expiresAt(university);
       return expiry === null || expiry > now;

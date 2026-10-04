@@ -20,6 +20,7 @@ public class DashboardService {
     private final WeatherService weatherService;
     private final OperationalFeedService feedService;
     private final PagasaCapService pagasaService;
+    private final UniversityAnnouncementService universityService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private DashboardSnapshot cached;
@@ -27,14 +28,17 @@ public class DashboardService {
 
     /** For tests and tools: never calls PAGASA, so results stay repeatable. */
     public DashboardService() {
-        this(new WeatherService(), new OperationalFeedService(), PagasaCapService.disabled());
+        this(new WeatherService(), new OperationalFeedService(), PagasaCapService.disabled(), UniversityAnnouncementService.disabled());
     }
 
     @Autowired
-    public DashboardService(WeatherService weatherService, OperationalFeedService feedService, PagasaCapService pagasaService) {
+    public DashboardService(WeatherService weatherService, OperationalFeedService feedService, PagasaCapService pagasaService,
+            UniversityAnnouncementService universityService) {
         this.weatherService = weatherService;
         this.feedService = feedService;
         this.pagasaService = pagasaService;
+        this.universityService = universityService;
+        universityService.onScanFinished(this::invalidate);
 
         String mode = System.getenv().getOrDefault("SAFEGO_DATA_MODE", "auto").trim().toLowerCase(Locale.ROOT);
         String url = System.getenv("DATABASE_URL");
@@ -110,10 +114,15 @@ public class DashboardService {
         sources.add(floodRoad.status());
         boolean officialActive = "active".equals(official.status().status());
         boolean pagasaActive = "active".equals(pagasa.status().status());
+        boolean pagasaOverLocations = false;
         if (officialActive || pagasaActive) {
             List<JsonNode> advisories = new ArrayList<>();
             if (officialActive) advisories.addAll(official.items());
-            if (pagasaActive) advisories.addAll(pagasaAdvisories(pagasa.alerts(), locations));
+            if (pagasaActive) {
+                List<JsonNode> pagasaItems = pagasaAdvisories(pagasa.alerts(), locations);
+                pagasaOverLocations = !pagasaItems.isEmpty();
+                advisories.addAll(pagasaItems);
+            }
             locations = feedService.applyFeed(locations, advisories, true);
         }
         if ("active".equals(floodRoad.status().status())) {
@@ -138,6 +147,12 @@ public class DashboardService {
                     OperationalFeedService.safeMessage(e)));
             }
         }
+
+        // Rain, a PAGASA alert or a high rating sets off a scan for university suspension notices.
+        UniversityAnnouncementService.ScanResult universityScan = universityService.check(locations, pagasaOverLocations);
+        locations = universityService.attach(locations, universityScan);
+        sources.removeIf(source -> UniversityAnnouncementService.SOURCE_KEY.equals(source.key()));
+        sources.add(universityService.status(universityScan));
 
         cached = new DashboardSnapshot(List.copyOf(locations), List.copyOf(sources), weatherUpdatedAt);
         expiresAt = System.currentTimeMillis() + CACHE_MS;
@@ -171,6 +186,14 @@ public class DashboardService {
 
     public PagasaCapService.Result pagasaRecentAlerts() {
         return pagasaService.recentAlerts();
+    }
+
+    /** The latest university suspension scan; with force, scan now whatever the weather. */
+    public UniversityAnnouncementService.ScanResult universityScan(boolean force) {
+        if (!force) return universityService.latest();
+        UniversityAnnouncementService.ScanResult scan = universityService.scanNow();
+        invalidate();
+        return scan;
     }
 
     public PagasaCapService.Result pagasaAlerts() {

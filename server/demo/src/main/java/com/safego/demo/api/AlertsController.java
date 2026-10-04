@@ -5,6 +5,7 @@ import com.safego.demo.data.PagasaCapService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
@@ -48,6 +49,12 @@ public class AlertsController {
         for (PagasaCapService.CapAlert alert : result.alerts()) metroManilaView(alert).ifPresent(alerts::add);
         return ApiResponse.noStore(ApiResponse.ok(
             Map.of("alerts", alerts, "source", result.status()), dashboard.backend()));
+    }
+
+    /** The university suspension scan: what was checked and what was found. force=true scans now. */
+    @GetMapping("/universities")
+    public ResponseEntity<Object> universities(@RequestParam(defaultValue = "false") boolean force) {
+        return ApiResponse.noStore(ApiResponse.ok(dashboard.universityScan(force), dashboard.backend()));
     }
 
     public record TimelineHour(String time, List<String> alertIds) {}

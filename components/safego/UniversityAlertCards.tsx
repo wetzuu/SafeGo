@@ -37,6 +37,9 @@ export function UniversityAlertCards({
                 <path d="M4 10.5 12 5l8 5.5M6 10v8h12v-8" />
               </svg>
               <span>{suspended ? "Classes suspended" : "Classes moved online"}</span>
+              {university.isMock
+                ? <span className="rounded bg-white/25 px-1.5 py-0.5">Sample, not a real announcement</span>
+                : !university.announcementVerified && university.sourceName && <span className="font-semibold text-white/85">· reported by {university.sourceName}</span>}
             </div>
             <h4 className="mt-1 text-sm font-bold leading-snug">{university.name}</h4>
             <p className="mt-0.5 text-xs leading-snug text-white/90">{university.statusLabel}. {university.announcement}</p>
@@ -50,7 +53,12 @@ export function UniversityAlertCards({
                 Read the official post
               </a>
             )}
-            {!university.announcementUrl && officialSource && (
+            {!university.isMock && !university.announcementVerified && university.announcementUrl && (
+              <a className="mt-1.5 mr-3 inline-block text-xs font-bold underline underline-offset-2" href={university.announcementUrl} target="_blank" rel="noreferrer">
+                Read the report
+              </a>
+            )}
+            {!university.isMock && !(university.announcementVerified && university.announcementUrl) && officialSource && (
               <a className="mt-1.5 inline-block text-xs font-bold underline underline-offset-2" href={officialSource.url} target="_blank" rel="noreferrer">
                 Check {officialSource.name}
               </a>
@@ -59,7 +67,7 @@ export function UniversityAlertCards({
               <button
                 type="button"
                 className="absolute right-1 top-1 size-9 rounded-full text-lg leading-none hover:bg-white/15"
-                aria-label={`Dismiss the ${university.name} announcement`}
+                aria-label={university.isMock ? "Hide the sample announcement" : `Dismiss the ${university.name} announcement`}
                 onClick={() => onDismiss(university.id)}
               >
                 ×
