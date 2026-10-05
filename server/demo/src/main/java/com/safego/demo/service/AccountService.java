@@ -1,6 +1,7 @@
 package com.safego.demo.service;
 
 import com.safego.demo.model.AccountProfile;
+import com.safego.demo.model.Bookmark;
 import com.safego.demo.model.SavedPlace;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,13 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class AccountService {
     private static final long SESSION_DAYS = 30;
-    private static final String PROFILE_COLUMNS = "u.email,u.display_name," +
+    public static final int MAX_BOOKMARKS = 30;
+    private static final String PROFILE_COLUMNS = "u.id user_id,u.email,u.display_name," +
         "p.home_label,p.home_canonical_label,p.home_source,p.home_matched_location_id,p.home_approximate," +
         "ST_Y(p.home_position::geometry) home_lat,ST_X(p.home_position::geometry) home_lon," +
         "p.school_label,p.school_canonical_label,p.school_source,p.school_matched_location_id,p.school_approximate," +
@@ -55,7 +58,7 @@ public class AccountService {
                  PreparedStatement places = connection.prepareStatement("INSERT INTO user_saved_places (user_id) VALUES (?)")) {
                 user.setObject(1, id); user.setString(2, normalizedEmail); user.setString(3, name.trim()); user.setString(4, hash); user.executeUpdate();
                 places.setObject(1, id); places.executeUpdate();
-                return createDatabaseSession(connection, id, new AccountProfile(normalizedEmail, name.trim(), "", "", null, null, "database"));
+                return createDatabaseSession(connection, id, new AccountProfile(normalizedEmail, name.trim(), "", "", null, null, List.of(), "database"));
             } catch (SQLException error) {
                 connection.rollback();
                 if ("23505".equals(error.getSQLState())) throw new AccountException("EMAIL_EXISTS", "An account with that email already exists.");
@@ -77,7 +80,7 @@ public class AccountService {
             statement.setString(1, normalizedEmail);
             try (ResultSet row = statement.executeQuery()) {
                 if (!row.next() || !passwords.matches(password, row.getString("password_hash"))) throw invalidLogin();
-                return createDatabaseSession(connection, row.getObject("id", UUID.class), databaseProfile(row));
+                return createDatabaseSession(connection, row.getObject("id", UUID.class), databaseProfile(connection, row));
             }
         } catch (AccountException error) { throw error; }
         catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "The account service is unavailable."); }
@@ -96,7 +99,7 @@ public class AccountService {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, tokenHash);
             try (ResultSet row = statement.executeQuery()) {
-                return row.next() ? Optional.of(databaseProfile(row)) : Optional.empty();
+                return row.next() ? Optional.of(databaseProfile(connection, row)) : Optional.empty();
             }
         } catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "The account service is unavailable."); }
     }
@@ -117,9 +120,106 @@ public class AccountService {
             next = bindPlace(statement, next, school);
             statement.setString(next, tokenHash(rawToken));
             if (statement.executeUpdate() != 1) throw new AccountException("UNAUTHORIZED", "Sign in again to update saved places.");
-            return new AccountProfile(current.email(), current.name(), label(home), label(school), home, school, "database");
+            return new AccountProfile(current.email(), current.name(), label(home), label(school), home, school, current.bookmarks(), "database");
         } catch (AccountException error) { throw error; }
         catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "Saved places could not be updated."); }
+    }
+
+    public AccountProfile addBookmark(String rawToken, String name, SavedPlace place) {
+        AccountProfile current = requireSession(rawToken);
+        if (current.bookmarks().size() >= MAX_BOOKMARKS) {
+            throw new AccountException("BOOKMARK_LIMIT", "You can keep up to " + MAX_BOOKMARKS + " bookmarks. Delete one to add another.");
+        }
+        UUID id = UUID.randomUUID();
+        if (databaseUrl == null) {
+            MemoryUser user = users.get(current.email());
+            user.bookmarks.add(new Bookmark(id.toString(), name, place));
+            return profile(user);
+        }
+        String sql = "INSERT INTO user_bookmarks (id,user_id,name,label,canonical_label,position,source,matched_location_id,approximate) " +
+            "SELECT ?,s.user_id,?,?,?,ST_SetSRID(ST_MakePoint(?,?),4326)::geography,?,?,? FROM user_sessions s WHERE s.token_hash=? AND s.expires_at>now()";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, id);
+            int next = bindBookmark(statement, 2, name, place);
+            statement.setString(next, tokenHash(rawToken));
+            if (statement.executeUpdate() != 1) throw unauthorized();
+        } catch (AccountException error) { throw error; }
+        catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "The bookmark could not be saved."); }
+        return requireSession(rawToken);
+    }
+
+    public AccountProfile updateBookmark(String rawToken, String bookmarkId, String name, SavedPlace place) {
+        AccountProfile current = requireSession(rawToken);
+        if (current.bookmarks().stream().noneMatch(bookmark -> bookmark.id().equals(bookmarkId))) throw bookmarkNotFound();
+        if (databaseUrl == null) {
+            MemoryUser user = users.get(current.email());
+            user.bookmarks.replaceAll(bookmark -> bookmark.id().equals(bookmarkId) ? new Bookmark(bookmarkId, name, place) : bookmark);
+            return profile(user);
+        }
+        String sql = "UPDATE user_bookmarks b SET name=?,label=?,canonical_label=?,position=ST_SetSRID(ST_MakePoint(?,?),4326)::geography," +
+            "source=?,matched_location_id=?,approximate=?,updated_at=now() " +
+            "FROM user_sessions s WHERE b.id=? AND b.user_id=s.user_id AND s.token_hash=? AND s.expires_at>now()";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            int next = bindBookmark(statement, 1, name, place);
+            statement.setObject(next, UUID.fromString(bookmarkId));
+            statement.setString(next + 1, tokenHash(rawToken));
+            if (statement.executeUpdate() != 1) throw bookmarkNotFound();
+        } catch (AccountException error) { throw error; }
+        catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "The bookmark could not be updated."); }
+        return requireSession(rawToken);
+    }
+
+    public AccountProfile deleteBookmark(String rawToken, String bookmarkId) {
+        AccountProfile current = requireSession(rawToken);
+        if (current.bookmarks().stream().noneMatch(bookmark -> bookmark.id().equals(bookmarkId))) throw bookmarkNotFound();
+        if (databaseUrl == null) {
+            MemoryUser user = users.get(current.email());
+            user.bookmarks.removeIf(bookmark -> bookmark.id().equals(bookmarkId));
+            return profile(user);
+        }
+        String sql = "DELETE FROM user_bookmarks b USING user_sessions s WHERE b.id=? AND b.user_id=s.user_id AND s.token_hash=? AND s.expires_at>now()";
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, UUID.fromString(bookmarkId));
+            statement.setString(2, tokenHash(rawToken));
+            if (statement.executeUpdate() != 1) throw bookmarkNotFound();
+        } catch (AccountException error) { throw error; }
+        catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "The bookmark could not be deleted."); }
+        return requireSession(rawToken);
+    }
+
+    private AccountProfile requireSession(String rawToken) {
+        return session(rawToken).orElseThrow(AccountService::unauthorized);
+    }
+
+    private static AccountException unauthorized() { return new AccountException("UNAUTHORIZED", "Sign in again to manage your bookmarks."); }
+    private static AccountException bookmarkNotFound() { return new AccountException("BOOKMARK_NOT_FOUND", "That bookmark no longer exists."); }
+
+    private int bindBookmark(PreparedStatement statement, int start, String name, SavedPlace place) throws SQLException {
+        statement.setString(start, name); statement.setString(start + 1, place.label()); statement.setString(start + 2, place.canonicalLabel());
+        statement.setDouble(start + 3, place.coordinates()[1]); statement.setDouble(start + 4, place.coordinates()[0]);
+        statement.setString(start + 5, place.source()); statement.setString(start + 6, place.matchedLocationId()); statement.setBoolean(start + 7, place.approximate());
+        return start + 8;
+    }
+
+    /** An account's bookmarks, oldest first. Empty until the bookmarks migration has been applied. */
+    private List<Bookmark> databaseBookmarks(Connection connection, UUID userId) throws SQLException {
+        String sql = "SELECT id,name,label,canonical_label,source,matched_location_id,approximate," +
+            "ST_Y(position::geometry) lat,ST_X(position::geometry) lon FROM user_bookmarks WHERE user_id=? ORDER BY created_at,id";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, userId);
+            List<Bookmark> bookmarks = new ArrayList<>();
+            try (ResultSet row = statement.executeQuery()) {
+                while (row.next()) {
+                    bookmarks.add(new Bookmark(row.getString("id"), row.getString("name"), new SavedPlace(row.getString("label"),
+                        row.getString("canonical_label"), new double[]{row.getDouble("lat"), row.getDouble("lon")},
+                        row.getString("source"), row.getString("matched_location_id"), row.getBoolean("approximate"))));
+                }
+            }
+            return List.copyOf(bookmarks);
+        } catch (SQLException error) {
+            if ("42P01".equals(error.getSQLState())) return List.of();
+            throw error;
+        }
     }
 
     public void logout(String rawToken) {
@@ -146,10 +246,11 @@ public class AccountService {
         return new AuthResult(profile, token);
     }
 
-    private AccountProfile databaseProfile(ResultSet row) throws SQLException {
+    private AccountProfile databaseProfile(Connection connection, ResultSet row) throws SQLException {
         SavedPlace home = readPlace(row, "home");
         SavedPlace school = readPlace(row, "school");
-        return new AccountProfile(row.getString("email"), row.getString("display_name"), label(home), label(school), home, school, "database");
+        return new AccountProfile(row.getString("email"), row.getString("display_name"), label(home), label(school), home, school,
+            databaseBookmarks(connection, row.getObject("user_id", UUID.class)), "database");
     }
 
     private SavedPlace readPlace(ResultSet row, String prefix) throws SQLException {
@@ -175,7 +276,7 @@ public class AccountService {
         return start + 7;
     }
 
-    private AccountProfile profile(MemoryUser user) { return new AccountProfile(user.email, user.name, label(user.home), label(user.school), user.home, user.school, "process"); }
+    private AccountProfile profile(MemoryUser user) { return new AccountProfile(user.email, user.name, label(user.home), label(user.school), user.home, user.school, List.copyOf(user.bookmarks), "process"); }
     private String label(SavedPlace place) { return place == null ? "" : place.label(); }
     private String randomToken() { byte[] bytes = new byte[32]; random.nextBytes(bytes); return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes); }
     private String tokenHash(String token) { try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8))); } catch (Exception e) { throw new IllegalStateException(e); } }
@@ -191,7 +292,7 @@ public class AccountService {
     }
 
     public record AuthResult(AccountProfile profile, String token) {}
-    private static class MemoryUser { final String email; final String name; final String passwordHash; volatile SavedPlace home; volatile SavedPlace school; MemoryUser(String email,String name,String passwordHash){this.email=email;this.name=name;this.passwordHash=passwordHash;} }
+    private static class MemoryUser { final String email; final String name; final String passwordHash; volatile SavedPlace home; volatile SavedPlace school; final List<Bookmark> bookmarks = new CopyOnWriteArrayList<>(); MemoryUser(String email,String name,String passwordHash){this.email=email;this.name=name;this.passwordHash=passwordHash;} }
     private record MemorySession(String email, Instant expiresAt) {}
     public static class AccountException extends RuntimeException { public final String code; public AccountException(String code,String message){super(message);this.code=code;} }
 }

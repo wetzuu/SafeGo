@@ -7,12 +7,18 @@ export interface SavedPlace {
   approximate: boolean;
 }
 
+/** A place an account saved under its own name. */
+export interface Bookmark {
+  id: string;
+  name: string;
+  place: SavedPlace;
+}
+
 export interface AccountProfile {
   email: string;
   name: string;
   home: string;
-  school: string;
   homePlace: SavedPlace | null;
-  schoolPlace: SavedPlace | null;
+  bookmarks: Bookmark[];
   persistence: "process" | "database";
 }

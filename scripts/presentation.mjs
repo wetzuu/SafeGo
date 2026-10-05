@@ -35,19 +35,29 @@ if (!existsSync(nextBin)) fail("SafeGo's packages are not installed. Run npm ins
 async function responds(target) {
   try {
     const response = await fetch(target, { signal: AbortSignal.timeout(2_000) });
+    await response.body?.cancel();
     return response.ok;
   } catch {
     return false;
   }
 }
 
-function portFree(port) {
+// Exiting while a health-check connection is still closing crashes Node on Windows with a
+// libuv "Assertion failed" message, so give the connections a moment first.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
+
+// The web server listens on every address, so a probe on 127.0.0.1 alone can miss it on Windows.
+function hostFree(port, host) {
   return new Promise((resolve) => {
     const probe = net.createServer();
     probe.once("error", () => resolve(false));
     probe.once("listening", () => probe.close(() => resolve(true)));
-    probe.listen(port, "127.0.0.1");
+    probe.listen(port, host);
   });
+}
+
+async function portFree(port) {
+  return (await hostFree(port, "127.0.0.1")) && (await hostFree(port, "0.0.0.0"));
 }
 
 function openBrowser() {
@@ -93,10 +103,12 @@ if (!buildOnly) {
   if (webUp && apiUp) {
     console.log(`\nSafeGo is already running: ${url}\nTo restart it, run npm run stop first.\n`);
     openBrowser();
+    await settle();
     process.exit(0);
   }
   const [webFree, apiFree] = await Promise.all([portFree(3000), portFree(8080)]);
   if (!webFree || !apiFree) {
+    await settle();
     fail(`Port ${!webFree ? 3000 : 8080} is in use by an older SafeGo or another program.\nRun npm run stop, then run this again.`);
   }
 }

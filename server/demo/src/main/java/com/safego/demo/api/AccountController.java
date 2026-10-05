@@ -2,6 +2,7 @@ package com.safego.demo.api;
 
 import com.safego.demo.data.DashboardService;
 import com.safego.demo.model.AccountProfile;
+import com.safego.demo.model.Bookmark;
 import com.safego.demo.model.ResolvedPlace;
 import com.safego.demo.model.SavedPlace;
 import com.safego.demo.service.AccountService;
@@ -66,16 +67,54 @@ public class AccountController {
     @PutMapping("/account/places")
     public ResponseEntity<Object> places(@CookieValue(value=COOKIE,required=false) String token,
             @RequestBody(required=false) Map<String,Object> body) {
-        String home=clean(body,"home"), school=clean(body,"school");
-        if (home.length()>160 || school.length()>160) return error(400,"INVALID_PLACE","Saved places must be 160 characters or fewer.");
+        String home=clean(body,"home");
+        if (home.length()>160) return error(400,"INVALID_PLACE","Home must be 160 characters or fewer.");
         try {
             AccountProfile current = accounts.session(token).orElseThrow(() -> new AccountException("UNAUTHORIZED", "Sign in again to update saved places."));
-            SavedPlace resolvedHome = resolvePlace(home, current.homePlace());
-            SavedPlace resolvedSchool = resolvePlace(school, current.schoolPlace());
-            var profile=accounts.updatePlaces(token,resolvedHome,resolvedSchool);
+            // School was dropped from the app; whatever an older account saved stays untouched.
+            var profile=accounts.updatePlaces(token,resolvePlace(home, current.homePlace(), body),current.schoolPlace());
             return noStore(ResponseEntity.ok(ApiResponse.ok(profile,profile.persistence())));
         }
         catch(AccountException e){ return error(status(e),e.code,e.getMessage()); }
+    }
+
+    @PostMapping("/account/bookmarks")
+    public ResponseEntity<Object> addBookmark(@CookieValue(value=COOKIE,required=false) String token,
+            @RequestBody(required=false) Map<String,Object> body) {
+        String name=clean(body,"name"), location=clean(body,"location");
+        if (location.isBlank()) return error(400,"INVALID_BOOKMARK","Enter a location to bookmark.");
+        if (location.length()>160) return error(400,"INVALID_BOOKMARK","Enter a location of 160 characters or fewer.");
+        if (name.length()>60) return error(400,"INVALID_BOOKMARK","Bookmark names must be 60 characters or fewer.");
+        try {
+            accounts.session(token).orElseThrow(() -> new AccountException("UNAUTHORIZED", "Sign in again to manage your bookmarks."));
+            var profile = accounts.addBookmark(token, name.isBlank() ? location : name, resolvePlace(location, null, body));
+            return noStore(ResponseEntity.ok(ApiResponse.ok(profile,profile.persistence())));
+        } catch(AccountException e){ return error(status(e),e.code,e.getMessage()); }
+    }
+
+    /** Renames a bookmark, moves it to another location, or both. A blank field keeps its current value. */
+    @PutMapping("/account/bookmarks/{id}")
+    public ResponseEntity<Object> updateBookmark(@CookieValue(value=COOKIE,required=false) String token, @PathVariable String id,
+            @RequestBody(required=false) Map<String,Object> body) {
+        String name=clean(body,"name"), location=clean(body,"location");
+        if (location.length()>160) return error(400,"INVALID_BOOKMARK","Enter a location of 160 characters or fewer.");
+        if (name.length()>60) return error(400,"INVALID_BOOKMARK","Bookmark names must be 60 characters or fewer.");
+        try {
+            AccountProfile current = accounts.session(token).orElseThrow(() -> new AccountException("UNAUTHORIZED", "Sign in again to manage your bookmarks."));
+            Bookmark existing = current.bookmarks().stream().filter(bookmark -> bookmark.id().equals(id)).findFirst()
+                .orElseThrow(() -> new AccountException("BOOKMARK_NOT_FOUND", "That bookmark no longer exists."));
+            var place = location.isBlank() ? existing.place() : resolvePlace(location, existing.place(), body);
+            var profile = accounts.updateBookmark(token, id, name.isBlank() ? existing.name() : name, place);
+            return noStore(ResponseEntity.ok(ApiResponse.ok(profile,profile.persistence())));
+        } catch(AccountException e){ return error(status(e),e.code,e.getMessage()); }
+    }
+
+    @DeleteMapping("/account/bookmarks/{id}")
+    public ResponseEntity<Object> deleteBookmark(@CookieValue(value=COOKIE,required=false) String token, @PathVariable String id) {
+        try {
+            var profile = accounts.deleteBookmark(token, id);
+            return noStore(ResponseEntity.ok(ApiResponse.ok(profile,profile.persistence())));
+        } catch(AccountException e){ return error(status(e),e.code,e.getMessage()); }
     }
 
     private ResponseEntity<Object> authenticated(AccountService.AuthResult result) {
@@ -87,8 +126,21 @@ public class AccountController {
     private static boolean strongPassword(String value){ return value.length()>=10 && value.length()<=128 && value.chars().anyMatch(Character::isLetter) && value.chars().anyMatch(Character::isDigit); }
     private static String clean(Map<String,Object> body,String key){ if(body==null||body.get(key)==null)return ""; return String.valueOf(body.get(key)).trim(); }
     private static String clientKey(String forwarded){ return forwarded==null||forwarded.isBlank()?"local":forwarded.split(",")[0].trim(); }
-    private SavedPlace resolvePlace(String label, SavedPlace existing) {
+    /**
+     * The saved form of a typed location. A place picked from the app's OpenStreetMap suggestions arrives
+     * with its coordinates and is saved as picked; anything else is looked up by its text.
+     */
+    private SavedPlace resolvePlace(String label, SavedPlace existing, Map<String,Object> body) {
         if (label.isBlank()) return null;
+        double[] picked = pickedCoordinates(body);
+        if (picked != null) {
+            String matched = clean(body, "matchedLocationId");
+            boolean known = dashboard.canonicalLocations().stream().anyMatch(location -> location.id().equals(matched));
+            String detail = clean(body, "detail");
+            String canonical = known || detail.isBlank() || detail.length() > 300 ? label : detail.startsWith(label) ? detail : label + ", " + detail;
+            return new SavedPlace(label, canonical, picked,
+                known ? "preset" : "nominatim", known ? matched : null, true);
+        }
         if (existing != null && label.equals(existing.label())) return existing;
         try {
             ResolvedPlace place = geocoding.resolvePlace(label, dashboard.canonicalLocations());
@@ -97,7 +149,15 @@ public class AccountController {
             throw new AccountException("PLACE_NOT_FOUND", "SafeGo could not locate \"" + label + "\" in the Philippines. Try a more specific address or landmark.");
         }
     }
-    private static int status(AccountException e){ return switch(e.code){case "EMAIL_EXISTS"->409;case "INVALID_LOGIN","UNAUTHORIZED"->401;case "PLACE_NOT_FOUND"->422;default->503;}; }
+    /** [latitude, longitude] sent with a picked suggestion, when present and inside the Philippines. */
+    private static double[] pickedCoordinates(Map<String,Object> body) {
+        if (body == null || !(body.get("coordinates") instanceof java.util.List<?> pair) || pair.size() != 2) return null;
+        if (!(pair.get(0) instanceof Number lat) || !(pair.get(1) instanceof Number lon)) return null;
+        double latitude = lat.doubleValue(), longitude = lon.doubleValue();
+        if (!(latitude >= 4 && latitude <= 22 && longitude >= 116 && longitude <= 127)) return null;
+        return new double[]{latitude, longitude};
+    }
+    private static int status(AccountException e){ return switch(e.code){case "EMAIL_EXISTS"->409;case "INVALID_LOGIN","UNAUTHORIZED"->401;case "PLACE_NOT_FOUND"->422;case "BOOKMARK_NOT_FOUND"->404;case "BOOKMARK_LIMIT"->409;default->503;}; }
     private static ResponseEntity<Object> error(int status,String code,String message){ return noStore(ResponseEntity.status(status).body(ApiResponse.error(code,message))); }
     private static ResponseEntity<Object> noStore(ResponseEntity<Object> response){ response.getHeaders().setCacheControl(CacheControl.noStore()); return response; }
 }

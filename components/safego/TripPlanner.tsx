@@ -44,6 +44,7 @@ export function TripPlanner({
   onPreviewRoute,
   account,
   initialOrigin,
+  initialOriginPlace,
   initialDestination,
 }: {
   locations: SafeGoLocation[];
@@ -52,6 +53,8 @@ export function TripPlanner({
   onPreviewRoute?: (preview: PreviewTripRoute | null) => void;
   account: AccountProfile | null;
   initialOrigin?: string;
+  /** The already-located place behind initialOrigin, e.g. a bookmark. */
+  initialOriginPlace?: SavedPlace | null;
   initialDestination?: string;
 }) {
   const [stops, setStops] = useState<string[]>(() => {
@@ -60,7 +63,7 @@ export function TripPlanner({
     return [""];
   });
   const [savedStops, setSavedStops] = useState<Array<SavedPlace | null>>(() =>
-    initialOrigin && initialDestination ? [null, null] : [null]);
+    initialOrigin && initialDestination ? [null, null] : [initialOriginPlace ?? null]);
   const [activeInputIndex, setActiveInputIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);

@@ -35,7 +35,7 @@ import { UniversityAlertCards } from "./UniversityAlertCards";
 import { UniversityScanPanel } from "./UniversityScanPanel";
 import { UniversitySourceDirectory } from "./UniversitySourceDirectory";
 import { RiskBadge, ThemeToggle, useIsDesktop, useSavedTheme } from "./ui";
-import type { AccountProfile } from "@/lib/account/types";
+import type { AccountProfile, Bookmark } from "@/lib/account/types";
 
 const DETAIL_TABS: Array<{ key: ScreenKey; label: string }> = [
   { key: "risk", label: "Why this result" },
@@ -240,6 +240,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  // A bookmark outside SafeGo's own locations, opened into the planner as the starting point.
+  const [plannerSeed, setPlannerSeed] = useState<Bookmark | null>(null);
   // Phones: the planner opens from the floating search bar.
   const [plannerOpen, setPlannerOpen] = useState(false);
   // Desktop: the map draws its legend into the sidebar.
@@ -398,8 +400,20 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setTrip(null);
     setPreviewRoute(null);
     setSelectedLocation(null);
+    setPlannerSeed(null);
     setActiveScreen("overview");
   }, []);
+  const openBookmark = useCallback((bookmark: Bookmark) => {
+    setAccountOpen(false);
+    const matched = locations.find((location) => location.id === bookmark.place.matchedLocationId);
+    if (matched) {
+      selectLocation(matched);
+      return;
+    }
+    startNewTrip();
+    setPlannerSeed(bookmark);
+    setPlannerOpen(true);
+  }, [locations, selectLocation, startNewTrip]);
 
   // With nothing picked, the map card describes the first location, so the detail screens do too.
   const detailLocation = selectedLocation ?? locations[0];
@@ -444,13 +458,14 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   );
   const planner = (
     <TripPlanner
-      key={trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : "new"}
+      key={trip ? `${trip.origin.label}-${trip.destination.label}` : selectedLocation ? selectedLocation.id : plannerSeed ? `bookmark-${plannerSeed.id}` : "new"}
       locations={locations}
       onLocation={selectLocation}
       onTrip={selectTrip}
       onPreviewRoute={setPreviewRoute}
       account={account}
-      initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : undefined}
+      initialOrigin={trip ? trip.origin.label : selectedLocation ? selectedLocation.name : plannerSeed?.place.label}
+      initialOriginPlace={trip || selectedLocation ? null : plannerSeed?.place}
       initialDestination={trip ? trip.destination.label : undefined}
     />
   );
@@ -654,6 +669,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
         account={account}
         onClose={() => setAccountOpen(false)}
         onAccount={setAccount}
+        onOpenBookmark={openBookmark}
+        locations={locations}
+        suggestedLocation={trip ? trip.destination.label : selectedLocation?.name}
       />
     </>
   );

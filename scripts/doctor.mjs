@@ -29,12 +29,14 @@ check(existsSync(jar), "Java API build", existsSync(jar) ? `built ${statSync(jar
 check(existsSync(join(root, "lib", "data", "ncr-cities.json")), "Metro Manila area data", "present", "Run npm run data:boundaries.");
 
 // Ports.
-const portFree = (port) => new Promise((resolve) => {
+// The web server listens on every address, so a probe on 127.0.0.1 alone can miss it on Windows.
+const hostFree = (port, host) => new Promise((resolve) => {
   const probe = net.createServer();
   probe.once("error", () => resolve(false));
   probe.once("listening", () => probe.close(() => resolve(true)));
-  probe.listen(port, "127.0.0.1");
+  probe.listen(port, host);
 });
+const portFree = async (port) => (await hostFree(port, "127.0.0.1")) && (await hostFree(port, "0.0.0.0"));
 for (const port of [3000, 8080]) {
   const free = await portFree(port);
   check(free, `Port ${port}`, free ? "free" : "in use (SafeGo may already be running)", "Run npm run stop.");
