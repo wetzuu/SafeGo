@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { replayScenario, VALIDATION_SCENARIOS } from "@/lib/trips/validation-scenarios";
-import { LOCATIONS } from "@/lib/safego/locations";
+import { LOCATION_CATALOG } from "@/lib/safego/location-catalog";
 import type { SafeGoLocation, ScreenKey } from "@/lib/safego/types";
 import { TripOverview } from "./TripOverview";
 import { RiskMap } from "./RiskMap";
@@ -20,6 +20,6 @@ export function ValidationWorkbench() {
     <div className="card card-pad validation-controls"><label htmlFor="scenario">Review scenario</label><select id="scenario" value={scenarioId} onChange={(event) => { setScenarioId(event.target.value); setScreen("overview"); setSelected(null); }}>{VALIDATION_SCENARIOS.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><p>{scenario.purpose}</p>
       <button className="view-all" type="button" onClick={() => setScreen("overview")}>Overview</button>{" · "}<button className="view-all" type="button" onClick={() => setScreen("map")}>Map</button>
     </div>
-    {screen === "overview" ? <TripOverview trip={trip} navigate={setScreen} /> : screen === "map" ? <RiskMap key={scenarioId} locations={trip.corridorLocations} selectedLocation={selected ?? trip.corridorLocations[0] ?? LOCATIONS[0]} trip={trip} onSelectLocation={setSelected} onViewDashboard={() => setScreen("overview")} /> : <TripCoverage trip={trip} />}
+    {screen === "overview" ? <TripOverview trip={trip} navigate={setScreen} /> : screen === "map" ? <RiskMap key={scenarioId} locations={trip.corridorLocations} selectedLocation={selected ?? trip.corridorLocations[0] ?? LOCATION_CATALOG[0]} trip={trip} onSelectLocation={setSelected} onViewDashboard={() => setScreen("overview")} /> : <TripCoverage trip={trip} />}
   </main>;
 }

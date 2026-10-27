@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SourceStatus } from "../lib/data/contracts.ts";
 import { honestLocation, honestSnapshot, isRated, liveFactorNames } from "../lib/safego/honest-risk.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import type { FactorName } from "../lib/safego/types.ts";
 
 const source = (key: string, status: SourceStatus["status"] = "active"): SourceStatus =>

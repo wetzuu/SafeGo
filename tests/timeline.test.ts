@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ActiveAlert } from "../lib/safego/area-alerts.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import {
   alertsAt,
   currentHour,

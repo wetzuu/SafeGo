@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { analyzeRouteSegments, distanceKm } from "../lib/trips/route-risk.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 
 test("distance calculation is zero for the same point", () => {
   assert.equal(distanceKm([14.6, 121], [14.6, 121]), 0);

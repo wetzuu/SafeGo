@@ -1,4 +1,4 @@
-import { LOCATIONS } from "../safego/locations.ts";
+import { LOCATION_CATALOG } from "../safego/location-catalog.ts";
 import { analyzeRisk } from "../safego/risk-model.ts";
 import type { FactorName } from "../safego/types.ts";
 import { analyzeRouteSegments, routeRiskBand } from "./route-risk.ts";
@@ -30,7 +30,7 @@ export const VALIDATION_SCENARIOS: ValidationScenario[] = [
 ];
 
 export function replayScenario(scenario: ValidationScenario): TripAnalysis {
-  const locations = LOCATIONS.filter((location) => PILOT.locationIds.includes(location.id)).map((location) => {
+  const locations = LOCATION_CATALOG.filter((location) => PILOT.locationIds.includes(location.id)).map((location) => {
     const factors = location.factors.map((factor) => ({ ...factor, score: scenario.scores[factor.name] ?? 20, description: "Synthetic validation input; not a current observation." }));
     const risk = analyzeRisk(factors, "Synthetic validation scenario.", "Simulation");
     return { ...location, factors, risk, updated: "simulation", riskSummary: risk.summary, hazards: [], floods: [], reports: [], advisories: [] };

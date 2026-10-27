@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { analyzeArea } from "../lib/safego/area-analysis.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import { riskBand } from "../lib/safego/risk-model.ts";
 
 const location = LOCATIONS[0];

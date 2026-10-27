@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { honestLocation } from "../lib/safego/honest-risk.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import { describeLocation, describeRisk, scoreWord, weatherPhrase } from "../lib/safego/plain-language.ts";
 import type { FactorName, UniversityStatus } from "../lib/safego/types.ts";
 import { activeUniversityAlerts, type UniversityAlert } from "../lib/safego/university-alerts.ts";

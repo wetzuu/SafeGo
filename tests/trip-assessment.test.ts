@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assessTrip } from "../lib/trips/trip-assessment.ts";
-import { LOCATIONS } from "../lib/safego/locations.ts";
+import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import type { ResolvedPlace } from "../lib/trips/types.ts";
 
 const origin: ResolvedPlace = { label: "España", coordinates: [14.612, 120.9902], source: "preset", matchedLocationId: null, approximate: true };
