@@ -18,7 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** Moderation of community reports. Only accounts listed in SAFEGO_ADMIN_EMAILS may use it. */
+/**
+ * Moderation of community reports. Only accounts listed in SAFEGO_ADMIN_EMAILS may use it, and only while
+ * community reporting and moderation are both enabled; otherwise every route answers 404.
+ */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -58,6 +61,9 @@ public class AdminController {
     }
 
     private ResponseEntity<Object> denyUnlessAdmin(String token) {
+        if (!ReportsController.isReportingEnabled()) {
+            return noStore(ResponseEntity.status(404).body(ApiResponse.error("NOT_FOUND", "Not found.")));
+        }
         Optional<AccountProfile> profile;
         try {
             profile = accounts.session(token);

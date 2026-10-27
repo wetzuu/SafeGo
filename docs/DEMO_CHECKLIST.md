@@ -10,6 +10,12 @@ working; it does not validate real-world safety accuracy.
 2. Wait for **`SafeGo is ready: http://localhost:3000`**. The browser opens by itself.
 3. Keep that window open. Press **Ctrl+C** in it (or close it) to stop SafeGo.
 
+SafeGo is reachable **only from this computer**, not from other devices on the venue
+Wi-Fi. To open it on a phone on the same network, start it with
+`npm run presentation -- --lan` instead. Community reports and the admin page are
+**hidden** in presentation mode whatever `.env.local` says; add `--with-reports` to
+show them.
+
 If it says a port is in use, double-click **`Stop SafeGo.cmd`** (or run
 `npm run stop`), then start again. `npm run stop` only stops SafeGo's own Node
 and Java processes on ports 3000 and 8080; anything else is reported and left

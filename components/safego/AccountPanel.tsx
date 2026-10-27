@@ -43,8 +43,10 @@ export async function loadAccountSession(): Promise<AccountProfile | null> {
   return null;
 }
 
-export function AccountPanel({ open, account, onClose, onAccount, onOpenBookmark, suggestedLocation, locations = [] }: {
+export function AccountPanel({ open, account, onClose, onAccount, onOpenBookmark, suggestedLocation, locations = [], moderationEnabled = false }: {
   open: boolean;
+  /** Show the admin link only while community reporting and moderation are enabled. */
+  moderationEnabled?: boolean;
   account: AccountProfile | null;
   onClose: () => void;
   onAccount: (account: AccountProfile | null) => void;
@@ -135,7 +137,7 @@ export function AccountPanel({ open, account, onClose, onAccount, onOpenBookmark
         </form>
       </> : <><form className="account-form" onSubmit={save}>
         <div className="account-identity"><strong>{account.name}</strong><span>{account.email}</span></div>
-        {account.admin && <Link className="flex min-h-11 items-center justify-between rounded-lg border border-brand/30 bg-brand-soft px-3 text-sm font-bold text-brand-ink hover:underline" href="/admin">Review community reports<span aria-hidden="true">→</span></Link>}
+        {account.admin && moderationEnabled && <Link className="flex min-h-11 items-center justify-between rounded-lg border border-brand/30 bg-brand-soft px-3 text-sm font-bold text-brand-ink hover:underline" href="/admin">Review community reports<span aria-hidden="true">→</span></Link>}
         <label htmlFor="account-home">Home</label><PlaceInput id="account-home" value={home} onChange={(value, place) => { setHome(value); setHomePicked(place); }} locations={locations} placeholder="Start typing an address, area, or landmark" />
         <p className="account-field-help">Home becomes the suggested destination when you add one.</p>
         <div className="account-actions"><button className="submit-btn" type="submit" disabled={working}>{working ? "Saving…" : "Save home"}</button><button className="account-signout" type="button" onClick={() => void signOut()} disabled={working}>Sign out</button></div>

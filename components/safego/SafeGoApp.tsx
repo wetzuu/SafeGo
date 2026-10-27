@@ -175,8 +175,8 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
   </section>;
 }
 
-function TripConditions({ trip }: { trip: TripAnalysis }) {
-  return <section className="page"><PageHeader eyebrow="Route conditions" title="Hazards and reports near your trip" subtitle="Conditions reported near this route." /><div className="grid grid-2"><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div><div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Near route</span></div><Reports items={trip.reports} /></div></div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
+function TripConditions({ trip, showReports }: { trip: TripAnalysis; showReports: boolean }) {
+  return <section className="page"><PageHeader eyebrow="Route conditions" title={showReports ? "Hazards and reports near your trip" : "Hazards near your trip"} subtitle="Conditions reported near this route." /><div className={showReports ? "grid grid-2" : "grid"}><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div>{showReports && <div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Near route</span></div><Reports items={trip.reports} /></div>}</div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
 }
 
 interface ReportEnvelope {
@@ -419,7 +419,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const detailLocation = selectedLocation ?? locations[0];
   const hasSelection = Boolean(trip || selectedLocation);
   const detailTabs = DETAIL_TABS.filter((tab) =>
-    tab.key !== "reports" || communityReportingEnabled || (trip ? trip.reports : detailLocation?.reports ?? []).length > 0);
+    tab.key !== "reports" || communityReportingEnabled);
   const onMap = activeScreen === "overview" || activeScreen === "map";
   const selectionTitle = trip
     ? `${shortPlaceName(trip.origin.label)} → ${shortPlaceName(trip.destination.label)}`
@@ -565,6 +565,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
               onViewReports={detailTabs.some((tab) => tab.key === "reports") ? () => navigate("reports") : undefined}
+              communityReports={communityReportingEnabled}
               liveWeather={!apiUnavailable && sources.some((source) => source.key === "open-meteo" && source.status === "active")}
               liveAlerts={!apiUnavailable && sources.some((source) => source.key === "pagasa-cap" && source.status === "active")}
               universityAlerts={universityAlerts}
@@ -629,7 +630,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                   <UniversitySourceDirectory universities={nearbyUniversities} />
                 </section>
               )}
-              {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} /> : detailLocation && <LocationConditions location={detailLocation} />)}
+              {activeScreen === "conditions" && (trip ? <TripConditions trip={trip} showReports={communityReportingEnabled} /> : detailLocation && <LocationConditions location={detailLocation} />)}
               {activeScreen === "reports" && detailLocation && (
                 <ReportPage
                   key={`${detailLocation.id}-${trip ? "trip" : "area"}`}
@@ -671,6 +672,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
         onClose={() => setAccountOpen(false)}
         onAccount={setAccount}
         onOpenBookmark={openBookmark}
+        moderationEnabled={communityReportingEnabled}
         locations={locations}
         suggestedLocation={trip ? trip.destination.label : selectedLocation?.name}
       />

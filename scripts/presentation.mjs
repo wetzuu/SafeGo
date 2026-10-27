@@ -4,7 +4,8 @@
 //   npm run presentation:build      build ahead of time (web + Java) and exit
 //
 // Flags: --rebuild (force a fresh web build), --build-only, --no-open,
-//        --lan (let other devices on the network open SafeGo; off by default).
+//        --lan (let other devices on the network open SafeGo; off by default),
+//        --with-reports (show community reports and moderation; hidden by default).
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
@@ -26,6 +27,11 @@ const url = "http://localhost:3000";
 for (const file of [".env.local", ".env"]) {
   const path = join(root, file);
   if (existsSync(path)) process.loadEnvFile(path);
+}
+// Community reports are hidden for presentations, whatever .env.local says, unless --with-reports.
+if (!process.argv.includes("--with-reports")) {
+  process.env.SAFEGO_COMMUNITY_REPORTS_ENABLED = "false";
+  process.env.SAFEGO_MODERATION_ENABLED = "false";
 }
 
 function fail(message) {

@@ -147,6 +147,8 @@ export interface RiskMapProps {
   onViewAnnouncements?: () => void;
   /** Opens the community reports page. When set, the card shows the latest reports for the selection. */
   onViewReports?: () => void;
+  /** Show community-report content (layer, counts). Off until reporting and moderation are enabled. */
+  communityReports?: boolean;
   /** Fetch live weather for every area. */
   liveWeather?: boolean;
   /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
@@ -175,6 +177,7 @@ export function RiskMap({
   onViewRiskDetails,
   onViewAnnouncements,
   onViewReports,
+  communityReports = false,
   liveWeather = false,
   liveAlerts = false,
   universityAlerts = [],
@@ -953,7 +956,7 @@ export function RiskMap({
               <p className="mt-2 text-xs text-ink-soft">The map is showing the {activeLayerLabel.toLocaleLowerCase()} layer: {scoreWord(selectedScore).toLocaleLowerCase()} ({selectedScore}).</p>
             )}
             <p className="mt-2 text-xs text-ink-soft">
-              {verifiedCount} verified and {unverifiedCount} unconfirmed community reports · Updated {effectiveSelected.updated}
+              {communityReports ? `${verifiedCount} verified and ${unverifiedCount} unconfirmed community reports · ` : ""}Updated {effectiveSelected.updated}
             </p>
             <p className="mt-1 text-xs text-ink-soft">Scores run from 0 (lowest risk) to 100 (highest). “Sample data” values are placeholders and never change a rating.</p>
           </div>
@@ -1087,7 +1090,7 @@ export function RiskMap({
       aria-label="What the map shows"
       className="pointer-events-auto flex max-w-full shrink-0 items-center gap-1 overflow-x-auto rounded-full border border-hairline bg-panel px-1.5 py-1 shadow-[var(--shadow-card)] [scrollbar-width:none]"
     >
-      {MAP_LAYERS.map((layer) => (
+      {MAP_LAYERS.filter((layer) => communityReports || layer.key !== "Community reports").map((layer) => (
         <button
           key={layer.key}
           type="button"
