@@ -162,10 +162,10 @@ Shows health of configured data feeds.
 ```json
 [
   {
-    "key": "prototype-mock",
-    "name": "SafeGo prototype dataset",
-    "kind": "mock",
-    "status": "mock",
+    "key": "open-meteo",
+    "name": "Open-Meteo forecast models",
+    "kind": "weather",
+    "status": "active",
     "lastSuccessAt": null,
     "lastFailureAt": null,
     "errorMessage": null

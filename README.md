@@ -96,16 +96,16 @@ staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
 | Screen       | Contents                                                          |
 | ------------ | ----------------------------------------------------------------- |
 | Search       | Location field, result list, suggested areas                      |
-| Overview     | Route score, compact risk map, current conditions, announcements, nearby university statuses, and major roads |
+| Overview     | Rating from live weather and PAGASA alerts, risk map, and announcements |
 | Risk factors | SafeGo risk points and factors covering the route                  |
 | Announcements | Official, school, and local updates near the area or route         |
 | Map          | Real road route with green/yellow/orange/red risk sections         |
-| Conditions   | Hazards and community observations near the route                  |
+| Conditions   | Live weather and PAGASA alerts for the place or route              |
 | Reports      | Optional moderated community-report workflow; hidden when disabled |
 
-Nearby university entries are tied to the selected SafeGo area rather than shown
-citywide. The current entries are labeled demo data; a suspension must not be
-treated as official until an approved university or government source is connected.
+University class-suspension notices come only from the suspension scan of
+university, government and news RSS feeds. A notice found on a news feed is
+marked as reported, not as the university's own post.
 The UI shows an announcement link only when the stored URL points to a confirmed,
 post-level notice from the university or its central student council. General
 homepages and social-media profiles are not treated as announcement evidence.
@@ -115,11 +115,10 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 ## Application structure
 
 - `components/safego/` contains the React interface and interactive map.
-- `lib/safego/locations.ts` supplies geographic anchor metadata; `location-catalog.ts` strips seeded conditions before runtime.
+- `lib/safego/locations.ts` lists the places SafeGo rates (name, aliases, coordinates only); every condition comes from live sources at run time. Synthetic values for tests live in `tests/fixtures/`.
 - `lib/safego/risk-model.ts` contains the versioned risk calculation.
 - `lib/safego/types.ts` defines the shared domain contracts for future APIs.
 - `server/demo/` contains the active Java API, repositories, providers, and risk calculation.
-- `lib/data/` retains the earlier TypeScript implementation as a reference for parity checks; it is not an active API runtime.
 - `db/migrations/` contains the PostgreSQL/PostGIS schema.
 - `scripts/db-migrate.ts` and `scripts/db-seed.ts` set up local or hosted databases.
 
@@ -156,7 +155,7 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 
 ## Route-risk model
 
-OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by pilot points in España, Lerma, Quiapo, Mapúa Makati and Ortigas (Pasig). Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are gray and dashed. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
+OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by pilot points in España, Lerma, Quiapo, Mapúa Makati and Ortigas (Pasig). Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are drawn as a plain blue line. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
 
 Successful OSRM routes are cached in memory for ten minutes. Loading the stable demo trip uses a bundled OSRM geometry snapshot captured on September 14, 2026; the same snapshot is also the fallback for that exact example if live routing is unavailable. The interface labels saved geometry, and arbitrary trips never receive invented routes. Set `SAFEGO_DEMO_ROUTE_FALLBACK=false` to disable it.
 
@@ -198,5 +197,4 @@ Before production use, replace the in-memory rate limit with a shared durable li
 - GPS/device-location access
 - Turn-by-turn navigation, arrival-time estimates, or road-level risk sensors
 - Precise hazard boundaries
-- Report verification and moderation workflow
 - Email verification, password recovery, multi-factor authentication, and account deletion

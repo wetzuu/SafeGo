@@ -26,12 +26,12 @@ Changes require reviewing the scenario results and updating the shared policy.
   point has Weather, Flood / roads and Official advisories all at or below 29
   (Low band) and every route vertex is within 15 km of a pilot point, return
   the highest of those factor scores as an area-wide Low estimate. Coverage
-  status stays `insufficient`, unknown segments stay gray, and the coverage
+  status stays `insufficient`, unknown segments stay unrated (plain blue), and the coverage
   note says it is area-wide, not road-by-road. Any active signal disables it.
   The 29 and 15 km limits are provisional product choices.
 - Otherwise, below 90% coverage, return `overallRiskScore: null`, `rawRiskScore: null`,
   `riskKey: "unknown"`, and `riskName: "INSUFFICIENT COVERAGE"` with HTTP 200.
-- Unknown segments have null scores and null basis IDs. Gray dashed route lines
+- Unknown segments have null scores and null basis IDs. Plain blue route lines
   represent unknown information. They never contribute zero to an average.
 - At or above 90%, average only covered lengths. Keep the existing High/Critical
   floors. An uncovered remainder remains visible and may contain severe hazards.
@@ -96,7 +96,7 @@ Avoid explaining the score or legend before they attempt the tasks.
 2. On `/validation`, choose “Calm covered route.” Ask whether they would treat
    the score as permission to travel and what other evidence they would check.
 3. Choose “Rain with a long uncovered gap.” Ask why there is no overall
-   score, then have them find the gaps on the map and explain gray dashed lines.
+   score, then have them find the gaps on the map and explain plain blue (unrated) lines.
 4. Choose “Known critical section and an unknown remainder.” Ask whether the
    missing overall score means no hazards exist. Have them locate the known
    critical section and explain the unknown remainder.
@@ -109,7 +109,7 @@ Record completion without prompting, task time, wrong interpretation, help
 needed, device and an optional verbatim quote. Do not invent session outcomes.
 Suggested iteration gate: at least 4 of the first 5 participants distinguish
 unknown from low risk, identify the coverage limitation, and find the source
-explanation without coaching. Any belief that gray means safe or that a low
+explanation without coaching. Any belief that an unrated blue section means safe or that a low
 score guarantees safety requires a design revision and another check. This is
 a small formative study, not statistical proof of effectiveness.
 
@@ -130,5 +130,5 @@ a small formative study, not statistical proof of effectiveness.
   España–Mapúa Makati returned 29.9% coverage and no overall rating. These are
   run-specific geometry results, not validation of actual road safety.
 - Checked narrow-layout navigation, source disclosure, unknown-map legend,
-  gray route rendering, known critical sections and the zero-coverage empty state.
+  unrated route rendering, known critical sections and the zero-coverage empty state.
   These are developer checks, not sessions with target users.

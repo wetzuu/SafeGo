@@ -61,7 +61,7 @@ PostgreSQL and the Java API are not published externally.
    ```
 
 9. Through the private HTTPS URL, verify `/`, `/api/health`,
-   `/api/sources/status`, the saved example trip and the map.
+   `/api/sources/status`, a planned trip and the map.
 
 ## Updating
 

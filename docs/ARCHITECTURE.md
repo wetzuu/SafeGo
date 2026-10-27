@@ -24,7 +24,6 @@ The browser never receives database credentials or provider configuration. The J
 | `lib/safego/` | Core location types, fixtures, and area-risk model |
 | `lib/trips/` | Trip contracts and route-risk calculation |
 | `server/demo/` | Active Java API, data loading, weather/feed ingestion, routing, and risk model |
-| `lib/providers/`, `lib/data/` | Previous TypeScript backend retained for comparison; not active at runtime |
 | `db/migrations/` | Ordered PostgreSQL/PostGIS schema migrations |
 | `scripts/` | Database migration and seed commands |
 | `tests/` | Pure model and repository tests |
@@ -35,7 +34,7 @@ The browser never receives database credentials or provider configuration. The J
 - Nominatim is called only after a trip is submitted; local preset suggestions do not make network requests.
 - OSRM provides road geometry and road names. SafeGo does not expose trip distance or arrival-time estimates.
 - Successful OSRM responses are cached in memory for ten minutes. The saved demo pairs (España–Lerma, España–Quiapo, Quiapo–Lerma, either direction) can use a dated, bundled OSRM geometry snapshot when explicitly loaded or when the public router is unavailable; arbitrary routes have no synthetic fallback.
-- Route colors are derived only from nearby approved pilot points within the provisional 850-meter radius. Below 90% geographic coverage, the overall rating is null; unknown sections are gray and dashed. Pilot eligibility is distinct from verified operational evidence. See `docs/PILOT_VALIDATION.md`.
+- Route colors are derived only from nearby approved pilot points within the provisional 850-meter radius. Below 90% geographic coverage, the overall rating is null; unknown sections are drawn as a plain blue line. Pilot eligibility is distinct from verified operational evidence. See `docs/PILOT_VALIDATION.md`.
 - Weather and operational-feed failures retain stored data and surface a degraded source status. Routing failures remain visible errors except for the clearly labeled built-in demo fallback.
 - Public report submissions are stored as unverified evidence and do not directly change a risk score.
 - Official-advisory and flood/road feeds must use the normalized contracts in `docs/SOURCE_FEEDS.md`; unknown location IDs and expired items are ignored.
@@ -43,9 +42,9 @@ The browser never receives database credentials or provider configuration. The J
 
 ## Java backend
 
-The Spring Boot server at `server/demo/` owns all six API endpoints. It uses the built-in fixtures by default, or the existing seeded PostgreSQL/PostGIS schema when configured. Its dashboard composes stored data, current modeled Open-Meteo weather, and optional normalized official-advisory and flood/road feeds before recalculating risk. Location and trip endpoints read that same cached snapshot. Provider failures preserve stored conditions and expose degraded source status.
+The Spring Boot server at `server/demo/` owns all six API endpoints. It uses the built-in list of places (`LocationAnchors`, no stored conditions) by default, or PostgreSQL/PostGIS when configured. Its dashboard composes stored data, current modeled Open-Meteo weather, and optional normalized official-advisory and flood/road feeds before recalculating risk. Location and trip endpoints read that same cached snapshot. Provider failures preserve stored conditions and expose degraded source status.
 
-The older TypeScript backend files remain for parity comparison but are not called by the frontend. Next.js forwards API requests to Java through `next.config.ts`. Java and Next.js must both run locally.
+Next.js forwards API requests to Java through `next.config.ts`. Java and Next.js must both run locally.
 
 ## Before pushing
 

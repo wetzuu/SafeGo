@@ -38,35 +38,30 @@ overlay). It rebuilds automatically when the code changed since the last build.
 ## Immediately before presenting
 
 1. Run `npm run doctor` on the venue network.
-2. Start SafeGo (quick start above) and note whether the sidebar says
-   **Live weather**. Live data comes from Open-Meteo and PAGASA; flood/road,
-   community and university values are demo data and are shown as
-   "Demo · not counted".
-3. Use the saved example trips first: España–Lerma, España–Quiapo and
-   Quiapo–Lerma (either direction). These work without internet routing.
+2. Start SafeGo (quick start above) and check the sidebar says **Live weather**.
+   Ratings use live Open-Meteo weather and PAGASA alerts only; SafeGo shows no
+   demo or placeholder values.
+3. Plan the trips you will show once, so you know routing works on this network.
 4. Keep official government and school sources open in separate tabs.
 
 ## Offline fallback
 
-If the venue internet is unreliable, run
-`npm run presentation:offline`. Live weather and PAGASA alerts are turned off,
-every rating shows as **not rated** (SafeGo never presents demo data as live),
-and the saved example trips still work. Map tiles and arbitrary place searches
-need internet. Build beforehand (`npm run presentation:build`) so no downloads
-are needed.
+There is no offline mode yet: weather, alerts, routing, place search and map
+tiles all need internet. Without it the map shows no ratings. A clearly labelled
+replay of a recorded day is planned; until then, keep a screen recording of the
+demo as a backup.
 
 ## Suggested five-minute flow
 
-1. Point out the sidebar data status: what is live and what is demo.
-2. On the map, click a barangay: its analysis, live weather, rain in the last
-   3 and 24 hours, and PAGASA alerts. Explain "partial" and "Demo · not counted".
+1. Point out the sidebar data status: ratings come from live weather and PAGASA alerts.
+2. On the map, click a barangay: its rating, live weather, rain in the last
+   3 and 24 hours, and PAGASA alerts. SafeGo shows only what it can confirm.
 3. Switch layers: Weather covers every area live; Announcements shows PAGASA
    alerts for every area.
 4. Drag the **time slider** at the bottom back a few days (or press play) to
    show how weather, alerts and risk changed. Use **Back to live** to return.
-5. Load the example trip, or plan a trip between two places in Metro Manila.
-   Point out solid sections (near SafeGo locations), lighter dashed sections
-   (area estimates) and gray sections (not enough data).
+5. Plan a trip between two places in Metro Manila. Sections are colored by
+   risk; any part outside SafeGo's live data is a plain blue line.
 6. Open "Why this result" to show the factor breakdown.
 7. End with SafeGo's reminder that it does not replace official announcements.
 
@@ -75,8 +70,8 @@ are needed.
 - **Port in use:** `Stop SafeGo.cmd` / `npm run stop`, then start again.
 - **Java error:** install JDK 21 and set `JAVA_HOME` (or `SAFEGO_JAVA_HOME`).
   `npm run doctor` shows which JDK is found.
-- **Weather unavailable:** the sidebar says so; do not call stored values live.
-  Switch to `npm run presentation:offline` if the internet is down.
+- **Weather unavailable:** the sidebar says so and the map shows no ratings.
+  Use the backup recording if the internet is down.
 - **Map tiles missing:** a connection problem; area shading and scores still work.
-- **Trip search fails:** use a saved example trip rather than inventing a route.
+- **Trip search fails:** routing needs internet; try nearby landmarks, or use the backup recording.
 - **Anything else:** stop, run `npm run doctor`, and restart.
