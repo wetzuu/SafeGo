@@ -75,6 +75,33 @@ class AccountServiceTest {
     }
 
     @Test
+    void adminEmailsCannotBeClaimedThroughPublicSignUp() {
+        AccountService accounts = new AccountService(null, java.util.Set.of("lead@safego.test"), "admin-password-123");
+        var error = assertThrows(AccountException.class,
+            () -> accounts.register("Lead@SafeGo.test", "Not The Admin", "attacker-password-1"));
+        assertEquals("EMAIL_RESERVED", error.code);
+        assertThrows(AccountException.class, () -> accounts.login("lead@safego.test", "attacker-password-1"));
+    }
+
+    @Test
+    void adminAccountsAreCreatedFromTheConfiguredPassword() {
+        AccountService accounts = new AccountService(null, java.util.Set.of("lead@safego.test"), "admin-password-123");
+        assertTrue(accounts.login("lead@safego.test", "admin-password-123").profile().admin());
+        assertFalse(accounts.register("plain-" + System.nanoTime() + "@safego.test", "Plain User", "safe-password-123").profile().admin());
+    }
+
+    @Test
+    void nobodyIsAdminWithoutAStrongAdminPassword() {
+        AccountService missing = new AccountService(null, java.util.Set.of("lead@safego.test"), null);
+        assertThrows(AccountException.class, () -> missing.login("lead@safego.test", "admin-password-123"));
+        assertEquals("EMAIL_RESERVED", assertThrows(AccountException.class,
+            () -> missing.register("lead@safego.test", "Claimer", "attacker-password-1")).code, "still reserved without a password");
+
+        AccountService weak = new AccountService(null, java.util.Set.of("lead@safego.test"), "short");
+        assertThrows(AccountException.class, () -> weak.login("lead@safego.test", "short"));
+    }
+
+    @Test
     void rejectsDuplicateAccountsAndIncorrectPasswords() {
         AccountService accounts = new AccountService();
         String email = "duplicate-" + System.nanoTime() + "@safego.test";

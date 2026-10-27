@@ -22,7 +22,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class AccountService {
     private static final long SESSION_DAYS = 30;
     public static final int MAX_BOOKMARKS = 30;
-    private static final Set<String> ADMIN_EMAILS = parseAdminEmails(System.getenv("SAFEGO_ADMIN_EMAILS"));
+    /** Admin passwords shorter than this are refused, and nobody becomes an admin. */
+    static final int MIN_ADMIN_PASSWORD_LENGTH = 12;
 
     /** The comma-separated SAFEGO_ADMIN_EMAILS list as lower-case addresses. Empty means nobody is an admin. */
     static Set<String> parseAdminEmails(String value) {
@@ -31,7 +32,12 @@ public class AccountService {
         return Set.copyOf(emails);
     }
 
-    static boolean isAdmin(String email) { return email != null && ADMIN_EMAILS.contains(email.toLowerCase(Locale.ROOT)); }
+    /**
+     * Admins are the SAFEGO_ADMIN_EMAILS accounts, and only once SAFEGO_ADMIN_PASSWORD has created them
+     * at startup. Those emails cannot be registered through the public sign-up, so nobody can claim one.
+     */
+    boolean isAdmin(String email) { return adminsEnabled && email != null && adminEmails.contains(email.toLowerCase(Locale.ROOT)); }
+    private boolean isReservedAdminEmail(String email) { return email != null && adminEmails.contains(email.toLowerCase(Locale.ROOT)); }
     private static final String PROFILE_COLUMNS = "u.id user_id,u.email,u.display_name," +
         "p.home_label,p.home_canonical_label,p.home_source,p.home_matched_location_id,p.home_approximate," +
         "ST_Y(p.home_position::geometry) home_lat,ST_X(p.home_position::geometry) home_lon," +
@@ -43,18 +49,78 @@ public class AccountService {
     private final Map<String, MemoryUser> users = new ConcurrentHashMap<>();
     private final Map<String, MemorySession> sessions = new ConcurrentHashMap<>();
     private final String databaseUrl;
+    private final Set<String> adminEmails;
+    private final boolean adminsEnabled;
 
     public AccountService() {
+        this(databaseUrlFromEnvironment(), parseAdminEmails(System.getenv("SAFEGO_ADMIN_EMAILS")), System.getenv("SAFEGO_ADMIN_PASSWORD"));
+    }
+
+    AccountService(String databaseUrl, Set<String> adminEmails, String adminPassword) {
+        this.databaseUrl = databaseUrl;
+        this.adminEmails = Set.copyOf(adminEmails);
+        boolean usablePassword = adminPassword != null && adminPassword.length() >= MIN_ADMIN_PASSWORD_LENGTH;
+        if (!this.adminEmails.isEmpty() && adminPassword != null && !usablePassword) {
+            System.err.println("SAFEGO_ADMIN_PASSWORD must be at least " + MIN_ADMIN_PASSWORD_LENGTH + " characters; no admin accounts were created.");
+        }
+        this.adminsEnabled = !this.adminEmails.isEmpty() && usablePassword && bootstrapAdmins(adminPassword);
+    }
+
+    private static String databaseUrlFromEnvironment() {
         String mode = System.getenv().getOrDefault("SAFEGO_DATA_MODE", "auto").trim().toLowerCase(Locale.ROOT);
         String url = System.getenv("DATABASE_URL");
         if ("database".equals(mode) && (url == null || url.isBlank())) {
             throw new IllegalArgumentException("DATABASE_URL is required for database mode.");
         }
-        databaseUrl = ("database".equals(mode) || ("auto".equals(mode) && url != null && !url.isBlank())) ? url : null;
+        return ("database".equals(mode) || ("auto".equals(mode) && url != null && !url.isBlank())) ? url : null;
+    }
+
+    /**
+     * Creates each admin account, or resets its password if it already exists, and signs out every
+     * existing session on it. An account someone registered with an admin email before these were
+     * reserved therefore loses access on the next start. Returns false if the database was unreachable.
+     */
+    private boolean bootstrapAdmins(String password) {
+        String hash = passwords.encode(password);
+        if (databaseUrl == null) {
+            for (String email : adminEmails) {
+                users.put(email, new MemoryUser(email, "SafeGo admin", hash));
+                sessions.values().removeIf(session -> session.email().equals(email));
+            }
+            return true;
+        }
+        try (Connection connection = connect()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement upsert = connection.prepareStatement(
+                     "INSERT INTO app_users (id,email,display_name,password_hash) VALUES (?,?,?,?) " +
+                     "ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash RETURNING id");
+                 PreparedStatement places = connection.prepareStatement(
+                     "INSERT INTO user_saved_places (user_id) VALUES (?) ON CONFLICT (user_id) DO NOTHING");
+                 PreparedStatement signOut = connection.prepareStatement("DELETE FROM user_sessions WHERE user_id=?")) {
+                for (String email : adminEmails) {
+                    upsert.setObject(1, UUID.randomUUID()); upsert.setString(2, email); upsert.setString(3, "SafeGo admin"); upsert.setString(4, hash);
+                    UUID id;
+                    try (ResultSet row = upsert.executeQuery()) { row.next(); id = row.getObject("id", UUID.class); }
+                    places.setObject(1, id); places.executeUpdate();
+                    signOut.setObject(1, id); signOut.executeUpdate();
+                }
+                connection.commit();
+                return true;
+            } catch (SQLException error) {
+                connection.rollback();
+                throw error;
+            }
+        } catch (Exception error) {
+            System.err.println("Admin accounts could not be created: " + error.getMessage());
+            return false;
+        }
     }
 
     public AuthResult register(String email, String name, String password) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        if (isReservedAdminEmail(normalizedEmail)) {
+            throw new AccountException("EMAIL_RESERVED", "This email is reserved for a SafeGo administrator.");
+        }
         String hash = passwords.encode(password);
         if (databaseUrl == null) {
             MemoryUser created = new MemoryUser(normalizedEmail, name.trim(), hash);

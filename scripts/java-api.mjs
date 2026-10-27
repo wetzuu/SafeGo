@@ -74,7 +74,9 @@ if (process.argv.includes("--check")) {
   console.log(javaHome);
   process.exit(0);
 }
-const childEnv = { ...process.env, JAVA_HOME: javaHome };
+// Listen on this computer only unless SERVER_ADDRESS says otherwise, so the API is not reachable
+// from other devices on the same Wi-Fi (Docker does not use this script).
+const childEnv = { ...process.env, JAVA_HOME: javaHome, SERVER_ADDRESS: process.env.SERVER_ADDRESS || "127.0.0.1" };
 console.log(`Starting SafeGo Java API with JDK 21: ${javaHome}`);
 const command = windows ? "cmd.exe" : "./gradlew";
 const args = windows ? ["/d", "/s", "/c", ".\\gradlew.bat bootJar"] : ["bootJar"];

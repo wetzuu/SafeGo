@@ -3,7 +3,8 @@
 //   npm run presentation            build if needed, start, open http://localhost:3000
 //   npm run presentation:build      build ahead of time (web + Java) and exit
 //
-// Flags: --rebuild (force a fresh web build), --build-only, --no-open.
+// Flags: --rebuild (force a fresh web build), --build-only, --no-open,
+//        --lan (let other devices on the network open SafeGo; off by default).
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
@@ -14,6 +15,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
 const args = new Set(process.argv.slice(2));
 const buildOnly = args.has("--build-only");
+// By default SafeGo is reachable only from this computer, not from others on the venue Wi-Fi.
+const listenAddress = args.has("--lan") ? "0.0.0.0" : "127.0.0.1";
 const nextBin = join(root, "node_modules", "next", "dist", "bin", "next");
 const standalone = join(root, ".next", "standalone");
 const server = join(standalone, "server.js");
@@ -141,11 +144,11 @@ if (buildOnly) {
 // --- start both servers ---
 console.log("\nStarting SafeGo (production build)…");
 const children = [
-  spawn(process.execPath, [join(root, "scripts", "java-api.mjs")], { cwd: root, stdio: "inherit", env: process.env }),
+  spawn(process.execPath, [join(root, "scripts", "java-api.mjs")], { cwd: root, stdio: "inherit", env: { ...process.env, SERVER_ADDRESS: listenAddress } }),
   spawn(process.execPath, [server], {
     cwd: standalone,
     stdio: ["ignore", "ignore", "inherit"],
-    env: { ...process.env, PORT: "3000", HOSTNAME: "0.0.0.0", NODE_ENV: "production" },
+    env: { ...process.env, PORT: "3000", HOSTNAME: listenAddress, NODE_ENV: "production" },
   }),
 ];
 

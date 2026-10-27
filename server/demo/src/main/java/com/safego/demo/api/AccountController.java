@@ -157,7 +157,7 @@ public class AccountController {
         if (!(latitude >= 4 && latitude <= 22 && longitude >= 116 && longitude <= 127)) return null;
         return new double[]{latitude, longitude};
     }
-    private static int status(AccountException e){ return switch(e.code){case "EMAIL_EXISTS"->409;case "INVALID_LOGIN","UNAUTHORIZED"->401;case "PLACE_NOT_FOUND"->422;case "BOOKMARK_NOT_FOUND"->404;case "BOOKMARK_LIMIT"->409;default->503;}; }
+    private static int status(AccountException e){ return switch(e.code){case "EMAIL_EXISTS"->409;case "EMAIL_RESERVED"->403;case "INVALID_LOGIN","UNAUTHORIZED"->401;case "PLACE_NOT_FOUND"->422;case "BOOKMARK_NOT_FOUND"->404;case "BOOKMARK_LIMIT"->409;default->503;}; }
     private static ResponseEntity<Object> error(int status,String code,String message){ return noStore(ResponseEntity.status(status).body(ApiResponse.error(code,message))); }
     private static ResponseEntity<Object> noStore(ResponseEntity<Object> response){ response.getHeaders().setCacheControl(CacheControl.noStore()); return response; }
 }
