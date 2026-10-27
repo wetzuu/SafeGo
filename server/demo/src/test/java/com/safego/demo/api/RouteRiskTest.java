@@ -1,6 +1,6 @@
 package com.safego.demo.api;
 
-import com.safego.demo.data.MockRepository;
+import com.safego.demo.data.MockLocationsSeed;
 import com.safego.demo.data.RiskModel;
 import com.safego.demo.model.*;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ class RouteRiskTest {
 
     @Test
     void routeAnalysisUsesExistingCalculatedLocationRisks() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         SafeGoLocation espana = locations.stream().filter(l -> "espana".equals(l.id())).findFirst().orElseThrow();
 
         ResolvedPlace origin = new ResolvedPlace(espana.name(), espana.coordinates(), "preset", espana.id(), true);
@@ -40,7 +40,7 @@ class RouteRiskTest {
 
     @Test
     void routeAnalysisAppliesAHighRiskFloor() {
-        List<SafeGoLocation> baseLocations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> baseLocations = MockLocationsSeed.loadLocations();
         List<SafeGoLocation> locations = new ArrayList<>();
         for (int index = 0; index < baseLocations.size(); index++) {
             SafeGoLocation loc = baseLocations.get(index);
@@ -70,7 +70,7 @@ class RouteRiskTest {
 
     @Test
     void distantRoutesHaveUnknownSegmentsAndNoOverallScore() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         ResolvedPlace origin = new ResolvedPlace("Cebu 1", new double[]{10.3, 123.8}, "nominatim", null, true);
         ResolvedPlace dest = new ResolvedPlace("Cebu 2", new double[]{10.31, 123.81}, "nominatim", null, true);
         TripAnalyzeController.RouteResult route = new TripAnalyzeController.RouteResult(
@@ -88,7 +88,7 @@ class RouteRiskTest {
 
     @Test
     void routesWithNoSafeGoLocationNearbyAreNotCovered() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         ResolvedPlace origin = new ResolvedPlace("Katipunan 1", new double[]{14.6405, 121.0741}, "preset", "katipunan", true);
         ResolvedPlace dest = new ResolvedPlace("Katipunan 2", new double[]{14.641, 121.075}, "preset", "katipunan", true);
         TripAnalyzeController.RouteResult route = new TripAnalyzeController.RouteResult(
@@ -117,7 +117,7 @@ class RouteRiskTest {
 
     @Test
     void roadBendsArePreservedAndUncoveredDistanceIsMeasuredByLength() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         double[][] routeCoords = {{14.612, 120.9902}, {14.63, 121.01}, {14.6121, 120.9903}};
         ResolvedPlace origin = new ResolvedPlace("A", routeCoords[0], "preset", null, true);
         ResolvedPlace dest = new ResolvedPlace("B", routeCoords[2], "preset", null, true);
@@ -136,7 +136,7 @@ class RouteRiskTest {
 
     @Test
     void coverageIncludesNoEdgeExtendingBeyondThePilotRadius() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         double[][] routeCoords = {{14.612, 120.9902}, {14.63, 120.9902}};
         ResolvedPlace origin = new ResolvedPlace("A", routeCoords[0], "preset", null, true);
         ResolvedPlace dest = new ResolvedPlace("B", routeCoords[1], "preset", null, true);
@@ -159,7 +159,7 @@ class RouteRiskTest {
 
     @Test
     void duplicateAndInvalidGeometryCannotProduceAFalseLowScore() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         ResolvedPlace origin = new ResolvedPlace("A", new double[]{14.6, 121.0}, "preset", null, true);
         ResolvedPlace dest = new ResolvedPlace("B", new double[]{14.6, 121.0}, "preset", null, true);
 
@@ -182,7 +182,7 @@ class RouteRiskTest {
 
     @Test
     void the90PercentGateUsesUnroundedCoverageAndNeverTreatsGapsAsZero() {
-        SafeGoLocation base = MockRepository.listDashboardLocations().get(0);
+        SafeGoLocation base = MockLocationsSeed.loadLocations().get(0);
         RiskAssessment risk = new RiskAssessment("high", "HIGH RISK", "Level 3 of 4", 70, 70, "", List.of(), "", "", "1.0.0");
         SafeGoLocation location = new SafeGoLocation(
             base.id(), base.name(), base.city(), base.aliases(),
@@ -234,7 +234,7 @@ class RouteRiskTest {
 
     @Test
     void continuousUnknownSectionsPreserveAVisibleDashedPolyline() {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
         double[][] routeCoords = {{10.3, 123.8}, {10.31, 123.81}, {10.32, 123.8}};
         ResolvedPlace origin = new ResolvedPlace("Cebu 1", routeCoords[0], "preset", null, true);
         ResolvedPlace dest = new ResolvedPlace("Cebu 2", routeCoords[2], "preset", null, true);

@@ -8,47 +8,24 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-public final class MockRepository {
+/**
+ * The in-process store used without a database: the places SafeGo rates and the community reports
+ * submitted while this server is running. It holds no seeded conditions or reports.
+ */
+public final class LocalRepository {
 
     private static final int MAX_SESSION_REPORTS = 500;
     private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
     /** Reports submitted while this server has been running, newest first. */
     private static final List<ReportEntry> submittedReports = new ArrayList<>();
-    private static final List<SafeGoLocation> LOCATIONS = MockLocationsSeed.loadLocations();
+    private static final List<SafeGoLocation> LOCATIONS = LocationAnchors.locations();
 
-    private MockRepository() {}
-
-    public static List<LocationSummary> listLocations() {
-        return LOCATIONS.stream().map(MockRepository::summarize).toList();
-    }
+    private LocalRepository() {}
 
     public static List<SafeGoLocation> listDashboardLocations() {
         return LOCATIONS.stream()
-            .map(MockRepository::withSubmittedReports)
+            .map(LocalRepository::withSubmittedReports)
             .toList();
-    }
-
-    public static Optional<LocationRiskDetails> getLocationRisk(String id) {
-        return LOCATIONS.stream()
-            .filter(loc -> loc.id().equals(id))
-            .findFirst()
-            .map(loc -> new LocationRiskDetails(
-                summarize(loc),
-                loc.risk(),
-                loc.factors(),
-                loc.advisories(),
-                reportsFor(loc)
-            ));
-    }
-
-    public static List<SourceStatus> listSourceStatuses() {
-        return List.of(new SourceStatus(
-            "prototype-mock",
-            "SafeGo prototype dataset",
-            "mock",
-            "mock",
-            null, null, null
-        ));
     }
 
     public static Optional<CommunityReport> submitCommunityReport(
@@ -95,7 +72,7 @@ public final class MockRepository {
         synchronized (submittedReports) {
             return submittedReports.stream()
                 .filter(entry -> entry.locationId().equals(locationId) && !"rejected".equals(entry.status()))
-                .map(MockRepository::toPublic)
+                .map(LocalRepository::toPublic)
                 .toList();
         }
     }
@@ -122,14 +99,6 @@ public final class MockRepository {
             loc.updated(), loc.riskSummary(), loc.riskStatus(),
             loc.stats(), loc.factors(), loc.advisories(), loc.universities(),
             merged, loc.points(), loc.floods(), loc.hazards(), loc.risk()
-        );
-    }
-
-    private static LocationSummary summarize(SafeGoLocation loc) {
-        RiskAssessment r = loc.risk();
-        return new LocationSummary(
-            loc.id(), loc.name(), loc.city(), loc.aliases(), loc.coordinates(), loc.updated(),
-            new LocationSummary.RiskSummary(r.key(), r.name(), r.rank(), r.percentage(), r.modelVersion())
         );
     }
 }

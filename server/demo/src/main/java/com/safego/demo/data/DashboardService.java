@@ -59,7 +59,7 @@ public class DashboardService {
 
     public List<SafeGoLocation> canonicalLocations() {
         return database == null
-            ? liveCatalog(MockRepository.listDashboardLocations())
+            ? liveCatalog(LocalRepository.listDashboardLocations())
             : database.listDashboardLocations();
     }
 
@@ -79,7 +79,7 @@ public class DashboardService {
             return new SafeGoLocation(
                 location.id(), location.name(), location.city(), location.aliases(), location.coordinates(),
                 "Awaiting live update", "SafeGo is waiting for current sources.", "Not rated",
-                List.of(), factors, List.of(), List.of(), MockRepository.publicReports(location.id()), List.of(), List.of(), List.of(),
+                List.of(), factors, List.of(), List.of(), LocalRepository.publicReports(location.id()), List.of(), List.of(), List.of(),
                 RiskModel.analyzeRisk(factors, "SafeGo is waiting for current sources.", "Not rated")
             );
         }).toList();
@@ -210,7 +210,7 @@ public class DashboardService {
     public Optional<CommunityReport> submitCommunityReport(
             String locationId, String reportType, String locationText, String description) {
         Optional<CommunityReport> report = database == null
-            ? MockRepository.submitCommunityReport(locationId, reportType, locationText, description)
+            ? LocalRepository.submitCommunityReport(locationId, reportType, locationText, description)
             : database.submitCommunityReport(locationId, reportType, locationText, description);
         if (report.isPresent()) invalidate();
         return report;
@@ -218,13 +218,13 @@ public class DashboardService {
 
     /** Every community report, newest first, for moderators. */
     public List<ReportEntry> listReportEntries() {
-        return database == null ? MockRepository.listReportEntries() : database.listReportEntries();
+        return database == null ? LocalRepository.listReportEntries() : database.listReportEntries();
     }
 
     /** Sets a report's review state and refreshes what the public sees. */
     public Optional<ReportEntry> reviewReport(String id, String status, String reviewer) {
         Optional<ReportEntry> updated = database == null
-            ? MockRepository.reviewReport(id, status, reviewer)
+            ? LocalRepository.reviewReport(id, status, reviewer)
             : database.reviewReport(id, status, reviewer);
         if (updated.isPresent()) invalidate();
         return updated;

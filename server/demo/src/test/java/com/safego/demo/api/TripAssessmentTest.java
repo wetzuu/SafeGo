@@ -1,6 +1,6 @@
 package com.safego.demo.api;
 
-import com.safego.demo.data.MockRepository;
+import com.safego.demo.data.MockLocationsSeed;
 import com.safego.demo.model.ResolvedPlace;
 import com.safego.demo.model.RiskAssessment;
 import com.safego.demo.model.SafeGoLocation;
@@ -20,7 +20,7 @@ class TripAssessmentTest {
 
     @Test
     void refreshUpdatesTripScoresAndConditionsWhilePreservingTheResolvedRoute() {
-        List<SafeGoLocation> initialLocations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> initialLocations = MockLocationsSeed.loadLocations();
         ResolvedPlace origin = new ResolvedPlace("España", ESPANA, "preset", "espana", true);
         ResolvedPlace destination = new ResolvedPlace("Lerma", LERMA, "preset", "lerma", true);
         TripAnalyzeController.RouteResult route = route();
@@ -54,7 +54,7 @@ class TripAssessmentTest {
 
     @Test
     void refreshRemovesATripRatingWhenCoverageDataDisappears() {
-        List<SafeGoLocation> initialLocations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> initialLocations = MockLocationsSeed.loadLocations();
         ResolvedPlace origin = new ResolvedPlace("España", ESPANA, "preset", "espana", true);
         ResolvedPlace destination = new ResolvedPlace("Lerma", LERMA, "preset", "lerma", true);
         TripAnalyzeController.RouteResult route = route();

@@ -1,6 +1,6 @@
 package com.safego.demo.api;
 
-import com.safego.demo.data.MockRepository;
+import com.safego.demo.data.MockLocationsSeed;
 import com.safego.demo.data.RiskModel;
 import com.safego.demo.model.*;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class ValidationScenariosTest {
     };
 
     private TripAnalysis replayScenario(Map<String, Integer> scores, double[][] route) {
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations().stream()
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations().stream()
             .filter(l -> TripAnalyzeController.PILOT_LOCATION_IDS.contains(l.id()))
             .map(l -> {
                 List<RiskFactor> factors = l.factors().stream()

@@ -134,7 +134,7 @@ class OperationalFeedsTest {
     @Test
     void officialFeedReplacesOnlyTheAdvisoryFactorAndKeepsProvenance() throws Exception {
         DashboardService service = new DashboardService();
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
 
         String futureExpiry = Instant.now().plusSeconds(7200).toString();
         String json = """
@@ -179,7 +179,7 @@ class OperationalFeedsTest {
     @Test
     void severeFloodObservationsTriggerTheExistingCriticalSafetyFloor() throws Exception {
         DashboardService service = new DashboardService();
-        List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
+        List<SafeGoLocation> locations = MockLocationsSeed.loadLocations();
 
         String futureExpiry = Instant.now().plusSeconds(7200).toString();
         String json = """
