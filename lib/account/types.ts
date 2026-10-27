@@ -20,5 +20,7 @@ export interface AccountProfile {
   home: string;
   homePlace: SavedPlace | null;
   bookmarks: Bookmark[];
+  /** May review community reports at /admin. */
+  admin: boolean;
   persistence: "process" | "database";
 }

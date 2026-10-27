@@ -10,5 +10,7 @@ public record AccountProfile(
     SavedPlace homePlace,
     SavedPlace schoolPlace,
     List<Bookmark> bookmarks,
+    /** May review community reports; set by SAFEGO_ADMIN_EMAILS. */
+    boolean admin,
     String persistence
 ) {}

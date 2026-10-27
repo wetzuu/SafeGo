@@ -66,6 +66,15 @@ class AccountServiceTest {
     }
 
     @Test
+    void adminEmailsAreReadFromACommaSeparatedListAndNobodyIsAdminByDefault() {
+        assertTrue(AccountService.parseAdminEmails(null).isEmpty());
+        assertTrue(AccountService.parseAdminEmails(" , ").isEmpty());
+        assertEquals(java.util.Set.of("lead@safego.test", "mod@safego.test"), AccountService.parseAdminEmails(" Lead@SafeGo.test, mod@safego.test ,"));
+        AccountService accounts = new AccountService();
+        assertFalse(accounts.register("plain-" + System.nanoTime() + "@safego.test", "Plain User", "safe-password-123").profile().admin());
+    }
+
+    @Test
     void rejectsDuplicateAccountsAndIncorrectPasswords() {
         AccountService accounts = new AccountService();
         String email = "duplicate-" + System.nanoTime() + "@safego.test";

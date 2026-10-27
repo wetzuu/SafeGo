@@ -97,7 +97,8 @@ export function honestSnapshot(snapshot: DashboardSnapshot, backend: DataBackend
       ...location,
       advisories: location.advisories.filter((item) => !item.isMock),
       universities: location.universities.filter((item) => !item.isMock),
-      reports: backend === "local" ? [] : location.reports,
+      // The local API sends only reports people actually submitted, never seeded demo ones.
+      reports: location.reports,
       floods: backend === "local" ? [] : location.floods,
       hazards: backend === "local" ? [] : location.hazards,
       points: backend === "local" ? [] : location.points,

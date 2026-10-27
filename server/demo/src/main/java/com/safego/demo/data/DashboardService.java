@@ -63,7 +63,10 @@ public class DashboardService {
             : database.listDashboardLocations();
     }
 
-    /** Keep the built-in places as geographic anchors, but remove every seeded condition and announcement. */
+    /**
+     * Keep the built-in places as geographic anchors, but remove every seeded condition and announcement.
+     * Reports that people submitted are real, so they stay (unless a moderator rejected them).
+     */
     private static List<SafeGoLocation> liveCatalog(List<SafeGoLocation> locations) {
         return locations.stream().map(location -> {
             List<RiskFactor> factors = List.of(
@@ -76,7 +79,7 @@ public class DashboardService {
             return new SafeGoLocation(
                 location.id(), location.name(), location.city(), location.aliases(), location.coordinates(),
                 "Awaiting live update", "SafeGo is waiting for current sources.", "Not rated",
-                List.of(), factors, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), factors, List.of(), List.of(), MockRepository.publicReports(location.id()), List.of(), List.of(), List.of(),
                 RiskModel.analyzeRisk(factors, "SafeGo is waiting for current sources.", "Not rated")
             );
         }).toList();
@@ -211,6 +214,20 @@ public class DashboardService {
             : database.submitCommunityReport(locationId, reportType, locationText, description);
         if (report.isPresent()) invalidate();
         return report;
+    }
+
+    /** Every community report, newest first, for moderators. */
+    public List<ReportEntry> listReportEntries() {
+        return database == null ? MockRepository.listReportEntries() : database.listReportEntries();
+    }
+
+    /** Sets a report's review state and refreshes what the public sees. */
+    public Optional<ReportEntry> reviewReport(String id, String status, String reviewer) {
+        Optional<ReportEntry> updated = database == null
+            ? MockRepository.reviewReport(id, status, reviewer)
+            : database.reviewReport(id, status, reviewer);
+        if (updated.isPresent()) invalidate();
+        return updated;
     }
 
     // Static and instance delegations for tests and backward compatibility

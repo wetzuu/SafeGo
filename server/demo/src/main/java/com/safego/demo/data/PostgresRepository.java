@@ -19,7 +19,7 @@ public class PostgresRepository {
           COALESCE((SELECT jsonb_agg(a.payload ORDER BY a.issued_at DESC) FROM advisories a
             WHERE a.location_id = l.id), '[]'::jsonb)::text AS advisories,
           COALESCE((SELECT jsonb_agg(r.payload ORDER BY r.reported_at DESC) FROM community_reports r
-            WHERE r.location_id = l.id), '[]'::jsonb)::text AS community_reports
+            WHERE r.location_id = l.id AND r.verification_status <> 'rejected'), '[]'::jsonb)::text AS community_reports
         FROM locations l
         JOIN LATERAL (SELECT assessment, factors FROM risk_assessments
           WHERE location_id = l.id ORDER BY calculated_at DESC LIMIT 1) latest ON true
@@ -95,7 +95,7 @@ public class PostgresRepository {
     public Optional<CommunityReport> submitCommunityReport(String locationId, String reportType, String locationText, String description) {
         CommunityReport report = new CommunityReport(reportType, description, locationText + " · "
             + java.time.format.DateTimeFormatter.ofPattern("h:mm a").format(java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Manila"))),
-            "unverified", "UNVERIFIED");
+            "unverified", "Unverified");
         String sql = """
             INSERT INTO community_reports (location_id, report_type, title, verification_status, payload,
               position, reported_at, submission_source)
@@ -111,6 +111,70 @@ public class PostgresRepository {
         } catch (Exception e) {
             throw new IllegalStateException("Could not save the community report: " + e.getMessage(), e);
         }
+    }
+
+    /** Community-submitted reports, newest first, for moderators. */
+    public List<ReportEntry> listReportEntries() {
+        String sql = """
+            SELECT r.id, r.location_id, l.name, r.report_type, r.title, r.verification_status,
+              r.payload->>'meta' AS meta, r.reported_at, r.reviewed_at, r.reviewed_by
+            FROM community_reports r JOIN locations l ON l.id = r.location_id
+            WHERE r.submission_source = 'community'
+            ORDER BY r.reported_at DESC LIMIT 500
+            """;
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rows = statement.executeQuery()) {
+            List<ReportEntry> entries = new ArrayList<>();
+            while (rows.next()) entries.add(reportEntry(rows));
+            return entries;
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load community reports: " + e.getMessage(), e);
+        }
+    }
+
+    /** Sets a report's review state. Needs migration 0007 (the "rejected" status and review columns). */
+    public Optional<ReportEntry> reviewReport(String id, String status, String reviewer) {
+        java.util.UUID reportId;
+        try {
+            reportId = java.util.UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+        boolean reviewed = !"unverified".equals(status);
+        String label = "verified".equals(status) ? "Verified" : "rejected".equals(status) ? "Rejected" : "Unverified";
+        String sql = """
+            UPDATE community_reports r SET verification_status = ?,
+              payload = r.payload || jsonb_build_object('status', ?, 'statusLabel', ?),
+              reviewed_at = ?, reviewed_by = ?
+            FROM locations l
+            WHERE r.id = ? AND r.submission_source = 'community' AND l.id = r.location_id
+            RETURNING r.id, r.location_id, l.name, r.report_type, r.title, r.verification_status,
+              r.payload->>'meta' AS meta, r.reported_at, r.reviewed_at, r.reviewed_by
+            """;
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, status);
+            statement.setString(2, "rejected".equals(status) ? "unverified" : status);
+            statement.setString(3, label);
+            statement.setTimestamp(4, reviewed ? java.sql.Timestamp.from(java.time.Instant.now()) : null);
+            statement.setString(5, reviewed ? reviewer : null);
+            statement.setObject(6, reportId);
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next() ? Optional.of(reportEntry(rows)) : Optional.empty();
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not update the community report: " + e.getMessage(), e);
+        }
+    }
+
+    private static ReportEntry reportEntry(ResultSet rows) throws SQLException {
+        java.sql.Timestamp reviewedAt = rows.getTimestamp("reviewed_at");
+        String meta = rows.getString("meta");
+        // The public line is "place · time"; moderators only need the place.
+        String locationText = meta == null ? "" : meta.contains(" · ") ? meta.substring(0, meta.lastIndexOf(" · ")) : meta;
+        return new ReportEntry(rows.getString("id"), rows.getString("location_id"), rows.getString("name"), rows.getString("report_type"),
+            rows.getString("title"), locationText, rows.getString("verification_status"),
+            rows.getTimestamp("reported_at").toInstant().toString(),
+            reviewedAt == null ? null : reviewedAt.toInstant().toString(), rows.getString("reviewed_by"));
     }
 
     private Connection connect() throws SQLException {

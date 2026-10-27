@@ -91,6 +91,29 @@ class MockRepositoryTest {
     }
 
     @Test
+    void moderatorsCanVerifyRejectAndRestoreAReport() {
+        MockRepository.submitCommunityReport("espana", "Flooding", "España corner Lacson", "Knee-deep water at the corner, cars are turning back.");
+        var entry = MockRepository.listReportEntries().get(0);
+        assertEquals("unverified", entry.status());
+        assertEquals("España Blvd., Sampaloc", entry.locationName());
+
+        var verified = MockRepository.reviewReport(entry.id(), "verified", "mod@safego.test").orElseThrow();
+        assertEquals("verified", verified.status());
+        assertEquals("mod@safego.test", verified.reviewedBy());
+        assertEquals("verified", MockRepository.publicReports("espana").get(0).status());
+        assertEquals("Verified", MockRepository.publicReports("espana").get(0).statusLabel());
+
+        MockRepository.reviewReport(entry.id(), "rejected", "mod@safego.test");
+        assertTrue(MockRepository.publicReports("espana").stream().noneMatch(report -> report.title().startsWith("Knee-deep water")));
+        assertEquals("rejected", MockRepository.listReportEntries().stream().filter(e -> e.id().equals(entry.id())).findFirst().orElseThrow().status());
+
+        var restored = MockRepository.reviewReport(entry.id(), "unverified", "mod@safego.test").orElseThrow();
+        assertNull(restored.reviewedBy());
+        assertTrue(MockRepository.publicReports("espana").stream().anyMatch(report -> report.title().startsWith("Knee-deep water")));
+        assertTrue(MockRepository.reviewReport("missing", "verified", "mod@safego.test").isEmpty());
+    }
+
+    @Test
     void mockRepositoryStoresNewReportsAsUnverified() {
         Optional<CommunityReport> report = MockRepository.submitCommunityReport(
             "mapua-makati",

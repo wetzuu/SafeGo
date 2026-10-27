@@ -145,6 +145,8 @@ export interface RiskMapProps {
   onViewDashboard?: () => void;
   onViewRiskDetails?: () => void;
   onViewAnnouncements?: () => void;
+  /** Opens the community reports page. When set, the card shows the latest reports for the selection. */
+  onViewReports?: () => void;
   /** Fetch live weather for every area. */
   liveWeather?: boolean;
   /** Fetch active PAGASA public alerts for every area; off when the PAGASA source is not active. */
@@ -172,6 +174,7 @@ export function RiskMap({
   onViewDashboard,
   onViewRiskDetails,
   onViewAnnouncements,
+  onViewReports,
   liveWeather = false,
   liveAlerts = false,
   universityAlerts = [],
@@ -882,6 +885,37 @@ export function RiskMap({
             <p className="text-sm font-semibold text-ink leading-snug">{latestAdvisory.title}</p>
           </div>
         )}
+
+        {onViewReports && at === null && (() => {
+          const reports = trip ? trip.reports : effectiveSelected?.reports ?? [];
+          return (
+            <div className="mb-3 rounded-box border border-hairline p-3" aria-label="Community reports">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-ink">Community reports{reports.length ? ` (${reports.length})` : ""}</span>
+                <button type="button" className="min-h-9 text-xs font-bold text-brand-ink hover:underline" onClick={onViewReports}>
+                  {reports.length ? "See all or add one" : "Report something"}
+                </button>
+              </div>
+              {reports.length === 0 ? (
+                <p className="text-xs leading-snug text-ink-soft">No reports here yet. Seen flooding or a blocked road? Tell other commuters.</p>
+              ) : (
+                <ul className="mt-1 space-y-1.5">
+                  {reports.slice(0, 2).map((report, index) => (
+                    <li key={`${report.title}-${index}`} className="flex items-start justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold leading-snug text-ink">{report.title}</span>
+                        <span className="block truncate text-xs text-ink-soft">{report.type} · {report.meta}</span>
+                      </span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${report.status === "verified" ? "bg-low-soft text-low" : "bg-mod-soft text-mod"}`}>
+                        {report.status === "verified" ? "Verified" : "Unverified"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
 
         {trip && <TripDataNotice trip={trip} />}
         {trip?.safetyRule && (

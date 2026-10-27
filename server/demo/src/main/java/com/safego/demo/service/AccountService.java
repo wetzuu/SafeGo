@@ -22,6 +22,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class AccountService {
     private static final long SESSION_DAYS = 30;
     public static final int MAX_BOOKMARKS = 30;
+    private static final Set<String> ADMIN_EMAILS = parseAdminEmails(System.getenv("SAFEGO_ADMIN_EMAILS"));
+
+    /** The comma-separated SAFEGO_ADMIN_EMAILS list as lower-case addresses. Empty means nobody is an admin. */
+    static Set<String> parseAdminEmails(String value) {
+        Set<String> emails = new HashSet<>();
+        if (value != null) for (String email : value.split(",")) if (!email.isBlank()) emails.add(email.trim().toLowerCase(Locale.ROOT));
+        return Set.copyOf(emails);
+    }
+
+    static boolean isAdmin(String email) { return email != null && ADMIN_EMAILS.contains(email.toLowerCase(Locale.ROOT)); }
     private static final String PROFILE_COLUMNS = "u.id user_id,u.email,u.display_name," +
         "p.home_label,p.home_canonical_label,p.home_source,p.home_matched_location_id,p.home_approximate," +
         "ST_Y(p.home_position::geometry) home_lat,ST_X(p.home_position::geometry) home_lon," +
@@ -58,7 +68,7 @@ public class AccountService {
                  PreparedStatement places = connection.prepareStatement("INSERT INTO user_saved_places (user_id) VALUES (?)")) {
                 user.setObject(1, id); user.setString(2, normalizedEmail); user.setString(3, name.trim()); user.setString(4, hash); user.executeUpdate();
                 places.setObject(1, id); places.executeUpdate();
-                return createDatabaseSession(connection, id, new AccountProfile(normalizedEmail, name.trim(), "", "", null, null, List.of(), "database"));
+                return createDatabaseSession(connection, id, new AccountProfile(normalizedEmail, name.trim(), "", "", null, null, List.of(), isAdmin(normalizedEmail), "database"));
             } catch (SQLException error) {
                 connection.rollback();
                 if ("23505".equals(error.getSQLState())) throw new AccountException("EMAIL_EXISTS", "An account with that email already exists.");
@@ -120,7 +130,7 @@ public class AccountService {
             next = bindPlace(statement, next, school);
             statement.setString(next, tokenHash(rawToken));
             if (statement.executeUpdate() != 1) throw new AccountException("UNAUTHORIZED", "Sign in again to update saved places.");
-            return new AccountProfile(current.email(), current.name(), label(home), label(school), home, school, current.bookmarks(), "database");
+            return new AccountProfile(current.email(), current.name(), label(home), label(school), home, school, current.bookmarks(), current.admin(), "database");
         } catch (AccountException error) { throw error; }
         catch (Exception error) { throw new AccountException("ACCOUNT_UNAVAILABLE", "Saved places could not be updated."); }
     }
@@ -250,7 +260,7 @@ public class AccountService {
         SavedPlace home = readPlace(row, "home");
         SavedPlace school = readPlace(row, "school");
         return new AccountProfile(row.getString("email"), row.getString("display_name"), label(home), label(school), home, school,
-            databaseBookmarks(connection, row.getObject("user_id", UUID.class)), "database");
+            databaseBookmarks(connection, row.getObject("user_id", UUID.class)), isAdmin(row.getString("email")), "database");
     }
 
     private SavedPlace readPlace(ResultSet row, String prefix) throws SQLException {
@@ -276,7 +286,7 @@ public class AccountService {
         return start + 7;
     }
 
-    private AccountProfile profile(MemoryUser user) { return new AccountProfile(user.email, user.name, label(user.home), label(user.school), user.home, user.school, List.copyOf(user.bookmarks), "process"); }
+    private AccountProfile profile(MemoryUser user) { return new AccountProfile(user.email, user.name, label(user.home), label(user.school), user.home, user.school, List.copyOf(user.bookmarks), isAdmin(user.email), "process"); }
     private String label(SavedPlace place) { return place == null ? "" : place.label(); }
     private String randomToken() { byte[] bytes = new byte[32]; random.nextBytes(bytes); return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes); }
     private String tokenHash(String token) { try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8))); } catch (Exception e) { throw new IllegalStateException(e); } }

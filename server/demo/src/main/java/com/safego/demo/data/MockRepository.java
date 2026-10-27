@@ -2,6 +2,7 @@ package com.safego.demo.data;
 
 import com.safego.demo.model.*;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -9,8 +10,10 @@ import java.util.*;
 
 public final class MockRepository {
 
-    private static final int MAX_SESSION_REPORTS_PER_LOCATION = 100;
-    private static final Map<String, List<CommunityReport>> submittedReports = new LinkedHashMap<>();
+    private static final int MAX_SESSION_REPORTS = 500;
+    private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
+    /** Reports submitted while this server has been running, newest first. */
+    private static final List<ReportEntry> submittedReports = new ArrayList<>();
     private static final List<SafeGoLocation> LOCATIONS = MockLocationsSeed.loadLocations();
 
     private MockRepository() {}
@@ -54,30 +57,59 @@ public final class MockRepository {
         boolean exists = LOCATIONS.stream().anyMatch(loc -> loc.id().equals(locationId));
         if (!exists) return Optional.empty();
 
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Manila"));
-        String time = DateTimeFormatter.ofPattern("h:mm a").format(now);
-        CommunityReport report = new CommunityReport(
-            reportType,
-            description,
-            locationText + " · " + time,
-            "unverified",
-            "UNVERIFIED"
-        );
+        String locationName = LOCATIONS.stream().filter(loc -> loc.id().equals(locationId)).findFirst().map(SafeGoLocation::name).orElse(locationId);
+        ReportEntry entry = new ReportEntry(UUID.randomUUID().toString(), locationId, locationName, reportType, description,
+            locationText, "unverified", Instant.now().toString(), null, null);
+        synchronized (submittedReports) {
+            submittedReports.add(0, entry);
+            while (submittedReports.size() > MAX_SESSION_REPORTS) submittedReports.remove(submittedReports.size() - 1);
+        }
+        return Optional.of(toPublic(entry));
+    }
 
-        submittedReports.compute(locationId, (key, existing) -> {
-            List<CommunityReport> updated = new ArrayList<>();
-            updated.add(report);
-            if (existing != null) updated.addAll(existing);
-            return updated.stream().limit(MAX_SESSION_REPORTS_PER_LOCATION).toList();
-        });
+    /** Every submitted report, newest first, for moderators. */
+    public static List<ReportEntry> listReportEntries() {
+        synchronized (submittedReports) {
+            return List.copyOf(submittedReports);
+        }
+    }
 
-        return Optional.of(report);
+    /** Sets a report's review state; empty when the report does not exist. */
+    public static Optional<ReportEntry> reviewReport(String id, String status, String reviewer) {
+        synchronized (submittedReports) {
+            for (int i = 0; i < submittedReports.size(); i++) {
+                ReportEntry entry = submittedReports.get(i);
+                if (!entry.id().equals(id)) continue;
+                boolean reviewed = !"unverified".equals(status);
+                ReportEntry updated = new ReportEntry(entry.id(), entry.locationId(), entry.locationName(), entry.type(), entry.description(),
+                    entry.locationText(), status, entry.submittedAt(), reviewed ? Instant.now().toString() : null, reviewed ? reviewer : null);
+                submittedReports.set(i, updated);
+                return Optional.of(updated);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** What the public sees for a location: submitted reports that have not been rejected, newest first. */
+    public static List<CommunityReport> publicReports(String locationId) {
+        synchronized (submittedReports) {
+            return submittedReports.stream()
+                .filter(entry -> entry.locationId().equals(locationId) && !"rejected".equals(entry.status()))
+                .map(MockRepository::toPublic)
+                .toList();
+        }
+    }
+
+    static CommunityReport toPublic(ReportEntry entry) {
+        ZonedDateTime at = Instant.parse(entry.submittedAt()).atZone(MANILA);
+        boolean verified = "verified".equals(entry.status());
+        return new CommunityReport(entry.type(), entry.description(),
+            entry.locationText() + " · " + DateTimeFormatter.ofPattern("MMM d, h:mm a", Locale.ENGLISH).format(at),
+            verified ? "verified" : "unverified", verified ? "Verified" : "Unverified");
     }
 
     private static List<CommunityReport> reportsFor(SafeGoLocation loc) {
-        List<CommunityReport> result = new ArrayList<>();
-        List<CommunityReport> submitted = submittedReports.get(loc.id());
-        if (submitted != null) result.addAll(submitted);
+        List<CommunityReport> result = new ArrayList<>(publicReports(loc.id()));
         result.addAll(loc.reports());
         return Collections.unmodifiableList(result);
     }

@@ -72,7 +72,7 @@ function Advisories({ items }: { items: Advisory[] }) {
 
 function Reports({ items }: { items: CommunityReport[] }) {
   if (!items.length) return <p className="empty-note">No community observations are available here right now.</p>;
-  return <>{items.map((item, index) => <article className="report-row" key={`${item.type}-${item.title}-${item.meta}-${index}`}><div className="rtype"><Icon name={item.type === "Flooding" ? "flood" : "alert"} /></div><div className="report-main"><div className="title">{item.title}</div><div className="meta">{item.meta}</div></div><span className={`status-chip status-${item.status}`}>{item.statusLabel}</span></article>)}</>;
+  return <>{items.map((item, index) => <article className="report-row" key={`${item.type}-${item.title}-${item.meta}-${index}`}><div className="rtype"><Icon name={item.type === "Flooding" ? "flood" : "alert"} /></div><div className="report-main"><div className="title">{item.title}</div><div className="meta">{item.meta}</div></div><span className={`status-chip status-${item.status}`}>{item.status === "verified" ? "Verified" : item.status === "pending" ? "Pending" : "Unverified"}</span></article>)}</>;
 }
 
 function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
@@ -212,7 +212,7 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
       }
       onSubmitted(location.id, envelope.data);
       setDescription("");
-      setMessage({ tone: "success", text: "Report received as unverified. It is visible now but does not change the risk score until reviewed." });
+      setMessage({ tone: "success", text: "Report received. It is visible now as unverified, and a SafeGo admin will review it. Reports do not change the risk rating." });
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "The report could not be saved." });
     } finally {
@@ -564,6 +564,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onViewDashboard={() => navigate("conditions")}
               onViewRiskDetails={() => navigate("risk")}
               onViewAnnouncements={() => navigate("alerts")}
+              onViewReports={detailTabs.some((tab) => tab.key === "reports") ? () => navigate("reports") : undefined}
               liveWeather={!apiUnavailable && sources.some((source) => source.key === "open-meteo" && source.status === "active")}
               liveAlerts={!apiUnavailable && sources.some((source) => source.key === "pagasa-cap" && source.status === "active")}
               universityAlerts={universityAlerts}
