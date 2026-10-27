@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -69,12 +67,11 @@ public class UniversityAnnouncementService {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
     enum Kind { UNIVERSITY, GOVERNMENT, NEWS }
-    enum Format { RSS, PUP_NEWS }
 
     record Campus(String id, String name, String campus, String city, double lat, double lon,
                   String logoPath, List<String> names, List<String> acronyms) {}
 
-    record Feed(String id, String name, String url, Kind kind, Format format, List<String> campusIds) {}
+    record Feed(String id, String name, String url, Kind kind, List<String> campusIds) {}
 
     record Item(String title, String text, String link, Instant published) {}
 
@@ -112,19 +109,18 @@ public class UniversityAnnouncementService {
     );
 
     static final List<Feed> FEEDS = List.of(
-        new Feed("jru-site", "José Rizal University website", "https://jru.edu/feed/", Kind.UNIVERSITY, Format.RSS, List.of("jru-mandaluyong")),
-        new Feed("pup-site", "PUP website news", "https://www.pup.edu.ph/news/", Kind.UNIVERSITY, Format.PUP_NEWS, List.of("pup-sta-mesa")),
-        new Feed("feu-site", "Far Eastern University website", "https://www.feu.edu.ph/feed/", Kind.UNIVERSITY, Format.RSS, List.of("feu-manila")),
-        new Feed("ue-site", "University of the East website", "https://www.ue.edu.ph/mla/feed/", Kind.UNIVERSITY, Format.RSS, List.of("ue-manila", "ue-caloocan")),
-        new Feed("sscr-site", "SSC-R Manila website", "https://sscrmnl.edu.ph/feed/", Kind.UNIVERSITY, Format.RSS, List.of("san-sebastian-manila")),
-        new Feed("plp-site", "Pamantasan ng Lungsod ng Pasig website", "https://plpasig.edu.ph/feed/", Kind.UNIVERSITY, Format.RSS, List.of("plp-pasig")),
-        new Feed("official-gazette", "Official Gazette", "https://www.officialgazette.gov.ph/feed/", Kind.GOVERNMENT, Format.RSS, List.of()),
-        new Feed("rappler", "Rappler", "https://www.rappler.com/feed/", Kind.NEWS, Format.RSS, List.of()),
-        new Feed("gma-metro", "GMA News (Metro)", "https://data.gmanetwork.com/gno/rss/news/metro/feed.xml", Kind.NEWS, Format.RSS, List.of()),
-        new Feed("gma-news", "GMA News", "https://data.gmanetwork.com/gno/rss/news/feed.xml", Kind.NEWS, Format.RSS, List.of()),
-        new Feed("inquirer", "Inquirer.net", "https://newsinfo.inquirer.net/feed", Kind.NEWS, Format.RSS, List.of()),
-        new Feed("philstar", "Philstar.com (Nation)", "https://www.philstar.com/rss/nation", Kind.NEWS, Format.RSS, List.of()),
-        new Feed("manila-times", "The Manila Times", "https://www.manilatimes.net/news/feed/", Kind.NEWS, Format.RSS, List.of())
+        new Feed("jru-site", "José Rizal University website", "https://jru.edu/feed/", Kind.UNIVERSITY, List.of("jru-mandaluyong")),
+        new Feed("feu-site", "Far Eastern University website", "https://www.feu.edu.ph/feed/", Kind.UNIVERSITY, List.of("feu-manila")),
+        new Feed("ue-site", "University of the East website", "https://www.ue.edu.ph/mla/feed/", Kind.UNIVERSITY, List.of("ue-manila", "ue-caloocan")),
+        new Feed("sscr-site", "SSC-R Manila website", "https://sscrmnl.edu.ph/feed/", Kind.UNIVERSITY, List.of("san-sebastian-manila")),
+        new Feed("plp-site", "Pamantasan ng Lungsod ng Pasig website", "https://plpasig.edu.ph/feed/", Kind.UNIVERSITY, List.of("plp-pasig")),
+        new Feed("official-gazette", "Official Gazette", "https://www.officialgazette.gov.ph/feed/", Kind.GOVERNMENT, List.of()),
+        new Feed("rappler", "Rappler", "https://www.rappler.com/feed/", Kind.NEWS, List.of()),
+        new Feed("gma-metro", "GMA News (Metro)", "https://data.gmanetwork.com/gno/rss/news/metro/feed.xml", Kind.NEWS, List.of()),
+        new Feed("gma-news", "GMA News", "https://data.gmanetwork.com/gno/rss/news/feed.xml", Kind.NEWS, List.of()),
+        new Feed("inquirer", "Inquirer.net", "https://newsinfo.inquirer.net/feed", Kind.NEWS, List.of()),
+        new Feed("philstar", "Philstar.com (Nation)", "https://www.philstar.com/rss/nation", Kind.NEWS, List.of()),
+        new Feed("manila-times", "The Manila Times", "https://www.manilatimes.net/news/feed/", Kind.NEWS, List.of())
     );
 
     private static final Pattern SUSPENSION = Pattern.compile(
@@ -139,9 +135,6 @@ public class UniversityAnnouncementService {
     private static final Pattern NOT_A_SUSPENSION = Pattern.compile("resum|lifted|no suspension|not suspended|no class suspension");
     private static final Pattern METRO_WIDE = Pattern.compile("metro manila|\\bncr\\b|national capital region");
     private static final Pattern ALL_LEVELS = Pattern.compile("all levels");
-    private static final Pattern PUP_ITEM = Pattern.compile(
-        "<a href=\"(/news/\\?v=[^\"]+)\"><h4>([^<]+)</h4><span>([A-Za-z]+ \\d{1,2}, \\d{4})</span>");
-    private static final DateTimeFormatter PUP_DATE = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH);
     private static final List<DateTimeFormatter> RSS_DATES = List.of(
         DateTimeFormatter.RFC_1123_DATE_TIME,
         DateTimeFormatter.ofPattern("EEE, d MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
@@ -294,7 +287,7 @@ public class UniversityAnnouncementService {
         }
         String body = response.body();
         if (body.length() > MAX_BODY_CHARS) throw new IllegalStateException("Source response is too large.");
-        return feed.format() == Format.PUP_NEWS ? parsePupNews(body) : parseRss(body);
+        return parseRss(body);
     }
 
     static List<Item> parseRss(String xml) throws Exception {
@@ -314,23 +307,6 @@ public class UniversityAnnouncementService {
                 parseDate(child(element, "pubDate"))));
         }
         return items;
-    }
-
-    /** PUP has no feed; its news page lists each story as a link, a heading and a date. */
-    static List<Item> parsePupNews(String html) {
-        Map<String, Item> items = new LinkedHashMap<>();
-        Matcher matcher = PUP_ITEM.matcher(html);
-        while (matcher.find() && items.size() < 100) {
-            Instant published;
-            try {
-                published = LocalDate.parse(matcher.group(3), PUP_DATE).atStartOfDay(MANILA).toInstant();
-            } catch (Exception e) {
-                continue;
-            }
-            String link = "https://www.pup.edu.ph" + matcher.group(1).replace("&amp;", "&");
-            items.putIfAbsent(link, new Item(matcher.group(2).replace("&amp;", "&").trim(), "", link, published));
-        }
-        return List.copyOf(items.values());
     }
 
     private static String child(Element parent, String tag) {

@@ -1,7 +1,6 @@
 package com.safego.demo.data;
 
 import com.safego.demo.data.UniversityAnnouncementService.Feed;
-import com.safego.demo.data.UniversityAnnouncementService.Format;
 import com.safego.demo.data.UniversityAnnouncementService.Item;
 import com.safego.demo.data.UniversityAnnouncementService.Kind;
 import com.safego.demo.data.UniversityAnnouncementService.Match;
@@ -17,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class UniversityAnnouncementServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-04T02:00:00Z");
-    private static final Feed NEWS = new Feed("news", "Example News", "https://news.example/feed", Kind.NEWS, Format.RSS, List.of());
-    private static final Feed JRU = new Feed("jru-site", "José Rizal University website", "https://jru.edu/feed/", Kind.UNIVERSITY, Format.RSS, List.of("jru-mandaluyong"));
+    private static final Feed NEWS = new Feed("news", "Example News", "https://news.example/feed", Kind.NEWS, List.of());
+    private static final Feed JRU = new Feed("jru-site", "José Rizal University website", "https://jru.edu/feed/", Kind.UNIVERSITY, List.of("jru-mandaluyong"));
 
     private static Item item(String title, String text, Instant published) {
         return new Item(title, text, "https://news.example/story", published);
@@ -106,12 +105,6 @@ class UniversityAnnouncementServiceTest {
         assertTrue(items.get(0).text().contains("Body"));
         assertThrows(Exception.class, () -> UniversityAnnouncementService.parseRss("<!DOCTYPE rss [<!ENTITY x SYSTEM \"file:///etc/passwd\">]><rss/>"));
 
-        String html = "<a href=\"/news/?v=Advisory-1&go=abc\"><div class=\"thumb\"></div></a>"
-            + "<a href=\"/news/?v=Advisory-1&go=abc\"><h4>Suspension of classes, October 4</h4><span>October 04, 2026</span> </a>";
-        List<Item> pup = UniversityAnnouncementService.parsePupNews(html);
-        assertEquals(1, pup.size());
-        assertEquals("https://www.pup.edu.ph/news/?v=Advisory-1&go=abc", pup.get(0).link());
-        assertEquals(Instant.parse("2026-10-03T16:00:00Z"), pup.get(0).published());
     }
 
     @Test
