@@ -43,7 +43,6 @@ function listNames(names: FactorName[]) {
 export function honestLocation(location: SafeGoLocation, live: Set<FactorName>): SafeGoLocation {
   const counted = location.factors.filter((factor) => live.has(factor.name));
   const countedFactors = counted.map((factor) => factor.name);
-  const notCounted = location.factors.filter((factor) => !live.has(factor.name)).map((factor) => factor.name);
 
   if (counted.length === location.factors.length) {
     return { ...location, risk: { ...location.risk, basis: "full", countedFactors } };
@@ -83,8 +82,7 @@ export function honestLocation(location: SafeGoLocation, live: Set<FactorName>):
       // The model's safety rules depend on flood and advisory combinations a partial score cannot see.
       safetyRule: "",
       contributions: location.risk.contributions.filter((contribution) => live.has(contribution.name)),
-      summary: `Partial rating from live ${listNames(countedFactors)} only. Unavailable: `
-        + `${listNames(notCounted)}. Missing information is not treated as safe.`,
+      summary: `Based on live ${listNames(countedFactors)}.`,
     },
   };
 }

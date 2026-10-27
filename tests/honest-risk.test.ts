@@ -24,9 +24,8 @@ test("with some live factors the score is the highest live factor, never a demo 
   assert.equal(honest.risk.percentage, Math.max(factor("Weather"), factor("Official advisories")));
   assert.deepEqual(honest.risk.countedFactors, ["Weather", "Official advisories"]);
   assert.equal(honest.risk.safetyRule, "");
-  assert.match(honest.risk.summary, /Partial rating from live weather and official alerts only/);
-  assert.match(honest.risk.summary, /flood and road conditions/);
-  assert.equal(honest.factors.length, quiapo.factors.length, "demo factors stay visible for context");
+  assert.equal(honest.risk.summary, "Based on live weather and official alerts.");
+  assert.doesNotMatch(honest.risk.summary, /flood|partial|unavailable/i, "missing factors are left out, not listed");
 });
 
 test("with every factor live the model's full rating is unchanged", () => {

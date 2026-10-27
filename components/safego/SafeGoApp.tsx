@@ -87,13 +87,9 @@ function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor
 }
 
 function BasisNote({ location }: { location: SafeGoLocation }) {
-  if (location.risk.basis === "partial") {
-    return <p className="gauge-caption">Based on live weather and PAGASA alerts.</p>;
-  }
-  if (location.risk.basis === "none") {
-    return <div className="calculation-rule">SafeGo has no live data for this location right now.</div>;
-  }
-  return null;
+  return location.risk.basis === "none"
+    ? <div className="calculation-rule">SafeGo has no live data for this location right now.</div>
+    : null;
 }
 
 function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
@@ -117,24 +113,62 @@ function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
         <div className="factor-body">
           <div className="factor-top">
             <div className="factor-name">{displayFactorName(factor.name)} <FactorBasisTag location={location} factor={factor.name} /></div>
-            <span className={`pill ${factor.pill}`}><span className="dot" />{factor.pillText} · {factor.score}/100</span>
+            {factor.name === "Official advisories" && factor.score === 0
+              ? <span className="pill low"><span className="dot" />None active</span>
+              : <span className={`pill ${factor.pill}`}><span className="dot" />{factor.pillText} · {factor.score}/100</span>}
           </div>
           <p className="factor-desc">{factor.description}</p>
-          <div className="meter"><div className="meter-fill" style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div>
+          {!(factor.name === "Official advisories" && factor.score === 0) && (
+            <div className="meter"><div className="meter-fill" style={{ width: `${factor.score}%`, background: riskGradient(factor.score) }} /></div>
+          )}
         </div>
       </article>;
     })}</div>
     <div className="card card-pad mb-[22px] result-explanation">
       <h2>How to use this result</h2>
-      <p>SafeGo gives more importance to flooding and road conditions, then considers weather, official updates, community observations, and nearby school information. Only factors backed by current connected data are shown and counted.</p>
+      <p>SafeGo rates each place from live weather and official PAGASA alerts, and shows only the information it can confirm.</p>
       {location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}
       <p><strong>This is not permission to travel.</strong> Conditions can change quickly, so check current government and school announcements before leaving.</p>
     </div>
   </section>;
 }
 
+function LiveWeatherCard({ location }: { location: SafeGoLocation }) {
+  const weather = location.factors.find((factor) => factor.name === "Weather");
+  if (!weather || !location.risk.countedFactors?.includes("Weather")) return null;
+  return <div className="card card-pad">
+    <div className="card-head"><h3>Weather now</h3><span className={`pill ${weather.pill}`}><span className="dot" />{weather.pillText} · {weather.score}/100</span></div>
+    <p className="factor-desc">{weather.description}</p>
+  </div>;
+}
+
+function ObservationList({ title, items, icon }: { title: string; items: SafeGoLocation["hazards"]; icon: "flood" | "alert" }) {
+  if (!items.length) return null;
+  return <div className="card card-pad"><div className="card-head"><h3>{title}</h3><span className="tag mono">{items.length} listed</span></div>
+    {items.map((hazard) => <div className="hazard-row" key={hazard.title}><div className={`hazard-icon ${hazard.tone ?? ""}`}><Icon name={icon} /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>)}
+  </div>;
+}
+
 function LocationConditions({ location }: { location: SafeGoLocation }) {
-  return <section className="page"><PageHeader eyebrow="Conditions" title="Flood and road conditions" subtitle={location.name} /><div className="grid grid-2"><div className="card card-pad"><div className="card-head"><h3>Watched points</h3><span className={`pill ${location.risk.key}`}><span className="dot" />{location.risk.status}</span></div><div className="route-track">{location.points.map((point) => <div className="route-node" key={`${point.label}-${point.name}`}><div className={`route-dot ${point.kind === "end" ? "end" : point.kind === "mid" ? "mid" : ""}`}><div className="inner" /></div><div className="rn-label">{point.label}</div><div className="rn-name">{point.name}</div><div className="rn-sub">{point.detail}</div></div>)}</div><div className="mock-note">These watched points come from the selected area’s available data. Use the Map view to compare locations.</div></div><div><div className="card card-pad mb-4"><div className="card-head"><h3>Flood reports</h3><span className="tag mono">Updated {location.updated}</span></div>{location.floods.map((hazard) => <div className="hazard-row" key={hazard.title}><div className={`hazard-icon ${hazard.tone ?? ""}`}><Icon name="flood" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>)}</div><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{location.hazards.length} listed</span></div>{location.hazards.map((hazard) => <div className="hazard-row" key={hazard.title}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>)}</div></div></div></section>;
+  const alertsLive = Boolean(location.risk.countedFactors?.includes("Official advisories"));
+  const weather = <LiveWeatherCard location={location} />;
+  return <section className="page">
+    <PageHeader eyebrow="Conditions" title="Live conditions" subtitle={`${location.name} · updated ${location.updated}`} />
+    {location.risk.basis === "none" ? (
+      <p className="empty-note">SafeGo has no live data for this location right now. Check official channels before travelling.</p>
+    ) : (
+      <div className="grid grid-2">
+        {weather}
+        {alertsLive && <div className="card card-pad"><div className="card-head"><h3>Official alerts</h3><span className="tag mono">PAGASA</span></div>
+          {location.advisories.length
+            ? <Advisories items={location.advisories} />
+            : <p className="factor-desc">No active PAGASA alerts for this location.</p>}
+        </div>}
+        <ObservationList title="Flood reports" items={location.floods} icon="flood" />
+        <ObservationList title="Reported hazards" items={location.hazards} icon="alert" />
+      </div>
+    )}
+  </section>;
 }
 
 function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
@@ -176,7 +210,24 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
 }
 
 function TripConditions({ trip, showReports }: { trip: TripAnalysis; showReports: boolean }) {
-  return <section className="page"><PageHeader eyebrow="Route conditions" title={showReports ? "Hazards and reports near your trip" : "Hazards near your trip"} subtitle="Conditions reported near this route." /><div className={showReports ? "grid grid-2" : "grid"}><div className="card card-pad"><div className="card-head"><h3>Reported hazards</h3><span className="tag mono">{trip.hazards.length} listed</span></div>{trip.hazards.length ? trip.hazards.map((hazard) => <div className="hazard-row" key={`${hazard.title}-${hazard.meta}`}><div className="hazard-icon"><Icon name="alert" /></div><div className="hazard-body"><div className="title">{hazard.title}</div><div className="meta">{hazard.meta}</div></div></div>) : <p className="empty-note">No hazards are listed near the current route.</p>}</div>{showReports && <div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Near route</span></div><Reports items={trip.reports} /></div>}</div><div className="route-coverage-note"><strong>Important:</strong> A missing report does not prove a road is safe. Check official announcements and current road conditions.</div></section>;
+  const places = trip.corridorLocations.filter((location) => location.risk.basis !== "none");
+  return <section className="page">
+    <PageHeader eyebrow="Route conditions" title="Live conditions along your trip" subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
+    {places.length === 0 && !trip.advisories.length ? (
+      <p className="empty-note">SafeGo has no live data along this route yet. Check official channels before travelling.</p>
+    ) : (
+      <div className="grid grid-2">
+        {places.map((location) => <LiveWeatherCard key={location.id} location={location} />)}
+        <div className="card card-pad"><div className="card-head"><h3>Official alerts</h3><span className="tag mono">PAGASA</span></div>
+          {trip.advisories.length
+            ? <Advisories items={trip.advisories} />
+            : <p className="factor-desc">No active PAGASA alerts along this route.</p>}
+        </div>
+        <ObservationList title="Reported hazards" items={trip.hazards} icon="alert" />
+        {showReports && trip.reports.length > 0 && <div><div className="card-head tight"><h3>Community observations</h3><span className="tag mono">Near route</span></div><Reports items={trip.reports} /></div>}
+      </div>
+    )}
+  </section>;
 }
 
 interface ReportEnvelope {
