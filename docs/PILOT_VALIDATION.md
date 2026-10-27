@@ -6,9 +6,8 @@ The pilot is the union of provisional 850-meter circles around España, Lerma,
 Quiapo, Mapúa Makati and Ortigas Center (Pasig). It is not all of Manila, Makati
 or Pasig and does not
 cover the roads between those areas automatically. The canonical IDs are in
-`lib/trips/pilot.ts`. Binondo and Katipunan remain repository fixtures
-but are excluded from pilot search, map coverage and route scoring because their
-inputs were cloned from España.
+`lib/trips/pilot.ts`. Binondo and Katipunan were removed because their inputs
+were copied from España rather than measured.
 
 The 850-meter radius reuses the former map illustration. The 90% route-coverage
 gate is a provisional product choice, not an independently validated threshold.

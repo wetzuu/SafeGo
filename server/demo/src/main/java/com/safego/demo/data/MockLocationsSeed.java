@@ -11,18 +11,11 @@ public final class MockLocationsSeed {
     private MockLocationsSeed() {}
 
     public static List<SafeGoLocation> loadLocations() {
-        SafeGoLocation espana = buildEspana();
         return List.of(
-            espana,
+            buildEspana(),
             buildMakati(),
             buildQuiapo(),
             buildLerma(),
-            cloneEspana(espana, "binondo", "Binondo, Manila", "Manila",
-                List.of("binondo", "manila", "divisoria", "ongpin"),
-                new double[]{14.601, 120.9745}),
-            cloneEspana(espana, "katipunan", "Katipunan Avenue, Quezon City", "Quezon City",
-                List.of("katipunan", "quezon city", "qc", "ateneo", "up diliman"),
-                new double[]{14.6405, 121.0741}),
             buildPasig(),
             createFloodProneLocation(
                 "marikina-riverbanks", "Marikina Riverbanks, Marikina", "Marikina",
@@ -511,18 +504,6 @@ public final class MockLocationsSeed {
             ),
             List.of(new Hazard("No verified Pasig flood observation connected", "Stored demo conditions only", "icon-neutral")),
             List.of(new Hazard("Slippery roads near Ortigas intersections", "Demo observation · unverified", null))
-        );
-    }
-
-    public static SafeGoLocation cloneEspana(
-            SafeGoLocation espana,
-            String id, String name, String city, List<String> aliases, double[] coordinates) {
-        return create(
-            id, name, city, aliases, coordinates,
-            espana.updated(), espana.riskSummary(), espana.riskStatus(),
-            espana.stats(), espana.factors(), espana.advisories(),
-            espana.universities(), espana.reports(),
-            espana.points(), espana.floods(), espana.hazards()
         );
     }
 }

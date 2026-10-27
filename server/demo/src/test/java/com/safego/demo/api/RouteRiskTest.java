@@ -87,7 +87,7 @@ class RouteRiskTest {
     }
 
     @Test
-    void clonedDemoLocationsCannotExpandThePilot() {
+    void routesWithNoSafeGoLocationNearbyAreNotCovered() {
         List<SafeGoLocation> locations = MockRepository.listDashboardLocations();
         ResolvedPlace origin = new ResolvedPlace("Katipunan 1", new double[]{14.6405, 121.0741}, "preset", "katipunan", true);
         ResolvedPlace dest = new ResolvedPlace("Katipunan 2", new double[]{14.641, 121.075}, "preset", "katipunan", true);

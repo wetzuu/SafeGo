@@ -78,7 +78,7 @@ Lists every SafeGo location with its current risk summary.
 
 **Risk keys:** `low` · `mod` · `high` · `crit`
 
-**Known IDs:** `espana`, `mapua-makati`, `quiapo`, `lerma`, `binondo`, `katipunan`, `ortigas-pasig`
+**Known IDs:** `espana`, `mapua-makati`, `quiapo`, `lerma`, `ortigas-pasig`
 
 ---
 
@@ -285,7 +285,7 @@ Resolves origin and destination, finds a road route, and scores each segment by 
 | `originCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
 | `destinationCoordinates` | `[number, number]` | Optional saved-account `[latitude, longitude]`; must be within the Philippines. Avoids another geocoding request. |
 
-Preset IDs (matched by name/alias too): `espana`, `mapua-makati`, `quiapo`, `lerma`, `binondo`, `katipunan`, `ortigas-pasig`.
+Preset IDs (matched by name/alias too): `espana`, `mapua-makati`, `quiapo`, `lerma`, `ortigas-pasig`.
 Anything else hits Nominatim (Philippines only).
 
 **Response `data`:**

@@ -265,23 +265,6 @@ const pasigInput: LocationInput = {
   hazards: [{ title: "Slippery roads near Ortigas intersections", meta: "Demo observation · unverified" }],
 };
 
-function cloneEspana(
-  id: string,
-  name: string,
-  city: string,
-  aliases: string[],
-  coordinates: [number, number],
-) {
-  return createLocation({
-    ...espanaInput,
-    id,
-    name,
-    city,
-    aliases,
-    coordinates,
-  });
-}
-
 function createFloodProneLocation(config: {
   id: string;
   name: string;
@@ -355,8 +338,6 @@ export const LOCATIONS: SafeGoLocation[] = [
   createLocation(makatiInput),
   createLocation(quiapoInput),
   createLocation(lermaInput),
-  cloneEspana("binondo", "Binondo, Manila", "Manila", ["binondo", "manila", "divisoria", "ongpin"], [14.601, 120.9745]),
-  cloneEspana("katipunan", "Katipunan Avenue, Quezon City", "Quezon City", ["katipunan", "quezon city", "qc", "ateneo", "up diliman"], [14.6405, 121.0741]),
   createLocation(pasigInput),
   createFloodProneLocation({
     id: "marikina-riverbanks",
