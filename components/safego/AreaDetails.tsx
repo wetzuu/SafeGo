@@ -90,7 +90,7 @@ export function AreaDetails({
   /** Set when the map is rewound: the moment being shown, e.g. "Mon, Sep 29, 3:00 PM". */
   timeLabel?: string | null;
   weatherStatus: "live" | "loading" | "unavailable" | "off";
-  /** PAGASA alerts are live, so official-advisory factors are real rather than sample data. */
+  /** PAGASA alerts are live, so official-advisory factors come from PAGASA. */
   liveAlerts: boolean;
   onOpenLocation?: (location: SafeGoLocation) => void;
 }) {

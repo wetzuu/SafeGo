@@ -33,16 +33,11 @@ async function loadScan(force: boolean): Promise<ScanResult> {
 }
 
 /**
- * The class-suspension scan: when it last ran, what it checked, and a way to run it now. Also holds
- * the switch for the sample announcement, so people can see what a real one will look like.
+ * The class-suspension scan: when it last ran, what it checked, and a way to run it now.
  */
 export function UniversityScanPanel({
-  sampleShown,
-  onToggleSample,
   onScanned,
 }: {
-  sampleShown: boolean;
-  onToggleSample: () => void;
   /** Called after a scan so the page can reload its announcements. */
   onScanned: () => void;
 }) {
@@ -96,14 +91,6 @@ export function UniversityScanPanel({
           disabled={status === "loading" || status === "scanning" || scan?.state === "disabled"}
         >
           {status === "scanning" ? "Scanning…" : "Scan now"}
-        </button>
-        <button
-          type="button"
-          className="min-h-11 rounded-box border border-hairline px-4 text-sm font-semibold text-ink hover:bg-surface"
-          aria-pressed={sampleShown}
-          onClick={onToggleSample}
-        >
-          {sampleShown ? "Hide the sample announcement" : "Show a sample announcement"}
         </button>
       </div>
 

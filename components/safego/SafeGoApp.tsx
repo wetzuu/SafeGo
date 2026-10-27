@@ -30,7 +30,7 @@ import { TripPlanner } from "./TripPlanner";
 import { TripDataNotice } from "./TripCoverage";
 import { AccountPanel, loadAccountSession } from "./AccountPanel";
 import { displayFactorName, shortPlaceName } from "./labels";
-import { activeUniversityAlerts, SAMPLE_ANNOUNCEMENT_ID, sampleUniversityAlert } from "@/lib/safego/university-alerts";
+import { activeUniversityAlerts } from "@/lib/safego/university-alerts";
 import { UniversityAlertCards } from "./UniversityAlertCards";
 import { UniversityScanPanel } from "./UniversityScanPanel";
 import { UniversitySourceDirectory } from "./UniversitySourceDirectory";
@@ -299,7 +299,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [legendSlot, setLegendSlot] = useState<HTMLDivElement | null>(null);
   const [dismissedUniversities, setDismissedUniversities] = useState<ReadonlySet<string>>(() => new Set());
   // A made-up announcement people can switch on to see what a real one looks like.
-  const [sampleAnnouncement, setSampleAnnouncement] = useState(false);
   // Ticks every minute so expired announcements drop off without a reload.
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -479,15 +478,12 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   // Active announcements from universities near the selected place, or along the trip.
   const universityAlerts = useMemo(() => {
     const places = trip ? trip.corridorLocations : detailLocation ? [detailLocation] : [];
-    const real = activeUniversityAlerts(
+    return activeUniversityAlerts(
       places.flatMap((place, index) => place.universities.map((university) => ({ university, area: shortPlaceName(place.name), proximity: index }))),
       clock,
       dismissedUniversities,
     );
-    return sampleAnnouncement
-      ? [sampleUniversityAlert(places[0] ? shortPlaceName(places[0].name) : "your area", clock), ...real]
-      : real;
-  }, [clock, detailLocation, dismissedUniversities, sampleAnnouncement, trip]);
+  }, [clock, detailLocation, dismissedUniversities, trip]);
   const nearbyUniversities = useMemo(() => {
     const places = trip ? trip.corridorLocations : detailLocation ? [detailLocation] : [];
     return Array.from(new Map(
@@ -495,10 +491,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     ).values()) as UniversityStatus[];
   }, [detailLocation, trip]);
   const dismissUniversity = useCallback((id: string) => {
-    if (id === SAMPLE_ANNOUNCEMENT_ID) {
-      setSampleAnnouncement(false);
-      return;
-    }
     setDismissedUniversities((current) => new Set(current).add(id));
   }, []);
 
@@ -674,8 +666,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                   <UniversityAlertCards alerts={universityAlerts} limit={universityAlerts.length} onDismiss={dismissUniversity} />
                   <Advisories items={trip ? trip.advisories : detailLocation?.advisories ?? []} />
                   <UniversityScanPanel
-                    sampleShown={sampleAnnouncement}
-                    onToggleSample={() => setSampleAnnouncement((shown) => !shown)}
                     onScanned={() => void refreshDashboard()}
                   />
                   <UniversitySourceDirectory universities={nearbyUniversities} />
