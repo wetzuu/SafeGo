@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SafeGo System User Manual</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 19mm 20mm;
+    @bottom-left { content: "SafeGo System User Manual"; font: 8pt "Segoe UI", Arial, sans-serif; color: #666; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt "Segoe UI", Arial, sans-serif; color: #666; }
+  }
+  @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
+  * { box-sizing: border-box; }
+  html { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1c1c1c; }
+  body { margin: 0; }
+  h1, h2, h3 { color: #111; line-height: 1.25; margin: 0; }
+  h1 { font-size: 17pt; font-weight: 600; padding-bottom: 5pt; border-bottom: 1.5pt solid #111; margin: 22pt 0 10pt; break-after: avoid; }
+  h1.np { break-before: page; margin-top: 0; }
+  h2 { font-size: 12pt; font-weight: 600; margin: 16pt 0 5pt; break-after: avoid; }
+  h3 { font-size: 10.5pt; font-weight: 600; margin: 11pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 7pt; orphans: 3; widows: 3; }
+  ul, ol { margin: 0 0 8pt; padding-left: 18pt; }
+  li { margin-bottom: 3pt; }
+  strong { font-weight: 600; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; }
+  .ui { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 11pt; font-size: 9.5pt; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+  th, td { text-align: left; vertical-align: top; padding: 4.5pt 7pt; border: 0.6pt solid #b9b9b9; }
+  th { background: #efefef; font-weight: 600; }
+
+  figure { margin: 10pt 0 13pt; break-inside: avoid; }
+  figure img { display: block; width: 90%; margin: 0 auto; border: 0.6pt solid #9a9a9a; }
+  figure > figcaption { width: 90%; margin-left: auto; margin-right: auto; }
+  figure.phones { display: flex; gap: 14pt; align-items: flex-start; }
+  figure.phones > div { flex: 1; }
+  figure.phones img { width: 100%; margin: 0; }
+  figure.phones figcaption { width: auto; }
+  figure.phones .text { flex: 1.5; }
+  figcaption { margin-top: 4pt; font-size: 9pt; color: #444; }
+  figcaption b { font-weight: 600; color: #111; }
+
+  .note { margin: 8pt 0 11pt; padding: 6pt 9pt; border-left: 2.5pt solid #555; background: #f4f4f4; font-size: 9.8pt; break-inside: avoid; }
+  .note b { font-weight: 600; }
+
+  /* Cover */
+  .cover { height: 247mm; display: flex; flex-direction: column; }
+  .cover .brand { display: flex; align-items: center; gap: 10pt; font-size: 15pt; font-weight: 600; }
+  .cover .title { margin-top: 62mm; }
+  .cover .title .kicker { font-size: 11pt; color: #444; letter-spacing: 0.02em; }
+  .cover .title .name { font-size: 34pt; font-weight: 600; line-height: 1.1; margin-top: 6pt; color: #111; }
+  .cover .title .sub { font-size: 13pt; color: #333; margin-top: 10pt; max-width: 120mm; }
+  .cover table { margin-top: auto; width: 110mm; font-size: 9.5pt; }
+  .cover th { width: 34mm; }
+
+  /* Contents */
+  .contents { break-before: page; }
+  .contents h1 { margin-top: 0; }
+  .contents ol { list-style: none; padding: 0; margin: 0; }
+  .contents li { display: flex; gap: 8pt; padding: 3.5pt 0; border-bottom: 0.5pt dotted #aaa; margin: 0; }
+  .contents li span:first-child { width: 20pt; color: #444; }
+  .steps li { margin-bottom: 4pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="7" fill="#1d4ed8"/>
+      <path d="M21 9h-6.500a3.500 3.500 0 0 0 0 7h3a3.500 3.500 0 0 1 0 7H11" fill="none" stroke="#fff" stroke-width="3.200" stroke-linecap="round"/>
+      <circle cx="21.500" cy="9" r="3" fill="#fff"/><circle cx="10.500" cy="23" r="3" fill="#fff"/>
+    </svg>
+    SafeGo
+  </div>
+  <div class="title">
+    <div class="kicker">System User Manual</div>
+    <div class="name">SafeGo</div>
+    <div class="sub">Checking weather risk, official alerts, trips and class suspensions across Metro Manila before you travel.</div>
+  </div>
+  <table>
+    <tr><th>Document</th><td>System User Manual</td></tr>
+    <tr><th>Version</th><td>1.0</td></tr>
+    <tr><th>Date</th><td>October 5, 2026</td></tr>
+    <tr><th>Applies to</th><td>SafeGo web application, pilot release (Metro Manila)</td></tr>
+    <tr><th>Audience</th><td>Commuters and students, report administrators, and the people who run the system</td></tr>
+  </table>
+</section>
+
+<section class="contents">
+  <h1>Contents</h1>
+  <ol>
+    <li><span>1</span><span>About SafeGo</span></li>
+    <li><span>2</span><span>Getting started</span></li>
+    <li><span>3</span><span>The main screen</span></li>
+    <li><span>4</span><span>Checking a place</span></li>
+    <li><span>5</span><span>Understanding the ratings</span></li>
+    <li><span>6</span><span>Planning a trip</span></li>
+    <li><span>7</span><span>Updates and class suspensions</span></li>
+    <li><span>8</span><span>Community reports</span></li>
+    <li><span>9</span><span>Accounts, Home and bookmarks</span></li>
+    <li><span>10</span><span>Using SafeGo on a phone</span></li>
+    <li><span>11</span><span>For administrators: reviewing reports</span></li>
+    <li><span>12</span><span>For operators: running the system</span></li>
+    <li><span>13</span><span>Troubleshooting</span></li>
+    <li><span>14</span><span>Data sources and limitations</span></li>
+  </ol>
+</section>
+
+<h1 class="np">1. About SafeGo</h1>
+<p>SafeGo is a web application that helps people in Metro Manila decide whether and when to travel in bad weather. It combines live weather with official PAGASA alerts, rates each city and each stretch of a planned trip, and looks for class-suspension notices from nearby universities.</p>
+
+<h2>1.1 What SafeGo does</h2>
+<ul>
+  <li>Shows a risk rating for each of the 17 cities and municipalities of Metro Manila, and for 20 specific SafeGo locations such as España Blvd. and Ortigas Center.</li>
+  <li>Explains each rating in plain language: what the conditions are, why the rating was given, and what to do.</li>
+  <li>Rates a trip between two places, stretch by stretch.</li>
+  <li>Lets you look back at conditions for the past four days.</li>
+  <li>Scans public sources for university class-suspension notices when it rains or the risk is high.</li>
+  <li>Lets people share and read community reports, which administrators can verify.</li>
+  <li>Keeps a Home location and bookmarks for signed-in users.</li>
+</ul>
+
+<h2>1.2 What SafeGo does not do</h2>
+<ul>
+  <li>It does not measure street flooding or road conditions. Ratings are based on weather and official alerts only, and the application says so beside each rating.</li>
+  <li>It does not replace announcements from the government, PAGASA, or your school. Always confirm with official channels before you travel.</li>
+  <li>A low rating is not a guarantee of safety, and an area shown in gray is not rated, which is different from safe.</li>
+</ul>
+
+<h2>1.3 Who this manual is for</h2>
+<table>
+  <tr><th style="width:28%">Reader</th><th>Sections to read</th></tr>
+  <tr><td>Commuters and students</td><td>Sections 2 to 10</td></tr>
+  <tr><td>Report administrators</td><td>Section 11, after sections 2 to 9</td></tr>
+  <tr><td>Operators who start and maintain SafeGo</td><td>Sections 12 to 14</td></tr>
+</table>
+
+<h1>2. Getting started</h1>
+<h2>2.1 What you need</h2>
+<ul>
+  <li>A current web browser (Chrome, Edge, Firefox or Safari) on a computer or phone.</li>
+  <li>An internet connection. SafeGo reads live weather, alerts and map images while you use it.</li>
+  <li>The SafeGo address given to you by the operator. On the computer that runs SafeGo, the address is <code>http://localhost:3000</code>.</li>
+</ul>
+<p>No installation or account is needed to check a place or a trip. An account is needed only to save a Home location and bookmarks.</p>
+
+<h2>2.2 Opening SafeGo</h2>
+<ol class="steps">
+  <li>Open your browser and go to the SafeGo address.</li>
+  <li>Wait a few seconds while the map loads and the ratings fill in. The box at the lower left shows <span class="ui">Live weather</span> and the time the data was last checked.</li>
+  <li>The first time you open SafeGo, a short tip explains the map. Close it with the <span class="ui">×</span> button.</li>
+</ol>
+
+<h2>2.3 Light and dark appearance</h2>
+<p>SafeGo follows your device's light or dark setting. To switch it yourself, select the sun or moon button beside the account button. Your choice is remembered on that device.</p>
+
+<h1>3. The main screen</h1>
+<figure>
+  <img src="images/01-main.png" alt="The SafeGo main screen on a computer">
+  <figcaption><b>Figure 1.</b> The main screen on a computer, with España Blvd. selected.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:26%">Part</th><th>Where</th><th>What it is for</th></tr>
+  <tr><td>Planner</td><td>Left panel, top</td><td>Type a place to check it, or add a destination to check a trip.</td></tr>
+  <tr><td>Legend</td><td>Left panel, middle</td><td>Explains the map colours for the layer being shown.</td></tr>
+  <tr><td>Data status</td><td>Left panel, bottom</td><td>Shows whether live weather is being received and when it was last checked. <span class="ui">Refresh</span> updates it immediately.</td></tr>
+  <tr><td>Layer buttons</td><td>Top of the map</td><td>Choose what the map colours show: overall risk, weather, announcements and so on.</td></tr>
+  <tr><td>Map</td><td>Centre</td><td>Cities are shaded by rating. Numbered pins are SafeGo locations; the number is the score.</td></tr>
+  <tr><td>Details card</td><td>Right side</td><td>The rating for the selected place or trip, the reason, and what to do.</td></tr>
+  <tr><td>Map buttons</td><td>Lower left of the map</td><td>The frame button fits the map back to the selection. The target button shows your own location, if you allow it.</td></tr>
+  <tr><td>Timeline</td><td>Bottom of the map</td><td>Drag to see conditions at any hour of the past four days.</td></tr>
+</table>
+<p>The application refreshes its data when it opens, every five minutes while it stays open, and whenever you select <span class="ui">Refresh</span>.</p>
+
+<h1>4. Checking a place</h1>
+<h2>4.1 Selecting a place</h2>
+<p>There are three ways to select a place:</p>
+<ul>
+  <li><b>Type it.</b> Enter a road, landmark or area in the planner. Suggestions appear as you type; pick one, then select <span class="ui">Check this area</span>.</li>
+  <li><b>Select a pin.</b> Each numbered pin is a SafeGo location. Selecting it opens its details.</li>
+  <li><b>Select a city.</b> Selecting any shaded area opens the details for that city, including its weather now and over the past four days.</li>
+</ul>
+<p>SafeGo gives a full reading for its own locations. For a place that is not a SafeGo location, add a destination and check it as a trip (section 6).</p>
+
+<h2>4.2 Reading the details card</h2>
+<p>The card always answers the same questions, in this order:</p>
+<ol class="steps">
+  <li><b>How risky is it?</b> A level in words (for example <span class="ui">Low risk</span>) with a score out of 100.</li>
+  <li><b>Why?</b> One sentence about the weather and any official alert.</li>
+  <li><b>What to do.</b> A short recommendation.</li>
+  <li><b>What was not checked.</b> A note when the rating is partial (section 5.2).</li>
+</ol>
+<p>Below these, the card shows any nearby class-suspension notice, any official alert, and the latest community reports. <span class="ui">How this was worked out</span> opens the list of factors behind the rating.</p>
+
+<h2>4.3 The detail pages</h2>
+<p>Select <span class="ui">Why this rating</span> or <span class="ui">See conditions</span> on the card to open the detail pages. Use the tabs at the top to move between them, and <span class="ui">← Map</span> to return.</p>
+<table>
+  <tr><th style="width:26%">Tab</th><th>Contents</th></tr>
+  <tr><td>Why this result</td><td>The score, each factor that was considered, and whether it was counted.</td></tr>
+  <tr><td>Conditions</td><td>Flood and road information where a source is connected. In the pilot release this is usually empty.</td></tr>
+  <tr><td>Updates</td><td>Official alerts, university announcements and the class-suspension scan (section 7).</td></tr>
+  <tr><td>Reports</td><td>Community reports for the place, and the form to send one (section 8).</td></tr>
+</table>
+
+<h2>4.4 Changing what the map shows</h2>
+<p>The buttons above the map change the colouring. <span class="ui">Overall risk</span> is the default. <span class="ui">Weather</span> shows the weather score for every city. <span class="ui">Announcements</span> shows where an official PAGASA alert is in force. The remaining layers apply only near SafeGo locations. The legend in the left panel always describes the layer on screen.</p>
+
+<h2>4.5 Looking back in time</h2>
+<ol class="steps">
+  <li>Drag the handle on the timeline to the left. The label changes from <span class="ui">Now (live)</span> to the date and hour being shown.</li>
+  <li>The whole map, the details card and the official alerts change to what was recorded at that hour.</li>
+  <li>Select the play button to step through the hours automatically.</li>
+  <li>Select <span class="ui">Live</span> to return to the present.</li>
+</ol>
+<p>The timeline covers the past four days. Past weather comes from recorded data, so there is no forecast when you are looking at the past.</p>
+
+<h1>5. Understanding the ratings</h1>
+<h2>5.1 Levels</h2>
+<table>
+  <tr><th style="width:18%">Level</th><th style="width:14%">Score</th><th style="width:18%">Map colour</th><th>General meaning</th></tr>
+  <tr><td>Low risk</td><td>0 to 29</td><td>Green</td><td>Conditions are calm. Travel as usual and check again before leaving.</td></tr>
+  <tr><td>Moderate risk</td><td>30 to 59</td><td>Yellow</td><td>Rain or unsettled weather. Allow extra time.</td></tr>
+  <tr><td>High risk</td><td>60 to 79</td><td>Orange</td><td>Heavy rain or a significant alert. Delay the trip if you can.</td></tr>
+  <tr><td>Critical risk</td><td>80 to 100</td><td>Red</td><td>Severe conditions. Avoid travel unless it is necessary.</td></tr>
+  <tr><td>Not rated</td><td>None</td><td>Gray</td><td>SafeGo has no current data. This does not mean the area is safe.</td></tr>
+</table>
+<p>Every rating is shown as a word, an icon and a colour together, so it can be read without relying on colour.</p>
+
+<h2>5.2 Partial ratings</h2>
+<p>A rating marked <span class="ui">partial</span> counts only the factors that have live data. In the pilot release these are weather (from Open-Meteo) and official alerts (from PAGASA). Street flooding, road conditions and school status are not counted because no live source is connected for them. A missing factor is never treated as zero risk; it is simply left out, and the card says so.</p>
+
+<h2>5.3 How the score is set</h2>
+<ul>
+  <li>The weather score considers the current sky, the rain rate now, rain over the last hour, three hours and 24 hours, wind gusts, and the forecast for the next three hours.</li>
+  <li>The official-alert score comes from the severity of any PAGASA alert that covers the place.</li>
+  <li>A partial rating takes the higher of the two, so a place is never shown as safer than its worst live reading.</li>
+  <li>A city takes the highest score among the SafeGo locations in or beside it, combined with the weather at its centre.</li>
+</ul>
+<div class="note"><b>Note.</b> When rainfall reaches the amounts PAGASA uses for its yellow, orange or red rainfall warnings, SafeGo says so. This is an estimate from weather data, not an official PAGASA warning.</div>
+
+<h1>6. Planning a trip</h1>
+<ol class="steps">
+  <li>In the planner, type the starting point and pick it from the suggestions.</li>
+  <li>Select <span class="ui">Add destination</span>, then type and pick the destination. If you have saved a Home location, it is suggested as the destination.</li>
+  <li>A preview of the route appears with its distance and the usual driving time.</li>
+  <li>Select <span class="ui">Check this route</span>.</li>
+</ol>
+<figure>
+  <img src="images/03-trip.png" alt="A trip from España Blvd. to Ortigas Center">
+  <figcaption><b>Figure 2.</b> A checked trip. The route is coloured by the rating of each stretch.</figcaption>
+</figure>
+<h2>6.1 Reading the result</h2>
+<ul>
+  <li>The card gives one overall rating for the trip and names the riskiest stretch.</li>
+  <li>Each stretch of the route line is coloured by its own rating.</li>
+  <li>Lighter, dashed stretches are <b>area estimates</b>. No SafeGo location is close to them, so they are rated from live weather and PAGASA alerts at that point only. The card states what share of the route is estimated.</li>
+  <li>A gray dashed stretch has no data and is not rated.</li>
+</ul>
+<p>Use <span class="ui">Swap</span> to reverse the trip, the <span class="ui">×</span> beside the destination to go back to a single place, and <span class="ui">Clear and start over</span> to begin again.</p>
+
+<h1>7. Updates and class suspensions</h1>
+<p>The <span class="ui">Updates</span> tab gathers everything announced for the selected place or trip.</p>
+<figure>
+  <img src="images/05-updates.png" alt="The Updates page showing a sample class suspension">
+  <figcaption><b>Figure 3.</b> The Updates page with the sample announcement switched on.</figcaption>
+</figure>
+<h2>7.1 Official alerts</h2>
+<p>Active PAGASA alerts that cover the place are listed with their severity and the time they remain in force. Select an alert's title to read the original on the PAGASA website.</p>
+
+<h2>7.2 University announcements</h2>
+<p>When a nearby university has suspended classes or moved them online, a coloured card appears at the top of the Updates page and on the details card of the map. Red means classes are suspended; blue means classes have moved online. Each card shows the university, the announcement, the campus it affects and when it was posted. If there is no announcement, nothing is shown.</p>
+<table>
+  <tr><th style="width:30%">Wording on the card</th><th>Meaning</th></tr>
+  <tr><td>No extra label</td><td>Found on the university's own website or in a government notice.</td></tr>
+  <tr><td>Reported by (a news outlet)</td><td>Found in a news report only. Confirm it on the university's official page, which the card links to.</td></tr>
+  <tr><td>Area-wide notice</td><td>A city-wide or Metro Manila-wide suspension for all levels. Confirm that it applies to your school.</td></tr>
+  <tr><td>Sample, not a real announcement</td><td>The example card described in section 7.4.</td></tr>
+</table>
+<p>Dismiss a card with its <span class="ui">×</span> button. Announcements are removed automatically two days after they were posted.</p>
+
+<h2>7.3 The class-suspension scan</h2>
+<p>Universities usually post suspensions on Facebook first, and Facebook cannot be read automatically. SafeGo therefore scans 13 public sources that carry the same decisions: six university websites, the Official Gazette, and six news feeds.</p>
+<ul>
+  <li>The scan runs by itself when any SafeGo location has rain or rough weather, a high rating, or a PAGASA alert. Otherwise it stays on standby.</li>
+  <li><span class="ui">Scan now</span> runs it immediately, whatever the weather.</li>
+  <li><span class="ui">What gets scanned</span> lists every source and whether it was reached.</li>
+</ul>
+<div class="note"><b>Note.</b> "No suspension notice found" means none of the scanned sources carried one. It does not confirm that classes are being held.</div>
+
+<h2>7.4 Seeing a sample announcement</h2>
+<p>Select <span class="ui">Show a sample announcement</span> to display an example card, clearly labelled as a sample, so you know what a real one will look like. Select <span class="ui">Hide the sample announcement</span> or the card's <span class="ui">×</span> to remove it.</p>
+
+<h1>8. Community reports</h1>
+<p>Community reports are short observations from other users, such as a flooded corner or a blocked lane. The two latest reports for a place appear on its details card. The <span class="ui">Reports</span> tab shows all of them.</p>
+<figure>
+  <img src="images/06-reports.png" alt="The Reports page with the report form and recent reports">
+  <figcaption><b>Figure 4.</b> The Reports page: the form on the left, recent reports on the right.</figcaption>
+</figure>
+<h2>8.1 Sending a report</h2>
+<ol class="steps">
+  <li>Select the place, then open the <span class="ui">Reports</span> tab, or select <span class="ui">Report something</span> on the details card.</li>
+  <li>Choose a report type: Flooding, Road Hazard, Transport Disruption, Power / Signal Outage, or Other.</li>
+  <li>Enter the street or landmark (3 to 160 characters).</li>
+  <li>Describe what you saw (10 to 500 characters): water depth, what is blocked, which direction.</li>
+  <li>Select <span class="ui">Send report for review</span>.</li>
+</ol>
+<p>No account is needed. Do not include names, phone numbers or other personal information. Up to five reports can be sent from one connection every ten minutes.</p>
+
+<h2>8.2 What happens to a report</h2>
+<table>
+  <tr><th style="width:22%">Status</th><th>Meaning</th></tr>
+  <tr><td>Unverified</td><td>The report was received and is visible, but no administrator has confirmed it.</td></tr>
+  <tr><td>Verified</td><td>An administrator confirmed it.</td></tr>
+  <tr><td>(not shown)</td><td>An administrator rejected it, for example as spam or as incorrect. Rejected reports are hidden.</td></tr>
+</table>
+<p>Reports are shown for information. They do not change a place's rating.</p>
+
+<h1>9. Accounts, Home and bookmarks</h1>
+<h2>9.1 Creating an account and signing in</h2>
+<ol class="steps">
+  <li>Select <span class="ui">Sign in</span> at the top of the left panel.</li>
+  <li>To create an account, select <span class="ui">Create account</span> and enter your email, a name, and a password of at least 10 characters that includes a letter and a number.</li>
+  <li>To sign in later, enter the same email and password.</li>
+</ol>
+<p>You stay signed in on that browser for 30 days. To sign out, open the account panel and select <span class="ui">Sign out</span>.</p>
+
+<h2>9.2 Home</h2>
+<p>Type your home address or area in the <span class="ui">Home</span> field, pick it from the suggestions, and select <span class="ui">Save home</span>. Home is then offered as the destination whenever you add one in the planner. To remove it, clear the field and save.</p>
+
+<h2>9.3 Bookmarks</h2>
+<figure>
+  <img src="images/07-bookmarks.png" alt="The account panel showing bookmarks">
+  <figcaption><b>Figure 5.</b> Bookmarks in the account panel.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:22%">To</th><th>Do this</th></tr>
+  <tr><td>Add a bookmark</td><td>Under <span class="ui">Location to bookmark</span>, type a place and pick it from the suggestions. Optionally give it your own name, such as "Office". Select <span class="ui">Add bookmark</span>. If a place is already selected on the map, it is filled in for you.</td></tr>
+  <tr><td>Open a bookmark</td><td>Select <span class="ui">Open</span>. A SafeGo location opens on the map. Any other place is placed in the planner as the starting point, ready for a destination.</td></tr>
+  <tr><td>Rename or move it</td><td>Select <span class="ui">Edit</span>, change the name, the location or both, then <span class="ui">Save changes</span>.</td></tr>
+  <tr><td>Delete it</td><td>Select <span class="ui">Delete</span>, then <span class="ui">Yes, delete</span> to confirm.</td></tr>
+</table>
+<p>An account can hold up to 30 bookmarks. Names can be up to 60 characters.</p>
+
+<h1>10. Using SafeGo on a phone</h1>
+<figure class="phones">
+  <div><img src="images/09-phone.png" alt="SafeGo on a phone"><figcaption><b>Figure 6.</b> The phone layout.</figcaption></div>
+  <div><img src="images/10-phone-search.png" alt="The planner opened from the search bar"><figcaption><b>Figure 7.</b> The planner, opened from the search bar.</figcaption></div>
+  <div class="text">
+    <p>On a phone the same features are arranged around a full-screen map.</p>
+    <table>
+      <tr><th>Part</th><th>Use</th></tr>
+      <tr><td>Search bar</td><td>Tap it to open the planner. The buttons beside it switch the appearance and open your account.</td></tr>
+      <tr><td>Layer buttons</td><td>Swipe sideways to see them all.</td></tr>
+      <tr><td>Bottom sheet</td><td>Shows the rating. Drag the handle up for more detail and the timeline, or tap it to step through its three heights.</td></tr>
+      <tr><td>Round buttons</td><td>Legend, fit the map, and my location.</td></tr>
+      <tr><td>Bottom tabs</td><td>Map, Why, Conditions, Updates and Reports.</td></tr>
+    </table>
+    <p>To keep SafeGo on your home screen, use your browser's <span class="ui">Add to Home screen</span> option.</p>
+  </div>
+</figure>
+
+<h1 class="np">11. For administrators: reviewing reports</h1>
+<p>Administrators confirm or remove community reports. An administrator is an ordinary SafeGo account whose email the operator has listed as an admin (section 12.4).</p>
+<h2>11.1 Opening the admin page</h2>
+<ol class="steps">
+  <li>Sign in with your admin account.</li>
+  <li>Open the account panel and select <span class="ui">Review community reports</span>, or go to the SafeGo address followed by <code>/admin</code>.</li>
+</ol>
+<p>Anyone else who opens the page sees an "Admins only" message, and the server refuses to send them the reports.</p>
+<figure>
+  <img src="images/08-admin.png" alt="The admin page listing community reports">
+  <figcaption><b>Figure 8.</b> The admin page, showing all reports.</figcaption>
+</figure>
+<h2>11.2 Reviewing</h2>
+<table>
+  <tr><th style="width:24%">Action</th><th>Result</th></tr>
+  <tr><td>Verify</td><td>The report is marked Verified for everyone.</td></tr>
+  <tr><td>Reject and hide</td><td>The report is removed from public view. It remains in the admin list under Rejected.</td></tr>
+  <tr><td>Undo</td><td>Returns a verified or rejected report to Needs review.</td></tr>
+</table>
+<ul>
+  <li>The tabs filter the list: <span class="ui">Needs review</span>, <span class="ui">Verified</span>, <span class="ui">Rejected</span> and <span class="ui">All</span>, each with a count.</li>
+  <li>The search box finds reports by their wording, street, or SafeGo location.</li>
+  <li>Each review records the admin's email and the time.</li>
+  <li>The list refreshes every 30 seconds; <span class="ui">Refresh</span> updates it immediately.</li>
+</ul>
+<h2>11.3 Guidance</h2>
+<ul>
+  <li>Verify only what you can confirm, for example from an official post, a second report, or your own observation.</li>
+  <li>Reject spam, advertising, reports containing personal information, and reports that are clearly wrong.</li>
+  <li>If you are unsure, leave the report as it is. It stays visible as Unverified.</li>
+</ul>
+
+<h1 class="np">12. For operators: running the system</h1>
+<h2>12.1 Requirements</h2>
+<ul>
+  <li>A Windows computer with Node.js and JDK 21 installed, and the SafeGo project folder with its packages installed (<code>npm install</code>).</li>
+  <li>Internet access for live weather, PAGASA alerts, map images and routing.</li>
+  <li>Ports 3000 (web application) and 8080 (data service) free.</li>
+</ul>
+<h2>12.2 Starting and stopping</h2>
+<table>
+  <tr><th style="width:30%">Task</th><th>How</th></tr>
+  <tr><td>Check readiness</td><td>Run <code>npm run doctor</code> in the project folder. Every line should read OK.</td></tr>
+  <tr><td>Start</td><td>Double-click <code>Start SafeGo.cmd</code>. A window opens, builds the application if needed, and opens the browser when SafeGo is ready. Keep the window open.</td></tr>
+  <tr><td>Stop</td><td>Close that window, or double-click <code>Stop SafeGo.cmd</code>.</td></tr>
+  <tr><td>Apply a change to settings or code</td><td>Stop SafeGo, then start it again.</td></tr>
+</table>
+<p>The first start after a code change takes about 40 seconds because the application is rebuilt. Later starts take about 15 seconds.</p>
+
+<h2>12.3 Where information is kept</h2>
+<p>In the default <b>local</b> mode, accounts, bookmarks and community reports are held in memory. They are lost each time SafeGo is stopped. To keep them, connect a PostgreSQL database, run <code>npm run db:migrate</code>, and set the data mode to <code>database</code>.</p>
+
+<h2>12.4 Settings</h2>
+<p>Settings are lines in the file <code>.env.local</code> in the project folder. Restart SafeGo after changing them.</p>
+<table>
+  <tr><th style="width:42%">Setting</th><th>Purpose</th></tr>
+  <tr><td><code>SAFEGO_ADMIN_EMAILS</code></td><td>Comma-separated emails of the accounts allowed to review reports. If empty, nobody is an admin.</td></tr>
+  <tr><td><code>SAFEGO_DATA_MODE</code></td><td><code>local</code> (memory only) or <code>database</code>.</td></tr>
+  <tr><td><code>SAFEGO_COMMUNITY_REPORTS_ENABLED</code> and <code>SAFEGO_MODERATION_ENABLED</code></td><td>Both must be <code>true</code> for people to send reports.</td></tr>
+  <tr><td><code>SAFEGO_UNIVERSITY_SCAN</code></td><td><code>auto</code> (scan when conditions call for it), <code>always</code>, or <code>disabled</code>.</td></tr>
+  <tr><td><code>SAFEGO_WEATHER_PROVIDER</code></td><td><code>open-meteo</code>, or <code>disabled</code> to work offline.</td></tr>
+</table>
+
+<h1>13. Troubleshooting</h1>
+<table>
+  <tr><th style="width:34%">What you see</th><th>What to do</th></tr>
+  <tr><td>"Can't reach SafeGo's server" on the map</td><td>The data service is not responding. Wait a moment; SafeGo retries by itself. If it continues, the operator should restart SafeGo.</td></tr>
+  <tr><td>Areas stay gray</td><td>Live weather has not arrived. Select <span class="ui">Refresh</span> and check the internet connection.</td></tr>
+  <tr><td>"SafeGo could not locate…" when saving a place</td><td>Pick the place from the suggestions, or type a more specific address or landmark.</td></tr>
+  <tr><td>A trip takes long, then fails</td><td>The routing service is slow or unreachable. Try again in a minute.</td></tr>
+  <tr><td>My account or bookmarks are gone</td><td>SafeGo was restarted in local mode (section 12.3). Create the account again.</td></tr>
+  <tr><td>The admin page says "Admins only"</td><td>Sign in with the exact email listed in <code>SAFEGO_ADMIN_EMAILS</code>. After changing that setting, SafeGo must be restarted.</td></tr>
+  <tr><td>The admin page or a new feature is "not found"</td><td>SafeGo is still running an older build. Stop it and start it again.</td></tr>
+  <tr><td>SafeGo will not start: a port is in use</td><td>Run <code>Stop SafeGo.cmd</code>, then start again.</td></tr>
+  <tr><td>The scan says a source was "Not reached"</td><td>That website was slow or down. The other sources still count; try <span class="ui">Scan now</span> again later.</td></tr>
+  <tr><td>My location does not appear</td><td>Allow location access for the SafeGo address in your browser, then select the button again. Your location is used only on your device.</td></tr>
+</table>
+
+<h1>14. Data sources and limitations</h1>
+<h2>14.1 Sources</h2>
+<table>
+  <tr><th style="width:30%">Information</th><th>Source</th></tr>
+  <tr><td>Weather, now and past four days</td><td>Open-Meteo forecast and historical models</td></tr>
+  <tr><td>Official alerts</td><td>PAGASA public alerts (CAP feed)</td></tr>
+  <tr><td>Map images and place search</td><td>OpenStreetMap contributors</td></tr>
+  <tr><td>Driving routes</td><td>OSRM, using OpenStreetMap data</td></tr>
+  <tr><td>City boundaries</td><td>PSA and NAMRIA, 2023</td></tr>
+  <tr><td>Class-suspension notices</td><td>University websites, the Official Gazette, and public news feeds</td></tr>
+</table>
+
+<h2>14.2 Limitations</h2>
+<ul>
+  <li>Weather comes from forecast models, not from rain gauges at each street. Local conditions can differ.</li>
+  <li>There is no live source for street flooding, road closures or traffic in the pilot release.</li>
+  <li>Each city's weather is read at one central point, so a large city such as Quezon City is represented by a single reading.</li>
+  <li>The class-suspension scan cannot read Facebook, where many schools post first. A notice may exist that SafeGo has not found.</li>
+  <li>Notices found only in the news are labelled as reported until the school's own source confirms them.</li>
+  <li>Community reports are observations from the public and may be wrong, even when recent.</li>
+</ul>
+<div class="note"><b>Important.</b> SafeGo supports your decision; it does not make it. Follow instructions from PAGASA, your local government and your school, and do not travel through floodwater.</div>
+
+</body>
+</html>
