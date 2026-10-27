@@ -88,10 +88,10 @@ function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor
 
 function BasisNote({ location }: { location: SafeGoLocation }) {
   if (location.risk.basis === "partial") {
-    return <div className="calculation-rule">Partial rating: only connected live factors are counted. Missing factors are not treated as safe.</div>;
+    return <p className="gauge-caption">Based on live weather and PAGASA alerts.</p>;
   }
   if (location.risk.basis === "none") {
-    return <div className="calculation-rule">Not rated: SafeGo has no live data for this location right now. Not rated does not mean safe.</div>;
+    return <div className="calculation-rule">SafeGo has no live data for this location right now.</div>;
   }
   return null;
 }
@@ -99,11 +99,11 @@ function BasisNote({ location }: { location: SafeGoLocation }) {
 function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
   const rated = location.risk.basis !== "none";
   return <section className="page">
-    <PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${location.name} · ${location.risk.name.toLocaleLowerCase()}${location.risk.basis === "partial" ? " (partial)" : ""}`} />
+    <PageHeader eyebrow="About this result" title="Why SafeGo shows this level" subtitle={`${location.name} · ${location.risk.name.toLocaleLowerCase()}`} />
     <div className="card mb-[22px]">
       <div className="gauge-lg-wrap">
         {rated ? <RiskGauge score={location.risk.percentage} size={190} /> : <div className="risk-level-name md">–</div>}
-        <div className="risk-level-name md">{location.risk.name}{location.risk.basis === "partial" ? " (partial)" : ""}</div>
+        <div className="risk-level-name md">{location.risk.name}</div>
         <p className="gauge-caption">{location.risk.summary}</p>
         <BasisNote location={location} />
         <div className="risk-hero-updated"><span className="mono">Last updated {location.updated}</span></div>
@@ -145,9 +145,9 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
     {trip.overallRiskScore !== null && <div className="card card-pad mb-[22px]">
       <div className="gauge-lg-wrap">
         <RiskGauge score={trip.overallRiskScore} size={190} />
-        <div className="risk-level-name md">{trip.riskName}{partial ? " (partial)" : ""}</div>
+        <div className="risk-level-name md">{trip.riskName}</div>
         <p className="gauge-caption">This result uses the parts of the route where SafeGo has information. Missing information is never treated as low risk.</p>
-        {partial && <div className="calculation-rule">Partial rating: places along this route count only their connected live factors. Missing information is not treated as safe.</div>}
+        {partial && <p className="gauge-caption">Based on live weather and PAGASA alerts.</p>}
         {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
       </div>
     </div>}
@@ -159,7 +159,7 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
         <div className="factor-body">
           <div className="factor-top">
             <div className="factor-name">{location.name}</div>
-            <span className={`pill ${rated ? location.risk.key : "unknown"}`}><span className="dot" />{location.risk.name}{location.risk.basis === "partial" ? " (partial)" : ""}</span>
+            <span className={`pill ${rated ? location.risk.key : "unknown"}`}><span className="dot" />{location.risk.name}</span>
           </div>
           <p className="factor-desc">{location.risk.summary}</p>
           <p className="route-weather-detail"><strong>Weather:</strong> {location.factors.find((factor) => factor.name === "Weather")?.description}</p>
@@ -589,9 +589,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-sm font-semibold text-ink truncate">{selectionTitle ?? detailLocation?.name}</span>
                     {trip ? (
-                      <RiskBadge size="sm" level={trip.riskKey} partial={trip.corridorLocations.some((location) => location.risk.basis === "partial")} />
+                      <RiskBadge size="sm" level={trip.riskKey} />
                     ) : detailLocation && (
-                      <RiskBadge size="sm" level={detailLocation.risk.basis === "none" ? "unknown" : detailLocation.risk.key} partial={detailLocation.risk.basis === "partial"} />
+                      <RiskBadge size="sm" level={detailLocation.risk.basis === "none" ? "unknown" : detailLocation.risk.key} />
                     )}
                   </div>
                 </div>

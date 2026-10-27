@@ -37,12 +37,11 @@ export function RiskIcon({ level, className = "size-4" }: { level: RiskLevel; cl
   return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.7M12 17h.01" /></svg>;
 }
 
-export function RiskBadge({ level, label, partial = false, size = "md" }: { level: RiskLevel; label?: string; partial?: boolean; size?: "sm" | "md" }) {
+export function RiskBadge({ level, label, size = "md" }: { level: RiskLevel; label?: string; size?: "sm" | "md" }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full font-bold ${LEVEL_STYLES[level]} ${size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"}`}>
       <RiskIcon level={level} className={size === "sm" ? "size-3.5" : "size-4"} />
       {label ?? levelName(level)}
-      {partial && level !== "unknown" && <span className="font-semibold opacity-80">· partial</span>}
     </span>
   );
 }

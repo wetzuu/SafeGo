@@ -81,7 +81,6 @@ export function AreaDetails({
   message,
   timeLabel = null,
   weatherStatus,
-  coverageRadiusMeters,
   liveAlerts,
   onOpenLocation,
 }: {
@@ -91,7 +90,6 @@ export function AreaDetails({
   /** Set when the map is rewound: the moment being shown, e.g. "Mon, Sep 29, 3:00 PM". */
   timeLabel?: string | null;
   weatherStatus: "live" | "loading" | "unavailable" | "off";
-  coverageRadiusMeters: number;
   /** PAGASA alerts are live, so official-advisory factors are real rather than sample data. */
   liveAlerts: boolean;
   onOpenLocation?: (location: SafeGoLocation) => void;
@@ -110,9 +108,9 @@ export function AreaDetails({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-ink-soft">Flood &amp; Road Risk</div>
-              <div className="mt-0.5 text-sm font-semibold text-ink">Weather-based likelihood · {floodRoadEstimate.label}</div>
+              <div className="mt-0.5 text-sm font-semibold text-ink">Estimated from rainfall · {floodRoadEstimate.label}</div>
             </div>
-            <RiskBadge level={floodRoadEstimate.riskKey} label={`${floodRoadEstimate.score}/100`} size="sm" partial />
+            <RiskBadge level={floodRoadEstimate.riskKey} label={`${floodRoadEstimate.score}/100`} size="sm" />
           </div>
           <p className="mt-2 text-xs text-ink"><strong>Why:</strong> {floodRoadEstimate.why}</p>
           <p className="mt-1 text-xs text-ink"><strong>What to do:</strong> {floodRoadEstimate.action}</p>
@@ -141,7 +139,7 @@ export function AreaDetails({
       )}
       {analysis.kind === "partial-estimate" && weather && weather.pastDayMm >= HEAVY_DAY_RAIN_MM && (
         <div className="mt-3 rounded-box bg-mod-soft px-3 py-2 text-xs font-semibold text-mod">
-          Heavy rain fell in the last 24 hours. Streets here may still be flooded, and SafeGo has no flood data for this area.
+          Heavy rain fell in the last 24 hours, so low-lying streets here may still be flooded.
         </div>
       )}
 
@@ -183,30 +181,31 @@ export function AreaDetails({
               <>A full SafeGo rating from <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? `, ${formatDistance(measuredDistanceMeters)} away` : ", inside this area"}.</>
             ) : analysis.kind === "partial-estimate" && analysis.source ? (
-              <>A partial estimate using <strong>{shortPlaceName(analysis.source.name)}</strong>
-                {measuredDistanceMeters ? ` (${formatDistance(measuredDistanceMeters)} away)` : " (inside this area)"} plus this area&apos;s own weather and official alerts.</>
+              <>From live weather and PAGASA alerts here and at <strong>{shortPlaceName(analysis.source.name)}</strong>
+                {measuredDistanceMeters ? ` (${formatDistance(measuredDistanceMeters)} away)` : " (inside this area)"}.</>
             ) : analysis.kind === "partial-estimate" ? (
-              <>A partial estimate from this area&apos;s weather and official alerts.
-                {nearest ? ` The nearest SafeGo location, ${shortPlaceName(nearest.location.name)}, is ${formatDistance(nearest.distanceMeters)} away; SafeGo rates areas within ${formatDistance(coverageRadiusMeters)}.` : ""}</>
+              <>From this area&apos;s live weather and PAGASA alerts.</>
             ) : (
-              <>Not rated: no SafeGo location is within {formatDistance(coverageRadiusMeters)} and live weather is unavailable.</>
+              <>SafeGo has no live data here right now.</>
             )}
           </p>
-          {analysis.factors.map((factor) => {
+          {analysis.factors.filter((factor) => factor.score !== null).map((factor) => {
             const live = factor.source === "live-weather" || factor.source === "live-alerts" || factor.source === "location";
             const tag = factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts) ? "PAGASA"
                 : live ? (timeLabel ? "recorded" : "live") : "";
             return (
               <div key={factor.name} className="flex items-center justify-between gap-2 border-b border-hairline/60 py-1.5 last:border-b-0">
                 <span>{displayFactorName(factor.name)}</span>
-                <span className={`text-right ${factor.score === null ? "text-ink-soft" : "text-ink"}`}>
-                  {factor.score === null ? "No data" : <><strong className="font-semibold">{scoreWord(factor.score)}</strong> ({factor.score})</>}
+                <span className="text-right text-ink">
+                  {factor.name === "Official advisories" && factor.score === 0
+                    ? <strong className="font-semibold">None active</strong>
+                    : <><strong className="font-semibold">{scoreWord(factor.score ?? 0)}</strong> ({factor.score})</>}
                   {tag && <span className="ml-1.5 font-semibold text-low">{tag}</span>}
                 </span>
               </div>
             );
           })}
-          <p className="mt-2 text-ink-soft">Scores run from 0 (lowest risk) to 100 (highest). “No data” means SafeGo has nothing for that factor here; it is never counted as zero.</p>
+          <p className="mt-2 text-ink-soft">Scores run from 0 (lowest risk) to 100 (highest).</p>
         </Section>
 
         <Section title="Past 4 days">

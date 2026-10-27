@@ -10,7 +10,7 @@ export interface RiskMessage {
   why: string;
   /** What the traveller can do about it. */
   action: string;
-  /** A short caveat when the rating is partial; empty otherwise. */
+  /** One line naming the sources behind the rating; empty for full ratings. */
   caveat: string;
 }
 
@@ -19,7 +19,7 @@ const LEVEL_NAMES: Record<RiskLevel, string> = {
   mod: "Moderate risk",
   high: "High risk",
   crit: "Critical risk",
-  unknown: "Not rated",
+  unknown: "No live data",
 };
 
 const ACTIONS: Record<RiskLevel, string> = {
@@ -76,7 +76,7 @@ export function describeRisk(input: {
     return {
       level,
       headline: LEVEL_NAMES.unknown,
-      why: "SafeGo has no live data here right now. Not rated does not mean safe.",
+      why: "SafeGo has no live data here right now.",
       action: ACTIONS.unknown,
       caveat: "",
     };
@@ -90,9 +90,7 @@ export function describeRisk(input: {
     headline: LEVEL_NAMES[level],
     why,
     action: ACTIONS[level],
-    caveat: input.basis === "partial"
-      ? "Based on live weather and official alerts only. Street flooding and road conditions are not checked yet."
-      : "",
+    caveat: input.basis === "partial" ? "Based on live weather and PAGASA alerts." : "",
   };
 }
 

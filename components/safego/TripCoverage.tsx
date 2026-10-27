@@ -9,24 +9,12 @@ function knownHazardBand(trip: TripAnalysis) {
 }
 
 export function TripDataNotice({ trip }: { trip: TripAnalysis }) {
-  const missingRating = trip.overallRiskScore === null;
+  const outside = trip.segments.some((segment) => segment.riskScore === null);
+  if (!outside) return null;
   const hazardBand = knownHazardBand(trip);
-
-  const estimatedPercent = trip.coverage.estimatedMeters
-    ? Math.round((trip.coverage.estimatedMeters / trip.coverage.totalMeters) * 100)
-    : 0;
-
-  if (!missingRating && !estimatedPercent) return null;
-  if (!missingRating) {
-    return <div className="trip-data-notice" role="status">
-      <strong>{estimatedPercent}% of this route is an area estimate.</strong>
-      <span>No SafeGo location is nearby, so those lighter, dashed sections use live weather and PAGASA alerts only. Street flooding and road conditions are not checked there.</span>
-    </div>;
-  }
-
-  return <div className={`trip-data-notice${missingRating ? " warning" : ""}`} role="status">
-    <strong>Some parts of this route do not have enough data.</strong>
-    <span>{`${hazardBand ? `${hazardBand} risk still appears where information is available. ` : ""}Gray map sections are not rated as safe.`}</span>
+  return <div className={`trip-data-notice${trip.overallRiskScore === null ? " warning" : ""}`} role="status">
+    <strong>Part of this route is outside SafeGo’s live data.</strong>
+    <span>{`${hazardBand ? `${hazardBand} risk appears on the sections SafeGo can see. ` : ""}Those parts are drawn as a plain blue line; check local road conditions there.`}</span>
   </div>;
 }
 

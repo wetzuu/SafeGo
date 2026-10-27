@@ -11,13 +11,15 @@ test("risk messages say what, why and what to do", () => {
   assert.equal(message.headline, "High risk");
   assert.equal(message.why, "Severe weather (thunderstorm), and no official alerts.");
   assert.match(message.action, /Delay non-essential trips/);
-  assert.match(message.caveat, /Street flooding and road conditions are not checked/);
+  assert.equal(message.caveat, "Based on live weather and PAGASA alerts.");
 });
 
-test("unrated places never read as safe", () => {
+test("places without live data never read as safe", () => {
   const message = describeRisk({ level: "low", basis: "none" });
-  assert.equal(message.headline, "Not rated");
-  assert.match(message.why, /does not mean safe/);
+  assert.equal(message.level, "unknown");
+  assert.equal(message.headline, "No live data");
+  assert.doesNotMatch(`${message.headline} ${message.why}`, /low|safe to/i);
+  assert.match(message.action, /Check official/);
 });
 
 test("scores always come with a word", () => {
