@@ -2,14 +2,16 @@
 //
 //   npm run presentation            build if needed, start, open http://localhost:3000
 //   npm run presentation:build      build ahead of time (web + Java) and exit
+//   npm run presentation:replay     start on recorded weather from data/replay (no internet needed)
 //
 // Flags: --rebuild (force a fresh web build), --build-only, --no-open,
 //        --lan (let other devices on the network open SafeGo; off by default),
-//        --with-reports (show community reports and moderation; hidden by default).
+//        --with-reports (show community reports and moderation; hidden by default),
+//        --replay [pack] (serve a replay pack from data/replay instead of live data; the newest by default).
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -37,6 +39,22 @@ if (!process.argv.includes("--with-reports")) {
 function fail(message) {
   console.error(`\n${message}\n`);
   process.exit(1);
+}
+
+// A replay serves recorded weather from one documented past moment, clearly labelled, for when the
+// venue internet fails. Without --replay SafeGo is always live, whatever .env.local says.
+let replay = null;
+const replayIndex = process.argv.indexOf("--replay");
+if (replayIndex >= 0) {
+  const named = process.argv[replayIndex + 1];
+  const folder = join(root, "data", "replay");
+  const packs = existsSync(folder) ? readdirSync(folder).filter((file) => file.endsWith(".json")).sort() : [];
+  const pack = named && !named.startsWith("--") ? resolve(root, named) : packs.length ? join(folder, packs.at(-1)) : null;
+  if (!pack || !existsSync(pack)) fail("No replay pack found. Build one with npm run replay:build (see docs/DEMO_CHECKLIST.md).");
+  replay = JSON.parse(readFileSync(pack, "utf8"));
+  process.env.SAFEGO_REPLAY = pack;
+} else {
+  delete process.env.SAFEGO_REPLAY;
 }
 
 if (!existsSync(nextBin)) fail("SafeGo's packages are not installed. Run npm install in the project folder first.");
@@ -194,7 +212,8 @@ async function waitFor(target) {
 
 const [webReady, apiReady] = await Promise.all([waitFor(url), waitFor("http://127.0.0.1:8080/api/health")]);
 if (webReady && apiReady) {
-  console.log(`\n==============================================\n  SafeGo is ready: ${url}\n  Press Ctrl+C in this window to stop it.\n==============================================\n`);
+  const mode = replay ? `\n  REPLAY of ${replay.at.replace("T", " ")}: recorded weather, not live.` : "";
+  console.log(`\n==============================================\n  SafeGo is ready: ${url}${mode}\n  Press Ctrl+C in this window to stop it.\n==============================================\n`);
   openBrowser();
 } else if (!stopping) {
   console.error("\nSafeGo did not start in time. Read the Java and web messages above, then run npm run stop and try again.");

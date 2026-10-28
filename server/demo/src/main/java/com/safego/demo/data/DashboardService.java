@@ -7,7 +7,6 @@ import com.safego.demo.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -142,7 +141,7 @@ public class DashboardService {
         } else {
             try {
                 locations = weatherService.fetchAndApplyWeather(locations);
-                weatherUpdatedAt = Instant.now().toString();
+                weatherUpdatedAt = ReplayPack.now().toString();
                 sources.add(new SourceStatus("open-meteo", weatherService.currentProviderName(), "weather", "active",
                     weatherUpdatedAt, null, null));
             } catch (Exception e) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { basisLine, capitalLiveWord, getReplay, liveWord } from "@/lib/safego/replay";
 import type { CircleMarker, GeoJSON as GeoJSONLayer, GeoJSONOptions, LayerGroup, Map as LeafletMap, Path, Renderer } from "leaflet";
 import { riskGradient } from "@/lib/safego/risk-model";
 import { areaCenter, areaContains, distanceToArea, nearestPoint, scoreArea, scoreClass, SCORE_CLASS_COUNT } from "@/lib/safego/area-scoring";
@@ -626,18 +627,18 @@ export function RiskMap({
     const activeLabel = activeLayerLabelRef.current;
     const layer = activeLayerRef.current;
     const detail = info.displayScore === null
-      ? "No live data here right now."
+      ? `No ${liveWord()} data here right now.`
       : layer === "Flood / roads" && info.estimated && info.floodRoadEstimate
         ? `Flood & Road Risk: ${info.displayScore}/100, estimated from rainfall. ${info.floodRoadEstimate.why}`
       : info.estimated
-        ? `${activeLabel}: ${info.displayScore}/100, from ${at ? "recorded" : "live"} weather${info.advisory ? " and PAGASA alerts" : ""}.`
+        ? `${activeLabel}: ${info.displayScore}/100, from ${at ? "recorded" : liveWord()} weather${info.advisory ? " and PAGASA alerts" : ""}.`
         : info.measured && info.measuredSource && info.measured.score >= info.displayScore
         ? `${activeLabel}: ${info.displayScore}/100, from ${shortPlaceName(info.measuredSource.name)}.`
         : layer === "Official advisories"
           ? info.advisory?.alerts.length
             ? `PAGASA: ${info.advisory.alerts.map((alert) => alert.headline).join("; ")} (${info.displayScore}/100).`
             : at ? "No PAGASA alert covered this area then." : "No active PAGASA alert covers this area."
-          : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (${at ? "recorded" : "live"} model for ${info.weatherLabel}).`;
+          : `Weather: ${info.displayScore}/100, ${info.weather?.condition.toLocaleLowerCase()} (${at ? "recorded" : liveWord()} model for ${info.weatherLabel}).`;
     return makeTooltip(at ? `${title} · ${at}` : title, `${detail} Click for details.`);
   }, [indexByFeature]);
 
@@ -715,9 +716,9 @@ export function RiskMap({
             .bindTooltip(() => makeTooltip(
               segment.basisLocationName ?? "Route",
               segment.riskScore === null
-                ? "Outside SafeGo's live data."
+                ? `Outside SafeGo's ${liveWord()} data.`
                 : estimated
-                  ? `${segment.riskScore}/100 from ${atLabelRef.current ? "recorded" : "live"} weather and PAGASA alerts here.`
+                  ? `${segment.riskScore}/100 from ${atLabelRef.current ? "recorded" : liveWord()} weather${getReplay() ? "" : " and PAGASA alerts"} here.`
                   : `${segment.riskScore}/100. Approximate route section.`,
             ))
             .addTo(routeLayer);
@@ -781,7 +782,7 @@ export function RiskMap({
   const message = useMemo(() => {
     if (!trip) return effectiveSelected ? describeLocation(effectiveSelected) : describeRisk({ level: "unknown", basis: "none" });
     if (trip.overallRiskScore === null || trip.riskKey === "unknown") {
-      return { ...describeRisk({ level: "unknown", basis: "none" }), why: "SafeGo has no live data along this route yet." };
+      return { ...describeRisk({ level: "unknown", basis: "none" }), why: `SafeGo has no ${liveWord()} data along this route yet.` };
     }
     const worst = trip.segments.reduce((top, segment) => ((segment.riskScore ?? -1) > (top.riskScore ?? -1) ? segment : top));
     const where = worst.coverage === "estimated" ? "an estimated section" : `near ${shortPlaceName(worst.basisLocationName ?? "the route")}`;
@@ -848,9 +849,9 @@ export function RiskMap({
 
   const rewoundStrip = atLabel && (
     <div className="mb-3 rounded-box bg-inverse text-white px-3 py-2 text-xs flex items-center justify-between gap-2">
-      <span><strong>Viewing {atLabel}</strong><span className="block text-white/75">Recorded weather and PAGASA alerts for that hour.</span></span>
+      <span><strong>Viewing {atLabel}</strong><span className="block text-white/75">{getReplay() ? "Recorded weather for that hour." : "Recorded weather and PAGASA alerts for that hour."}</span></span>
       <button type="button" className="min-h-9 shrink-0 rounded-full bg-white/15 hover:bg-white/25 px-3 font-semibold" onClick={() => setTimeCursor(null)}>
-        Back to live
+        {getReplay() ? "Back to replay time" : "Back to live"}
       </button>
     </div>
   );
@@ -935,7 +936,7 @@ export function RiskMap({
                     ? <strong className="font-semibold">None active</strong>
                     : <><strong className="font-semibold">{scoreWord(factor.score)}</strong> ({factor.score})</>}
                   {effectiveSelected.risk.countedFactors && (
-                    <span className="ml-1.5 font-semibold text-low">{atLabel ? "recorded" : "live"}</span>
+                    <span className="ml-1.5 font-semibold text-low">{atLabel ? "recorded" : liveWord()}</span>
                   )}
                 </span>
               </div>
@@ -996,16 +997,16 @@ export function RiskMap({
         {atLabel
           ? `Showing recorded weather${pastAlerts ? " and PAGASA alerts" : ""} for ${atLabel}.`
           : activeLayer === "Weather"
-            ? weatherStatus === "live" ? "Live weather for every area." : "Live weather is not available right now."
+            ? weatherStatus === "live" ? `${capitalLiveWord()} weather for every area.` : "Live weather is not available right now."
             : activeLayer === "Official advisories"
               ? liveActiveAlerts
                 ? (liveActiveAlerts.length ? `${liveActiveAlerts.length} PAGASA alert${liveActiveAlerts.length === 1 ? "" : "s"} over Metro Manila.` : "No PAGASA alert over Metro Manila right now.")
-                : "PAGASA alerts are not available right now."
+                : getReplay() ? "PAGASA alerts are not part of this replay." : "PAGASA alerts are not available right now."
               : activeLayer === "Flood / roads"
                 ? weatherStatus === "live"
-                  ? "Estimated from live rainfall. Street flooding and closures are not confirmed."
+                  ? `Estimated from ${liveWord()} rainfall. Street flooding and closures are not confirmed.`
                   : "Live weather is not available right now."
-              : "Based on live weather and PAGASA alerts."}
+              : basisLine()}
         {" "}Tap an area for details.
       </p>
     </div>

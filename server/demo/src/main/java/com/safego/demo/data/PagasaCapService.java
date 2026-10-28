@@ -67,7 +67,8 @@ public class PagasaCapService {
     private long cachedUntil;
 
     public PagasaCapService() {
-        this(System.getenv().getOrDefault("SAFEGO_PAGASA_CAP_FEED_URL", DEFAULT_FEED));
+        // A replay has no record of past alerts, so it shows none rather than today's.
+        this(ReplayPack.isActive() ? "disabled" : System.getenv().getOrDefault("SAFEGO_PAGASA_CAP_FEED_URL", DEFAULT_FEED));
     }
 
     public PagasaCapService(String feedUrl) {

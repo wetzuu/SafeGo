@@ -1,3 +1,4 @@
+import { getReplay, liveWord } from "@/lib/safego/replay";
 import { riskBand } from "@/lib/safego/risk-model";
 import type { AreaAnalysis } from "@/lib/safego/area-analysis";
 import type { AreaAdvisory } from "@/lib/safego/area-alerts";
@@ -168,7 +169,7 @@ export function AreaDetails({
             </>
           ) : (
             <span className="text-ink-soft">
-              {weatherStatus === "loading" ? "Loading live weather…"
+              {weatherStatus === "loading" ? `Loading ${liveWord()} weather…`
                 : weatherStatus === "off" ? "Live weather is turned off. No weather condition is substituted."
                   : "Live weather is unavailable right now. Try again in a few minutes."}
             </span>
@@ -181,18 +182,18 @@ export function AreaDetails({
               <>A full SafeGo rating from <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? `, ${formatDistance(measuredDistanceMeters)} away` : ", inside this area"}.</>
             ) : analysis.kind === "partial-estimate" && analysis.source ? (
-              <>From live weather and PAGASA alerts here and at <strong>{shortPlaceName(analysis.source.name)}</strong>
+              <>From {liveWord()} weather{getReplay() ? "" : " and PAGASA alerts"} here and at <strong>{shortPlaceName(analysis.source.name)}</strong>
                 {measuredDistanceMeters ? ` (${formatDistance(measuredDistanceMeters)} away)` : " (inside this area)"}.</>
             ) : analysis.kind === "partial-estimate" ? (
-              <>From this area&apos;s live weather and PAGASA alerts.</>
+              <>From this area&apos;s {liveWord()} weather{getReplay() ? "" : " and PAGASA alerts"}.</>
             ) : (
-              <>SafeGo has no live data here right now.</>
+              <>SafeGo has no {liveWord()} data here right now.</>
             )}
           </p>
           {analysis.factors.filter((factor) => factor.score !== null).map((factor) => {
             const live = factor.source === "live-weather" || factor.source === "live-alerts" || factor.source === "location";
             const tag = factor.source === "live-alerts" || (factor.source === "location" && factor.name === "Official advisories" && liveAlerts) ? "PAGASA"
-                : live ? (timeLabel ? "recorded" : "live") : "";
+                : live ? (timeLabel ? "recorded" : liveWord()) : "";
             return (
               <div key={factor.name} className="flex items-center justify-between gap-2 border-b border-hairline/60 py-1.5 last:border-b-0">
                 <span>{displayFactorName(factor.name)}</span>

@@ -1,6 +1,7 @@
 import type { ActiveAlert, AreaAdvisory } from "./area-alerts.ts";
 import type { AreaWeather, DayWeather, WeatherSamplePoint } from "./area-weather.ts";
 import { honestLocation } from "./honest-risk.ts";
+import { appNow } from "./replay.ts";
 import { riskBand } from "./risk-model.ts";
 import type { FactorName, RiskFactor, SafeGoLocation } from "./types.ts";
 
@@ -71,7 +72,7 @@ export function weatherAt(hours: HourWeather[] | undefined, at: number): AreaWea
 }
 
 /** Builds the four complete daily summaries from the same hourly payload used by the rewind map. */
-export function timelineDays(hours: HourWeather[] | undefined, now = Date.now()): DayWeather[] {
+export function timelineDays(hours: HourWeather[] | undefined, now = appNow()): DayWeather[] {
   if (!hours?.length) return [];
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(now));
   const groups = new Map<string, HourWeather[]>();
@@ -180,7 +181,7 @@ export function timelineLabel(at: number) {
 }
 
 /** The latest whole hour, which is where the slider ends ("now"). */
-export function currentHour(now = Date.now()) {
+export function currentHour(now = appNow()) {
   return Math.floor(now / HOUR_MS) * HOUR_MS;
 }
 

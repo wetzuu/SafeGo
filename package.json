@@ -10,6 +10,7 @@
     "build": "next build",
     "presentation": "node scripts/presentation.mjs",
     "presentation:build": "node scripts/presentation.mjs --rebuild --build-only",
+    "presentation:replay": "node scripts/presentation.mjs --replay",
     "stop": "node scripts/stop.mjs",
     "doctor": "node scripts/doctor.mjs",
     "db:migrate": "node scripts/db-migrate.ts",
@@ -31,6 +32,8 @@
     "test:all": "npm test && npm run test:java",
     "validate:risk": "node scripts/validate-risk.ts",
     "backtest": "node scripts/backtest.mjs",
+    "replay:build": "node scripts/replay-build.ts",
+    "sus": "node scripts/sus.ts",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "check:all": "npm run check && npm run test:java && npm run validate:risk"
   },

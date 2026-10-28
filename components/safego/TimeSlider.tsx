@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getReplay } from "@/lib/safego/replay";
 import { HOUR_MS, timelineLabel } from "@/lib/safego/timeline";
 
 const PLAY_STEP_MS = 700;
@@ -77,7 +78,7 @@ export function TimeSlider({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-sm font-bold text-ink truncate">
-              {value === null ? "Now (live)" : timelineLabel(value)}
+              {value === null ? (getReplay() ? "Replay time" : "Now (live)") : timelineLabel(value)}
             </span>
             <span className="text-[10px] text-ink-soft shrink-0">
               {status === "loading" ? "Loading the last 4 days…" : status === "unavailable" ? "Past data unavailable" : value === null ? "Drag to rewind up to 4 days" : "Rewound view"}
@@ -92,7 +93,7 @@ export function TimeSlider({
               value={position}
               disabled={!ready}
               aria-label="Map time"
-              aria-valuetext={value === null ? "Now, live" : timelineLabel(value)}
+              aria-valuetext={value === null ? (getReplay() ? "Replay time" : "Now, live") : timelineLabel(value)}
               className="w-full accent-brand disabled:opacity-40"
               onChange={(event) => {
                 setPlaying(false);
@@ -119,7 +120,7 @@ export function TimeSlider({
           }}
           aria-pressed={value === null}
         >
-          {value === null ? "● Live" : "Back to live"}
+          {getReplay() ? (value === null ? "● Replay" : "Back to replay time") : value === null ? "● Live" : "Back to live"}
         </button>
       </div>
     </div>

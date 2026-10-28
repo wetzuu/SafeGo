@@ -31,7 +31,7 @@ public class OperationalFeedService {
     }
 
     public FeedResult readFeed(String key, String name, String endpointKey, String tokenKey, boolean official) {
-        String endpoint = System.getenv(endpointKey);
+        String endpoint = ReplayPack.isActive() ? null : System.getenv(endpointKey);
         if (endpoint == null || endpoint.isBlank()) {
             return new FeedResult(List.of(), status(key, name, key, "disabled", null));
         }

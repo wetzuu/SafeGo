@@ -1,3 +1,4 @@
+import { basisLine } from "./replay.ts";
 import type { RiskKey, SafeGoLocation } from "./types.ts";
 
 export type RiskLevel = RiskKey | "unknown";
@@ -90,7 +91,7 @@ export function describeRisk(input: {
     headline: LEVEL_NAMES[level],
     why,
     action: ACTIONS[level],
-    caveat: input.basis === "partial" ? "Based on live weather and PAGASA alerts." : "",
+    caveat: input.basis === "partial" ? basisLine() : "",
   };
 }
 

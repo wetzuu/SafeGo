@@ -150,7 +150,7 @@ public class UniversityAnnouncementService {
 
     @Autowired
     public UniversityAnnouncementService() {
-        this(System.getenv().getOrDefault("SAFEGO_UNIVERSITY_SCAN", "auto").trim().toLowerCase(Locale.ROOT));
+        this(ReplayPack.isActive() ? "disabled" : System.getenv().getOrDefault("SAFEGO_UNIVERSITY_SCAN", "auto").trim().toLowerCase(Locale.ROOT));
     }
 
     UniversityAnnouncementService(String mode) {

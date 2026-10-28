@@ -432,6 +432,27 @@
     @apply sticky top-0 hidden h-screen w-[380px] shrink-0 flex-col bg-panel border-r border-hairline p-5 overflow-y-auto z-20 shadow-sm lg:flex;
   }
 
+  /* Replay mode: a strip that stays on top, with the full-height layout shortened to fit under it. */
+  .replay-bar {
+    @apply flex h-[var(--replay-bar-height)] items-center gap-2 overflow-hidden border-b border-mod bg-mod-soft px-3 text-xs text-ink;
+  }
+
+  .replay-bar strong {
+    @apply shrink-0 rounded-full bg-mod px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-panel;
+  }
+
+  .replay-bar-copy {
+    @apply min-w-0 flex-1 truncate;
+  }
+
+  .replay-bar a {
+    @apply shrink-0 font-semibold text-brand-ink underline;
+  }
+
+  .replay-on {
+    --replay-bar-height: 2.25rem;
+  }
+
   .sidenav .brandmark {
     @apply mb-0 cursor-pointer border-0 bg-transparent p-0 text-left;
   }
@@ -1321,3 +1342,13 @@
 
 /* Touch targets: at least 44px tall for the planner's controls. */
 .trip-planner input, .trip-planner .submit-btn, .trip-planner .example-trip, .trip-planner .add-trip-stop { min-height: 44px; }
+
+/* Outside the layers on purpose: Tailwind's h-dvh utility would otherwise win over the replay bar. */
+.replay-on .h-dvh,
+.replay-on .sidenav {
+  height: calc(100dvh - var(--replay-bar-height));
+}
+
+.replay-on #app-shell {
+  min-height: 0;
+}

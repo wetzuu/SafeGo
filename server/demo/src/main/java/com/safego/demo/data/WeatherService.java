@@ -54,6 +54,8 @@ public class WeatherService {
     /** Rainfall-aware readings for each coordinate ([latitude, longitude]), in the same order. */
     public List<Reading> fetchReadings(List<double[]> coordinates) throws Exception {
         if (coordinates.isEmpty()) return List.of();
+        ReplayPack replay = ReplayPack.active();
+        if (replay != null) return replayReadings(replay, coordinates);
 
         String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
         String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
@@ -98,7 +100,26 @@ public class WeatherService {
     }
 
     public String currentProviderName() {
-        return currentProviderName;
+        return ReplayPack.isActive() ? REPLAY_PROVIDER : currentProviderName;
+    }
+
+    public static final String REPLAY_PROVIDER = "Recorded weather (Open-Meteo archive)";
+
+    /** Readings at the replay hour, scored exactly like live ones. */
+    private static List<Reading> replayReadings(ReplayPack replay, List<double[]> coordinates) {
+        List<Reading> readings = new ArrayList<>();
+        for (double[] coordinate : coordinates) {
+            ReplayPack.Point point = replay.nearest(coordinate[0], coordinate[1]);
+            JsonNode current = replay.current(point);
+            readings.add(new Reading(
+                RainfallScoring.assess(current, replay.rainAround(point)),
+                current.path("temperature_2m").asDouble(),
+                current.path("wind_speed_10m").asDouble(),
+                current.path("wind_gusts_10m").asDouble(),
+                replay.nowHour() + ":00+08:00"
+            ));
+        }
+        return readings;
     }
 
     /** Current global forecast fallback used only while Open-Meteo is rate limited. */
@@ -193,6 +214,17 @@ public class WeatherService {
     /** Scored weather for every hour of the last {@code days} days up to now, oldest first, at each coordinate. */
     public List<List<RainfallScoring.HourAssessment>> fetchPastHours(List<double[]> coordinates, int days) throws Exception {
         if (coordinates.isEmpty()) return List.of();
+        ReplayPack replay = ReplayPack.active();
+        if (replay != null) {
+            String first = replay.today().minusDays(days) + "T00:00";
+            List<List<RainfallScoring.HourAssessment>> timelines = new ArrayList<>();
+            for (double[] coordinate : coordinates) {
+                List<RainfallScoring.HourAssessment> hours = RainfallScoring.assessHours(
+                    replay.nearest(coordinate[0], coordinate[1]).hourly(), replay.nowHour());
+                timelines.add(hours.stream().filter(hour -> hour.time().compareTo(first) >= 0).toList());
+            }
+            return timelines;
+        }
         String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
         String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
         String url = "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes
@@ -216,6 +248,15 @@ public class WeatherService {
     /** Scored weather for up to {@code days} complete past days at each coordinate, newest day first. */
     public List<List<RainfallScoring.DayAssessment>> fetchPastDays(List<double[]> coordinates, int days) throws Exception {
         if (coordinates.isEmpty()) return List.of();
+        ReplayPack replay = ReplayPack.active();
+        if (replay != null) {
+            List<List<RainfallScoring.DayAssessment>> history = new ArrayList<>();
+            for (double[] coordinate : coordinates) {
+                ReplayPack.Point point = replay.nearest(coordinate[0], coordinate[1]);
+                history.add(RainfallScoring.assessPastDays(point.daily(), point.hourly(), replay.today().toString(), days));
+            }
+            return history;
+        }
         String latitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[0])).toList());
         String longitudes = String.join(",", coordinates.stream().map(c -> String.format(Locale.ROOT, "%.4f", c[1])).toList());
         String url = "https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=" + latitudes + "&longitude=" + longitudes

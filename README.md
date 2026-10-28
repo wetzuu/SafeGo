@@ -20,6 +20,7 @@ Or double-click **`Start SafeGo.cmd`** on Windows. This builds the production we
 - `npm run doctor`: checks Node, JDK 21, packages, builds, ports and internet access to the live sources.
 - `npm run stop` (or **`Stop SafeGo.cmd`**): frees ports 3000 and 8080 when an older SafeGo is still running.
 - `npm run presentation:build`: build everything ahead of time.
+- `npm run presentation:replay` (or **`Start SafeGo (replay).cmd`**): start on recorded weather from a documented flood day, with a Replay banner, for when the venue internet fails. See [docs/DEMO_CHECKLIST.md](docs/DEMO_CHECKLIST.md).
 
 Use `npm run check:all` before presenting to run the web checks, Java tests, and risk validation.
 
@@ -159,7 +160,7 @@ OSRM supplies road geometry and road names. SafeGo preserves road bends, splits 
 
 Successful OSRM routes are cached in memory for ten minutes. If live routing is unavailable, the trip shows an error; SafeGo never draws a saved or invented route.
 
-Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. `npm run backtest` scores documented Metro Manila flood days and dry days with the live weather rules; see [BACKTEST.md](docs/BACKTEST.md) for the results and their limits. No real-user validation has been completed yet.
+Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. `npm run backtest` scores documented Metro Manila flood days and dry days with the live weather rules; see [BACKTEST.md](docs/BACKTEST.md) for the results and their limits. Usability sessions follow [docs/USABILITY_SESSIONS.md](docs/USABILITY_SESSIONS.md); `npm run sus` scores them. No sessions have been run yet.
 
 ## Public geocoding and routing services
 

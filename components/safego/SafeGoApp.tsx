@@ -22,6 +22,8 @@ import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { buildRouteEstimate } from "@/lib/trips/route-estimate";
 import type { RouteEstimate } from "@/lib/trips/route-risk";
 import { honestLocation, honestSnapshot, liveFactorNames } from "@/lib/safego/honest-risk";
+import { appNow, basisLine, capitalLiveWord, getReplay, liveWord, setReplay, type ReplayInfo } from "@/lib/safego/replay";
+import { timelineLabel } from "@/lib/safego/timeline";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import { RiskGauge } from "./RiskGauge";
@@ -52,15 +54,15 @@ interface DashboardEnvelope {
   meta: { backend: DataBackend; generatedAt: string };
 }
 
-function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavailable, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; apiUnavailable: boolean; onRefresh: () => void }) {
+function DataStatus({ backend, sources, refreshing, weatherUpdatedAt, apiUnavailable, replay, onRefresh }: { backend: DataBackend; sources: SourceStatus[]; refreshing: boolean; weatherUpdatedAt: string | null; apiUnavailable: boolean; replay: ReplayInfo | null; onRefresh: () => void }) {
   const weather = sources.find((source) => source.key === "open-meteo");
   const live = weather?.status === "active";
   const degraded = weather?.status === "degraded";
   const updated = weatherUpdatedAt
     ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" }).format(new Date(weatherUpdatedAt))
     : null;
-  const label = apiUnavailable ? "Live updates unavailable" : live ? "Live weather" : degraded ? "Some live sources unavailable" : "Waiting for live information";
-  const detail = apiUnavailable ? "SafeGo cannot reach its live services. Check official sources before travelling." : live && updated ? `${weather?.name ?? "Weather provider"} · checked ${updated}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "database" ? "No current update is available" : "No saved conditions are being substituted";
+  const label = apiUnavailable ? "Live updates unavailable" : live ? `${capitalLiveWord()} weather` : degraded ? "Some live sources unavailable" : "Waiting for live information";
+  const detail = apiUnavailable ? "SafeGo cannot reach its live services. Check official sources before travelling." : live && updated ? `${weather?.name ?? "Weather provider"} · ${replay ? "as of" : "checked"} ${updated}` : updated ? `Checked at ${updated}` : live ? "Current weather included" : degraded ? "Some current updates could not be reached" : backend === "database" ? "No current update is available" : "No saved conditions are being substituted";
 
   return <div className={`data-status${!apiUnavailable && live ? " live" : apiUnavailable || degraded ? " degraded" : ""}`} role="status"><span className="data-status-dot" /><span className="data-status-copy"><strong>{label}</strong><span>{detail}</span></span><button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button></div>;
 }
@@ -82,13 +84,13 @@ function PageHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: stri
 function FactorBasisTag({ location, factor }: { location: SafeGoLocation; factor: FactorName }) {
   if (!location.risk.countedFactors) return null;
   return location.risk.countedFactors.includes(factor)
-    ? <span className="text-[10px] font-bold text-low">Live</span>
+    ? <span className="text-[10px] font-bold text-low">{capitalLiveWord()}</span>
     : <span className="text-[10px] font-bold text-ink-soft">Unavailable</span>;
 }
 
 function BasisNote({ location }: { location: SafeGoLocation }) {
   return location.risk.basis === "none"
-    ? <div className="calculation-rule">SafeGo has no live data for this location right now.</div>
+    ? <div className="calculation-rule">SafeGo has no {liveWord()} data for this location right now.</div>
     : null;
 }
 
@@ -126,7 +128,7 @@ function LocationRiskFactors({ location }: { location: SafeGoLocation }) {
     })}</div>
     <div className="card card-pad mb-[22px] result-explanation">
       <h2>How to use this result</h2>
-      <p>SafeGo rates each place from live weather and official PAGASA alerts, and shows only the information it can confirm.</p>
+      <p>SafeGo rates each place from {liveWord()} weather{getReplay() ? "" : " and official PAGASA alerts"}, and shows only the information it can confirm.</p>
       {location.risk.safetyRule && <div className="calculation-rule">{location.risk.safetyRule}</div>}
       <p><strong>This is not permission to travel.</strong> Conditions can change quickly, so check current government and school announcements before leaving.</p>
     </div>
@@ -153,9 +155,9 @@ function LocationConditions({ location }: { location: SafeGoLocation }) {
   const alertsLive = Boolean(location.risk.countedFactors?.includes("Official advisories"));
   const weather = <LiveWeatherCard location={location} />;
   return <section className="page">
-    <PageHeader eyebrow="Conditions" title="Live conditions" subtitle={`${location.name} · updated ${location.updated}`} />
+    <PageHeader eyebrow="Conditions" title={`${capitalLiveWord()} conditions`} subtitle={`${location.name} · updated ${location.updated}`} />
     {location.risk.basis === "none" ? (
-      <p className="empty-note">SafeGo has no live data for this location right now. Check official channels before travelling.</p>
+      <p className="empty-note">SafeGo has no {liveWord()} data for this location right now. Check official channels before travelling.</p>
     ) : (
       <div className="grid grid-2">
         {weather}
@@ -181,7 +183,7 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
         <RiskGauge score={trip.overallRiskScore} size={190} />
         <div className="risk-level-name md">{trip.riskName}</div>
         <p className="gauge-caption">This result uses the parts of the route where SafeGo has information. Missing information is never treated as low risk.</p>
-        {partial && <p className="gauge-caption">Based on live weather and PAGASA alerts.</p>}
+        {partial && <p className="gauge-caption">{basisLine()}</p>}
         {trip.safetyRule && <div className="calculation-rule route-rule">{trip.safetyRule}</div>}
       </div>
     </div>}
@@ -212,9 +214,9 @@ function TripRiskFactors({ trip }: { trip: TripAnalysis }) {
 function TripConditions({ trip, showReports }: { trip: TripAnalysis; showReports: boolean }) {
   const places = trip.corridorLocations.filter((location) => location.risk.basis !== "none");
   return <section className="page">
-    <PageHeader eyebrow="Route conditions" title="Live conditions along your trip" subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
+    <PageHeader eyebrow="Route conditions" title={`${capitalLiveWord()} conditions along your trip`} subtitle={`${trip.origin.label} → ${trip.destination.label}`} />
     {places.length === 0 && !trip.advisories.length ? (
-      <p className="empty-note">SafeGo has no live data along this route yet. Check official channels before travelling.</p>
+      <p className="empty-note">SafeGo has no {liveWord()} data along this route yet. Check official channels before travelling.</p>
     ) : (
       <div className="grid grid-2">
         {places.map((location) => <LiveWeatherCard key={location.id} location={location} />)}
@@ -274,7 +276,14 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
   return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle={reportingEnabled ? "Share a current observation. New reports are marked unconfirmed until reviewed." : "Public submissions will open after SafeGo can review them safely."} /><div className="grid grid-2"><div className="card card-pad">{reportingEnabled ? <form className="form-grid" onSubmit={submitReport}><fieldset className="form-field report-type-field"><legend>Report type</legend><div className="type-chip-row">{COMMUNITY_REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} aria-pressed={type === selectedType} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Water depth, road blockage, direction of travel, and what you can see" minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Send report for review"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form> : <div className="reporting-disabled"><Icon name="reports" /><h3>Submissions are not open yet</h3><p>SafeGo will open public reports after it can review submissions and prevent misuse. Existing observations remain visible and show whether they have been confirmed.</p></div>}</div><div><div className="card-head tight"><h3>{tripMode ? "Recent reports near the route" : "Recent reports in this area"}</h3><span className="tag mono">What SafeGo knows</span></div><Reports items={items} /></div></div></section>;
 }
 
-export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean }) {
+/** Stays on screen for the whole replay so nobody mistakes it for live data. */
+function ReplayBanner({ replay }: { replay: ReplayInfo }) {
+  return <div className="replay-bar" role="status"><strong>Replay</strong><span className="replay-bar-copy">{timelineLabel(appNow())} · {replay.label} · recorded weather, not live. PAGASA alerts are not included.</span><a href={replay.source} target="_blank" rel="noreferrer">Source</a></div>;
+}
+
+export function SafeGoApp({ initialLocations, initialBackend, initialSources, communityReportingEnabled, replay = null }: { initialLocations: SafeGoLocation[]; initialBackend: DataBackend; initialSources: SourceStatus[]; communityReportingEnabled: boolean; replay?: ReplayInfo | null }) {
+  // Set before anything renders so the map's "now" and every label follow the replay.
+  setReplay(replay);
   // Every score in the app comes from live factors only; see lib/safego/honest-risk.ts.
   const [locations, setLocations] = useState(() => {
     const live = liveFactorNames(initialSources, initialBackend);
@@ -298,11 +307,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   // Desktop: the map draws its legend into the sidebar.
   const [legendSlot, setLegendSlot] = useState<HTMLDivElement | null>(null);
   const [dismissedUniversities, setDismissedUniversities] = useState<ReadonlySet<string>>(() => new Set());
-  // A made-up announcement people can switch on to see what a real one looks like.
   // Ticks every minute so expired announcements drop off without a reload.
-  const [clock, setClock] = useState(() => Date.now());
+  const [clock, setClock] = useState(() => appNow());
   useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 60_000);
+    const timer = window.setInterval(() => setClock(appNow()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
   useSavedTheme();
@@ -513,7 +521,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     />
   );
   const dataStatus = (
-    <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} onRefresh={() => void refreshDashboard()} />
+    <DataStatus backend={dataBackend} sources={sources} refreshing={refreshing} weatherUpdatedAt={weatherUpdatedAt} apiUnavailable={apiUnavailable} replay={replay} onRefresh={() => void refreshDashboard()} />
   );
 
   // Phones: a floating search bar that opens the planner, like a maps app.
@@ -565,7 +573,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   ];
 
   return (
-    <>
+    <div className={replay ? "replay-on" : undefined}>
+      {replay && <ReplayBanner replay={replay} />}
       <div id="app-shell" className="active w-screen h-dvh overflow-hidden flex flex-row">
         <aside className="sidenav justify-between" aria-label="Trip planner">
           <div>
@@ -717,6 +726,6 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
         locations={locations}
         suggestedLocation={trip ? trip.destination.label : selectedLocation?.name}
       />
-    </>
+    </div>
   );
 }

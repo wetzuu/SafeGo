@@ -1,4 +1,5 @@
 import type { DashboardSnapshot, DataBackend, SourceStatus } from "../data/contracts.ts";
+import { liveWord } from "./replay.ts";
 import { riskBand } from "./risk-model.ts";
 import type { FactorName, SafeGoLocation } from "./types.ts";
 
@@ -61,7 +62,7 @@ export function honestLocation(location: SafeGoLocation, live: Set<FactorName>):
         rawScore: 0,
         safetyRule: "",
         contributions: [],
-        summary: "Not rated: no live data is available for this location right now. Not rated does not mean safe.",
+        summary: `Not rated: no ${liveWord()} data is available for this location right now. Not rated does not mean safe.`,
       },
     };
   }
@@ -82,7 +83,7 @@ export function honestLocation(location: SafeGoLocation, live: Set<FactorName>):
       // The model's safety rules depend on flood and advisory combinations a partial score cannot see.
       safetyRule: "",
       contributions: location.risk.contributions.filter((contribution) => live.has(contribution.name)),
-      summary: `Based on live ${listNames(countedFactors)}.`,
+      summary: `Based on ${liveWord()} ${listNames(countedFactors)}.`,
     },
   };
 }

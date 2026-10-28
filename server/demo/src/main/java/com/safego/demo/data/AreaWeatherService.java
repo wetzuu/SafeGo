@@ -3,7 +3,6 @@ package com.safego.demo.data;
 import com.safego.demo.model.SourceStatus;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -90,7 +89,7 @@ public class AreaWeatherService {
                     a.pastThreeHoursMm(), a.pastDayMm(), a.nextThreeHoursMm(), a.pagasaLevel(), reading.observedAt()));
             }
             Result result = new Result(List.copyOf(readings), new SourceStatus("open-meteo", weather.currentProviderName(),
-                "weather", "active", Instant.now().toString(), null, null));
+                "weather", "active", ReplayPack.now().toString(), null, null));
             cache.put(cacheKey, new CachedResult(System.currentTimeMillis() + CACHE_MS, result));
             return result;
         } catch (Exception e) {
@@ -119,7 +118,7 @@ public class AreaWeatherService {
                 "disabled".equals(provider) ? "disabled" : "degraded",
                 "disabled".equals(provider) ? null : "SAFEGO_WEATHER_PROVIDER must be open-meteo or disabled."));
         }
-        String cacheKey = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")) + "|" + cacheKey(points);
+        String cacheKey = ReplayPack.now().atZone(java.time.ZoneId.of("Asia/Manila")).toLocalDate() + "|" + cacheKey(points);
         CachedHistory cached = historyCache.get(cacheKey);
         if (cached != null && cached.expiresAt() > System.currentTimeMillis()) return cached.result();
         try {
@@ -128,7 +127,7 @@ public class AreaWeatherService {
             List<DayHistory> history = new ArrayList<>();
             for (int i = 0; i < points.size(); i++) history.add(new DayHistory(points.get(i).key(), fetched.get(i)));
             HistoryResult result = new HistoryResult(List.copyOf(history), new SourceStatus("open-meteo",
-                "Open-Meteo forecast models", "weather", "active", Instant.now().toString(), null, null));
+                weather.currentProviderName(), "weather", "active", ReplayPack.now().toString(), null, null));
             if (historyCache.size() > 20) historyCache.clear();
             historyCache.put(cacheKey, new CachedHistory(System.currentTimeMillis() + HISTORY_CACHE_MS, result));
             return result;
@@ -164,7 +163,7 @@ public class AreaWeatherService {
             List<HourTimeline> timelines = new ArrayList<>();
             for (int i = 0; i < points.size(); i++) timelines.add(new HourTimeline(points.get(i).key(), fetched.get(i)));
             TimelineResult result = new TimelineResult(List.copyOf(timelines), new SourceStatus("open-meteo",
-                "Open-Meteo forecast models", "weather", "active", Instant.now().toString(), null, null));
+                weather.currentProviderName(), "weather", "active", ReplayPack.now().toString(), null, null));
             if (timelineCache.size() > 20) timelineCache.clear();
             timelineCache.put(cacheKey, new CachedTimeline(System.currentTimeMillis() + 15 * 60 * 1000, result));
             return result;
