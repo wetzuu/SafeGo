@@ -59,9 +59,14 @@ corroborated severe weather, a long coverage gap, a critical covered section wit
 an unknown remainder, and an entirely outside-pilot route. Expected outcomes are
 reviewable product acceptance expectations, not observed historical outcomes.
 
-## Historical and expert validation — pending
+## Historical and expert validation
 
-No historical event has been reconstructed or independently reviewed yet.
+**Weather backtest (done):** `npm run backtest` scores 8 documented Metro Manila
+flood days and 7 dry days with the live weather rules. The results and their limits
+are in [BACKTEST.md](BACKTEST.md). It tests the weather score only, at whole-day
+level, against archived model weather. It is not road-level validation.
+
+**Expert review (pending):** no case below has been independently reviewed yet.
 Do not describe passing synthetic tests as proof that the risk model predicts
 safe travel. Before expanding the pilot, ask a local flood/transport reviewer to
 assess the radius, 90% gate, input weights, school-status contribution and floors.
@@ -83,39 +88,11 @@ cases for a later check after any weight changes.
 | --- | --- | --- | --- | --- | --- |
 | Pending | No evidence collected | Pending | Not run | Unassigned | Not validated |
 
-## Usability sessions — ready to run, not yet conducted
+## Usability sessions
 
-Recruit 5–10 target commuters/students for 15–20 minute sessions, including phone
-users. Ask permission to take anonymous notes; use participant codes and omit
-home addresses. Explain that this is a prototype with simulated conditions.
-Avoid explaining the score or legend before they attempt the tasks.
-
-1. On `/`, identify the supported areas and analyze the España-to-Lerma example.
-   Ask what the result means and where they would look next. Provider-dependent
-   routing may fail; log that separately from a comprehension failure.
-2. On `/validation`, choose “Calm covered route.” Ask whether they would treat
-   the score as permission to travel and what other evidence they would check.
-3. Choose “Rain with a long uncovered gap.” Ask why there is no overall
-   score, then have them find the gaps on the map and explain plain blue (unrated) lines.
-4. Choose “Known critical section and an unknown remainder.” Ask whether the
-   missing overall score means no hazards exist. Have them locate the known
-   critical section and explain the unknown remainder.
-5. In a real trip result, expand “Why this result?” Ask which sources are
-   connected versus stored, whether modeled weather is an official warning,
-   and how they would obtain a new trip snapshot.
-6. Choose the outside-pilot scenario. Ask what action they would take next.
-
-Record completion without prompting, task time, wrong interpretation, help
-needed, device and an optional verbatim quote. Do not invent session outcomes.
-Suggested iteration gate: at least 4 of the first 5 participants distinguish
-unknown from low risk, identify the coverage limitation, and find the source
-explanation without coaching. Any belief that an unrated blue section means safe or that a low
-score guarantees safety requires a design revision and another check. This is
-a small formative study, not statistical proof of effectiveness.
-
-| Participant code | Device | Task | Completed unprompted | Interpretation/quote | Issue | Follow-up |
-| --- | --- | --- | --- | --- | --- | --- |
-| Pending | — | — | Not run | — | — | Recruit participants |
+The session script, tasks and SUS questionnaire are in [USABILITY_SESSIONS.md](USABILITY_SESSIONS.md).
+Results are recorded in `data/usability/sessions.csv` and scored by `npm run sus` into
+[USABILITY_RESULTS.md](USABILITY_RESULTS.md). This is a small formative study, not statistical proof of effectiveness.
 
 ## Implementation verification — 2026-09-16
 
