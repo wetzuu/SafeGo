@@ -31,3 +31,12 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// Scores documented flood and dry days with the live weather rules: npm run backtest
+tasks.register('backtest', JavaExec) {
+	description = 'Runs the weather backtest and writes data/backtest/results.json and docs/BACKTEST.md.'
+	dependsOn 'testClasses'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.safego.demo.backtest.Backtest'
+	args = [rootProject.projectDir.toPath().resolve('../..').normalize().toString()] + (project.findProperty('backtestArgs') ?: '').tokenize()
+}

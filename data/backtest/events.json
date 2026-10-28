@@ -1,0 +1,95 @@
+{
+  "note": "Documented Metro Manila days used to backtest SafeGo's weather scoring. Flood days have a dated report of flooded or impassable roads, or a state of calamity. Dry days are heat-index class suspensions in the dry season. Add a day only with a dated source.",
+  "events": [
+    {
+      "date": "2024-07-24",
+      "kind": "flood",
+      "label": "Typhoon Carina and the enhanced habagat; Metro Manila placed under a state of calamity",
+      "source": "https://alpha.pna.gov.ph/articles/1229729"
+    },
+    {
+      "date": "2024-09-02",
+      "kind": "flood",
+      "label": "Tropical Storm Enteng and the habagat; classes and government work suspended in Metro Manila",
+      "source": "https://newsinfo.inquirer.net/1978922/palace-suspends-classes-in-all-levels-public-private-in-metro-manila"
+    },
+    {
+      "date": "2025-07-21",
+      "kind": "flood",
+      "label": "Crising and the habagat; MMDA reported waist-deep flooding on major roads",
+      "source": "https://www.philstar.com/headlines/weather/2025/07/21/2459610/list-areas-affected-floods-across-metro-manila"
+    },
+    {
+      "date": "2025-07-22",
+      "kind": "flood",
+      "label": "Habagat; MMDA recorded about 500 flooding incidents in Metro Manila",
+      "source": "https://www.abs-cbn.com/news/weather-traffic/2025/7/22/mmda-records-500-flooding-incidents-in-metro-manila-due-to-habagat-1314"
+    },
+    {
+      "date": "2026-08-08",
+      "kind": "flood",
+      "label": "Habagat; MMDA listed roads not passable in Las Piñas, Parañaque, Quezon City and Valenzuela",
+      "source": "https://www.gmanetwork.com/news/topstories/metro/997803/list-flooded-areas-in-metro-manila-due-to-rains-from-habagat-aug-8-2026/story"
+    },
+    {
+      "date": "2026-08-10",
+      "kind": "flood",
+      "label": "Habagat; G. Araneta Ave. waist-deep, roads in Valenzuela and Parañaque not passable",
+      "source": "https://www.gmanetwork.com/news/topstories/metro/997941/list-flooded-areas-in-metro-manila-due-to-habagat-rains-aug-10-2026/story/"
+    },
+    {
+      "date": "2026-08-17",
+      "kind": "flood",
+      "label": "Habagat; 201.7 mm in five hours at Science Garden, flash floods across Metro Manila",
+      "source": "https://www.gmanetwork.com/news/weather/content/998837/mmda-metro-manila-endured-201-7mm-rainfall-in-5-hours-on-aug-17-2026/story/"
+    },
+    {
+      "date": "2026-08-29",
+      "kind": "flood",
+      "label": "Habagat; 143.5 mm in nine hours at Science Garden, MMDA flood response",
+      "source": "https://www.gmanetwork.com/news/topstories/metro/1000436/metro-manila-logged-186-mm-of-rain-in-23-hours-on-aug-29-30-mmda/story/"
+    },
+    {
+      "date": "2024-04-03",
+      "kind": "dry",
+      "label": "High heat index; in-person classes suspended in Pasay",
+      "source": "https://newsinfo.inquirer.net/1925286/no-in-person-classes-in-several-areas-due-to-high-heat-index"
+    },
+    {
+      "date": "2024-04-05",
+      "kind": "dry",
+      "label": "Dangerous heat index; on-site classes suspended",
+      "source": "https://newsinfo.inquirer.net/1926447/suspended-classes-on-april-5-friday"
+    },
+    {
+      "date": "2024-04-24",
+      "kind": "dry",
+      "label": "Danger-level heat index; Manila and Pasay suspended on-site classes",
+      "source": "https://newsinfo.inquirer.net/1932920/suspended-on-site-classes-on-wednesday-april-24"
+    },
+    {
+      "date": "2024-04-25",
+      "kind": "dry",
+      "label": "44°C heat index forecast; Manila suspended face-to-face classes",
+      "source": "https://alpha.pna.gov.ph/articles/1223356"
+    },
+    {
+      "date": "2024-04-26",
+      "kind": "dry",
+      "label": "Heat; on-site classes suspended across several Metro Manila cities",
+      "source": "https://newsinfo.inquirer.net/1933789/suspended-on-site-classes-on-friday-april-26"
+    },
+    {
+      "date": "2025-03-03",
+      "kind": "dry",
+      "label": "Heat; face-to-face classes suspended in parts of Metro Manila",
+      "source": "https://www.gmanetwork.com/news/balitambayan/balita/937935/face-to-face-class-sa-ilang-lugar-sa-metro-manila-suspendido-sa-lunes-march-3-2025/story/"
+    },
+    {
+      "date": "2025-03-04",
+      "kind": "dry",
+      "label": "High heat index; face-to-face classes suspended",
+      "source": "https://newsinfo.inquirer.net/2040204/high-heat-index-prompts-face-to-face-class-suspensions-on-tuesday-march-4"
+    }
+  ]
+}

@@ -30,6 +30,7 @@
     "test:java": "node scripts/test-java.mjs",
     "test:all": "npm test && npm run test:java",
     "validate:risk": "node scripts/validate-risk.ts",
+    "backtest": "node scripts/backtest.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "check:all": "npm run check && npm run test:java && npm run validate:risk"
   },

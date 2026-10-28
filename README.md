@@ -159,7 +159,7 @@ OSRM supplies road geometry and road names. SafeGo preserves road bends, splits 
 
 Successful OSRM routes are cached in memory for ten minutes. If live routing is unavailable, the trip shows an error; SafeGo never draws a saved or invented route.
 
-Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. No real user or historical validation has been completed yet.
+Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. `npm run backtest` scores documented Metro Manila flood days and dry days with the live weather rules; see [BACKTEST.md](docs/BACKTEST.md) for the results and their limits. No real-user validation has been completed yet.
 
 ## Public geocoding and routing services
 

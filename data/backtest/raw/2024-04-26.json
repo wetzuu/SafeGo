@@ -1,0 +1,594 @@
+[ {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 9.176015853881836,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 11.0,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.14472007751464844,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 9.0,
+  "location_id" : 1,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.3 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.8345842361450195,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 9.0,
+  "location_id" : 2,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.3 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.13625621795654297,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 11.0,
+  "location_id" : 3,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.08635,
+  "generationtime_ms" : 0.08952617645263672,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 39.0,
+  "location_id" : 4,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 3 ],
+    "precipitation_sum" : [ 0.0 ],
+    "temperature_2m_max" : [ 38.1 ],
+    "temperature_2m_min" : [ 27.2 ],
+    "wind_gusts_10m_max" : [ 45.4 ]
+  }
+}, {
+  "latitude" : 14.657293,
+  "longitude" : 121.11524,
+  "generationtime_ms" : 0.09703636169433594,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 16.0,
+  "location_id" : 5,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 36.7 ],
+    "temperature_2m_min" : [ 28.2 ],
+    "wind_gusts_10m_max" : [ 41.8 ]
+  }
+}, {
+  "latitude" : 14.727592,
+  "longitude" : 120.976746,
+  "generationtime_ms" : 0.18918514251708984,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 3.0,
+  "location_id" : 6,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.4 ],
+    "temperature_2m_max" : [ 38.3 ],
+    "temperature_2m_min" : [ 27.5 ],
+    "wind_gusts_10m_max" : [ 44.3 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.09489059448242188,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 6.0,
+  "location_id" : 7,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.3 ],
+    "temperature_2m_min" : [ 27.5 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.727592,
+  "longitude" : 120.976746,
+  "generationtime_ms" : 0.08797645568847656,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 12.0,
+  "location_id" : 8,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.4 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 44.3 ]
+  }
+}, {
+  "latitude" : 14.657293,
+  "longitude" : 121.0316,
+  "generationtime_ms" : 0.09310245513916016,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 21.0,
+  "location_id" : 9,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.1 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 44.6 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.08559226989746094,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 10.0,
+  "location_id" : 10,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.19037723541259766,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 14.0,
+  "location_id" : 11,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.446397,
+  "longitude" : 120.94533,
+  "generationtime_ms" : 10.663986206054688,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 0.0,
+  "location_id" : 12,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.1, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.5 ],
+    "temperature_2m_max" : [ 35.8 ],
+    "temperature_2m_min" : [ 27.8 ],
+    "wind_gusts_10m_max" : [ 47.9 ]
+  }
+}, {
+  "latitude" : 14.586995,
+  "longitude" : 121.002785,
+  "generationtime_ms" : 0.11944770812988281,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 6.0,
+  "location_id" : 13,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.2 ],
+    "temperature_2m_max" : [ 38.3 ],
+    "temperature_2m_min" : [ 27.5 ],
+    "wind_gusts_10m_max" : [ 51.5 ]
+  }
+}, {
+  "latitude" : 14.516696,
+  "longitude" : 121.05752,
+  "generationtime_ms" : 1.138448715209961,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 2.0,
+  "location_id" : 14,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.3 ],
+    "temperature_2m_max" : [ 36.8 ],
+    "temperature_2m_min" : [ 28.3 ],
+    "wind_gusts_10m_max" : [ 45.4 ]
+  }
+}, {
+  "latitude" : 14.446397,
+  "longitude" : 120.94533,
+  "generationtime_ms" : 0.0985860824584961,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 6.0,
+  "location_id" : 15,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.1, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.5 ],
+    "temperature_2m_max" : [ 35.8 ],
+    "temperature_2m_min" : [ 27.8 ],
+    "wind_gusts_10m_max" : [ 47.9 ]
+  }
+}, {
+  "latitude" : 14.446397,
+  "longitude" : 121.02873,
+  "generationtime_ms" : 0.18036365509033203,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 24.0,
+  "location_id" : 16,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.5 ],
+    "temperature_2m_max" : [ 35.7 ],
+    "temperature_2m_min" : [ 27.7 ],
+    "wind_gusts_10m_max" : [ 46.4 ]
+  }
+}, {
+  "latitude" : 14.657293,
+  "longitude" : 121.0316,
+  "generationtime_ms" : 0.09644031524658203,
+  "utc_offset_seconds" : 28800,
+  "timezone" : "Asia/Manila",
+  "timezone_abbreviation" : "GMT+8",
+  "elevation" : 22.0,
+  "location_id" : 17,
+  "hourly_units" : {
+    "time" : "iso8601",
+    "precipitation" : "mm"
+  },
+  "hourly" : {
+    "time" : [ "2024-04-26T00:00", "2024-04-26T01:00", "2024-04-26T02:00", "2024-04-26T03:00", "2024-04-26T04:00", "2024-04-26T05:00", "2024-04-26T06:00", "2024-04-26T07:00", "2024-04-26T08:00", "2024-04-26T09:00", "2024-04-26T10:00", "2024-04-26T11:00", "2024-04-26T12:00", "2024-04-26T13:00", "2024-04-26T14:00", "2024-04-26T15:00", "2024-04-26T16:00", "2024-04-26T17:00", "2024-04-26T18:00", "2024-04-26T19:00", "2024-04-26T20:00", "2024-04-26T21:00", "2024-04-26T22:00", "2024-04-26T23:00" ],
+    "precipitation" : [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+  },
+  "daily_units" : {
+    "time" : "iso8601",
+    "weather_code" : "wmo code",
+    "precipitation_sum" : "mm",
+    "temperature_2m_max" : "°C",
+    "temperature_2m_min" : "°C",
+    "wind_gusts_10m_max" : "km/h"
+  },
+  "daily" : {
+    "time" : [ "2024-04-26" ],
+    "weather_code" : [ 51 ],
+    "precipitation_sum" : [ 0.1 ],
+    "temperature_2m_max" : [ 38.2 ],
+    "temperature_2m_min" : [ 27.4 ],
+    "wind_gusts_10m_max" : [ 44.6 ]
+  }
+} ]
