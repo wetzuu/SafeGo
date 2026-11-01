@@ -68,6 +68,13 @@ Combined snapshot for the UI: all locations plus source statuses.
 
 Location weather factors use the same rainfall-aware scoring as `/api/areas/weather` below.
 
+Each location's `risk` is rated from the factors that have a live source (`LiveRating`; see `docs/PRODUCT.md`):
+
+- `risk.basis`: `"full"` (every factor live, weighted five-factor model), `"partial"` (the default: the higher of weather and PAGASA alerts, no safety floors) or `"none"` (not rated, `percentage` 0, `name` `"NOT RATED"`).
+- `risk.countedFactors`: the factor names behind the rating, e.g. `["Weather", "Official advisories"]`.
+
+`POST /api/trips/analyze` scores route sections from these same ratings.
+
 ---
 
 ## Map time slider (last 4 days)

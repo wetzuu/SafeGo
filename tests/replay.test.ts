@@ -14,7 +14,7 @@ test("live mode uses the real clock and says live", () => {
   setReplay(null);
   assert.ok(Math.abs(appNow() - Date.now()) < 1000);
   assert.equal(liveWord(), "live");
-  assert.equal(basisLine(), "Based on live weather and PAGASA alerts.");
+  assert.equal(basisLine(), "Based on live weather and PAGASA alerts, not street checks.");
 });
 
 test("a replay moves the clock and the rewind slider to the replay moment", () => {
@@ -27,8 +27,8 @@ test("a replay moves the clock and the rewind slider to the replay moment", () =
 test("a replay never calls its data live and leaves out PAGASA alerts", () => {
   setReplay(REPLAY);
   assert.equal(liveWord(), "recorded");
-  assert.equal(basisLine(), "Based on recorded weather.");
-  assert.equal(describeRisk({ level: "high", basis: "partial" }).caveat, "Based on recorded weather.");
+  assert.equal(basisLine(), "Based on recorded weather, not street checks.");
+  assert.equal(describeRisk({ level: "high", basis: "partial" }).caveat, "Based on recorded weather, not street checks.");
 
   const rated = honestLocation(LOCATIONS[0], new Set(["Weather"]));
   assert.equal(rated.risk.summary, "Based on recorded weather.");

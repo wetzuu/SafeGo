@@ -24,7 +24,8 @@ const LEVEL_NAMES: Record<RiskLevel, string> = {
 };
 
 const ACTIONS: Record<RiskLevel, string> = {
-  low: "Travel as usual, and check again just before you leave.",
+  // Low means the weather and alerts look calm, not that streets were checked (usability task 5).
+  low: "Conditions look calm, but SafeGo does not check streets for flooding. Watch for local conditions and check again before you leave.",
   mod: "Allow extra time and avoid low-lying or flood-prone roads.",
   high: "Delay non-essential trips, or take another route if you must go.",
   crit: "Avoid travel unless it is essential, and follow official instructions.",

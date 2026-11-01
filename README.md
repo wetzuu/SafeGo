@@ -1,6 +1,6 @@
 # SafeGo
 
-Point-to-point travel risk information during severe weather. Enter an origin and destination, then SafeGo identifies the connecting roads, estimates the risks along them, and displays color-coded route sections on a real interactive map.
+Point-to-point travel risk information during severe weather, rated from live weather and PAGASA alerts. Enter an origin and destination, then SafeGo identifies the connecting roads, estimates the risks along them, and displays color-coded route sections on a real interactive map.
 
 The current build combines live OSRM road geometry, OpenStreetMap geocoding, modeled weather, PAGASA alerts, and optional approved operational feeds. Missing sources remain unavailable; SafeGo does not substitute seeded conditions or saved routes. Community submission remains disabled until moderation exists.
 
@@ -147,7 +147,7 @@ Responses include `meta.backend` (`local` or `database`) and `meta.generatedAt`.
 
 ## Live weather normalization
 
-Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The normal risk model then recalculates the overall result alongside any configured official and flood/road feeds. The Java dashboard caches its assembled snapshot for one minute; provider failure leaves the stored location data in place and marks the feed as degraded.
+Open-Meteo current conditions update only the Weather factor. SafeGo converts WMO weather codes, hourly precipitation, and wind gusts into separate 0–100 severities and uses the highest severity as the weather score. The rating then follows the live-factor rule in [Risk model](#risk-model): the higher of weather and PAGASA alerts, or the five-factor model once every factor has a live source. The Java dashboard caches its assembled snapshot for one minute; provider failure leaves the stored location data in place and marks the feed as degraded.
 
 This is modeled weather, not a PAGASA warning. It never creates or modifies an official advisory, flood report, school notice, or community verification status.
 
@@ -173,19 +173,22 @@ Before production traffic, set `SAFEGO_CONTACT_EMAIL`, review the [Nominatim usa
 
 ## Risk model
 
-The travel-risk score is calculated from five normalized inputs:
+See [docs/PRODUCT.md](docs/PRODUCT.md) for the full description of what SafeGo measures.
 
-- Flood and road conditions: 40%
-- Weather severity: 25%
-- Official announcements and advisories: 20%
-- Community reports: 10%
-- Nearby university or school status: 5%
+**Live ratings (default):** with no flood/road or advisory feed connected, a rating is the higher of
+two 0–100 scores: live Open-Meteo weather (`RainfallScoring`) and the most severe PAGASA alert
+covering the place. These ratings carry `risk.basis: "partial"`. A place with no live source is not
+rated (`"none"`), never shown as safe. SafeGo does not check streets for flooding, so Low means the
+weather and alerts look calm, not that the roads were checked.
 
 Scores of 0–29 are Low, 30–59 Moderate, 60–79 High, and 80–100 Critical.
-As a safety guardrail, a flood/road score of 70 or higher cannot produce an
-overall rating below High, and a score of 85 or higher cannot produce a rating
-below Critical. Severe weather (85+) supported by an elevated official advisory
-(70+) also cannot produce a rating below High.
+
+**Five-factor model (when every factor has a live source):** flood and road conditions 40%, weather
+25%, official advisories 20%, community reports 10%, nearby university status 5%. A flood/road score
+of 70 or higher cannot produce an overall rating below High, and 85 or higher cannot produce a rating
+below Critical. Severe weather (85+) supported by an elevated official advisory (70+) also cannot
+produce a rating below High. These ratings carry `risk.basis: "full"`. The model is not used while
+factors are missing, because averaging in factors with no source would understate a storm.
 
 ## Community report intake
 

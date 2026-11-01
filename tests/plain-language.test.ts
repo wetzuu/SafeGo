@@ -11,7 +11,16 @@ test("risk messages say what, why and what to do", () => {
   assert.equal(message.headline, "High risk");
   assert.equal(message.why, "Severe weather (thunderstorm), and no official alerts.");
   assert.match(message.action, /Delay non-essential trips/);
-  assert.equal(message.caveat, "Based on live weather and PAGASA alerts.");
+  assert.equal(message.caveat, "Based on live weather and PAGASA alerts, not street checks.");
+});
+
+test("a Low rating never reads as safe or as checked streets", () => {
+  for (const basis of ["full", "partial"] as const) {
+    const message = describeRisk({ level: "low", basis, weather: { score: 10, condition: "Clear sky" }, advisory: { score: 0 } });
+    assert.equal(message.headline, "Low risk");
+    assert.doesNotMatch(`${message.headline} ${message.why} ${message.action}`, /\bsafe\b|as usual|not flooded/i);
+    assert.match(message.action, /does not check streets for flooding/);
+  }
 });
 
 test("places without live data never read as safe", () => {

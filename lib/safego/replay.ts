@@ -39,5 +39,5 @@ export function capitalLiveWord() {
 
 /** One line naming the sources a rating used. A replay has weather only: there is no archive of past PAGASA alerts. */
 export function basisLine() {
-  return replay ? "Based on recorded weather." : "Based on live weather and PAGASA alerts.";
+  return replay ? "Based on recorded weather, not street checks." : "Based on live weather and PAGASA alerts, not street checks.";
 }

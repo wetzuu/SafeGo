@@ -26,7 +26,7 @@ what it measures and proving the ratings against reality.
 | # | Phase | Depends on | Who | Status |
 | --- | --- | --- | --- | --- |
 | 0 | [Baseline and doc sync](phase-0-baseline.md) | none | Claude | Partly done (Java tests to run on Windows) |
-| 1 | [Product definition](phase-1-product-definition.md) | 0 | **Team decision**, then Claude | Not started |
+| 1 | [Product definition](phase-1-product-definition.md) | 0 | Decided: option A | Partly done (Spring tests to run on Windows) |
 | 2 | [One source of truth for the model](phase-2-single-source.md) | 1 | Claude | Not started |
 | 3 | [Frontend structure](phase-3-frontend-structure.md) | 0 | Claude | Not started |
 | 4 | [Route coverage](phase-4-route-coverage.md) | 2 | **Team decision**, then Claude | Not started |

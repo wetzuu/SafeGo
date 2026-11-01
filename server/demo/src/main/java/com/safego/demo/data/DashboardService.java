@@ -156,6 +156,10 @@ public class DashboardService {
         sources.removeIf(source -> UniversityAnnouncementService.SOURCE_KEY.equals(source.key()));
         sources.add(universityService.status(universityScan));
 
+        // Last step: rate each place only from factors with a live source (weather and PAGASA alerts
+        // unless feeds are connected), the same rule the browser applies. See LiveRating.
+        locations = LiveRating.applyAll(locations, LiveRating.liveFactors(sources, backend), ReplayPack.isActive());
+
         cached = new DashboardSnapshot(List.copyOf(locations), List.copyOf(sources), weatherUpdatedAt);
         expiresAt = System.currentTimeMillis() + CACHE_MS;
         return cached;

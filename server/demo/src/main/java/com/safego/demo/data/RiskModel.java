@@ -30,6 +30,20 @@ public final class RiskModel {
 
     private RiskModel() {}
 
+    /** Band key ("low", "mod", "high", "crit") for a 0–100 score. */
+    public static String bandKey(int score) {
+        return band(score).key();
+    }
+
+    /** Band name ("LOW RISK" … "CRITICAL RISK") for a 0–100 score. */
+    public static String bandName(int score) {
+        return band(score).name();
+    }
+
+    private static Band band(int score) {
+        return BANDS.stream().filter(b -> score <= b.maximum()).findFirst().orElse(BANDS.get(BANDS.size() - 1));
+    }
+
     public static RiskAssessment analyzeRisk(List<RiskFactor> factors, String summary, String status) {
         List<RiskContribution> contributions = factors.stream()
             .map(f -> {
