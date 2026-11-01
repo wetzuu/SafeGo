@@ -9,7 +9,7 @@ setup.
 
 - `Dockerfile.web`: standalone Next.js server running as a non-root user.
 - `Dockerfile.api`: Java 21 Spring Boot API running as a non-root user.
-- `Dockerfile.tools`: controlled database migration, seed and verification jobs.
+- `Dockerfile.tools`: controlled database migration and verification jobs.
 - `compose.staging.yaml`: private web, API and PostGIS network with health checks.
 - `GET /api/health`: lightweight API readiness endpoint.
 
@@ -44,15 +44,13 @@ PostgreSQL and the Java API are not published externally.
    npm run staging:migrate
    ```
 
-7. For an explicitly approved demonstration staging environment, load the
-   labeled fixture dataset and verify it:
+7. Verify the database:
 
    ```bash
-   npm run staging:seed
    npm run staging:verify
    ```
 
-   Do not seed an operational production database.
+   There is no seed step; SafeGo loads no stored example conditions.
 
 8. Start the API and web application:
 
@@ -61,7 +59,7 @@ PostgreSQL and the Java API are not published externally.
    ```
 
 9. Through the private HTTPS URL, verify `/`, `/api/health`,
-   `/api/sources/status`, a planned trip and the map.
+   the `sources` array in `/api/dashboard`, a planned trip and the map.
 
 ## Updating
 
@@ -80,7 +78,7 @@ health and `docker compose --env-file .env.staging -f compose.staging.yaml logs
 --since=15m web api database` to review recent errors. Configure the hosting
 platform to request `/api/health` and alert after repeated failures. Container
 health is readiness only; it does not prove external data providers are fresh.
-Use `/api/sources/status` for provider state.
+Use the `sources` array in `/api/dashboard` for provider state.
 
 ## Security boundaries
 

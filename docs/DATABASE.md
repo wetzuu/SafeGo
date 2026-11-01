@@ -55,7 +55,7 @@ restore a development backup over staging or production.
 - Give the running app only the permissions it needs. Use a separate migration role where available.
 - Enable automated provider backups and point-in-time recovery.
 - Run `npm run db:migrate` during a controlled deployment step, then run `npm run db:verify`.
-- Seed only development or an explicitly approved staging environment. Do not run `db:seed` automatically in production.
+- There is no seed step. SafeGo never loads stored example conditions into any environment.
 - Alert on failed connections, storage growth, and backup failures.
 
 ## Release check

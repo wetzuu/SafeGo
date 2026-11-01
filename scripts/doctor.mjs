@@ -11,8 +11,9 @@ const results = [];
 const check = (ok, label, detail, fix) => results.push({ ok, label, detail, fix });
 
 // Tools and packages.
-const nodeMajor = Number(process.versions.node.split(".")[0]);
-check(nodeMajor >= 22, "Node.js", `v${process.versions.node}`, "Install Node.js 24 (LTS) from nodejs.org.");
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+// Scripts run .ts files directly, which needs Node 22.18+ (type stripping on by default). CI and Docker use 24.
+check(nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 18), "Node.js", `v${process.versions.node}`, "Install Node.js 24 (LTS) from nodejs.org.");
 check(existsSync(join(root, "node_modules", "next", "dist", "bin", "next")), "npm packages", "installed", "Run npm install.");
 const java = spawnSync(process.execPath, [join(root, "scripts", "java-api.mjs"), "--check"], { encoding: "utf8" });
 check(java.status === 0, "JDK 21", java.status === 0 ? java.stdout.trim() : "not found", "Install JDK 21 (Eclipse Temurin) and set JAVA_HOME.");

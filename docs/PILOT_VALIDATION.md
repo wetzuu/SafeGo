@@ -2,11 +2,11 @@
 
 ## Implemented pilot
 
-The pilot is the union of provisional 850-meter circles around España, Lerma,
-Quiapo, Mapúa Makati and Ortigas Center (Pasig). It is not all of Manila, Makati
-or Pasig and does not
-cover the roads between those areas automatically. The canonical IDs are in
-`lib/trips/pilot.ts`. Binondo and Katipunan were removed because their inputs
+The pilot is the union of provisional 850-meter circles around 18 points across
+Metro Manila (España, Lerma, Quiapo, Mapúa Makati, Ortigas and 13 flood-prone
+places from Marikina to Muntinlupa). It does not cover whole cities or the roads
+between points automatically. The canonical IDs are in `lib/trips/pilot.ts`
+(policy `ncr-pilot-v1`). Binondo and Katipunan were removed because their inputs
 were copied from España rather than measured.
 
 The 850-meter radius reuses the former map illustration. The 90% route-coverage
@@ -41,8 +41,8 @@ Changes require reviewing the scenario results and updating the shared policy.
   segments. Empty corridor lists are valid; do not substitute distant points.
 
 Existing clients must handle nullable scores. Geographic coverage is independent
-of evidence quality: seed data in PostgreSQL is still demonstration data, and
-active modeled weather does not verify a flood observation. The result explains
+of evidence quality: SafeGo stores no seeded conditions, and active modeled
+weather does not verify a flood observation. The result explains
 this distinction and shows its own snapshot time. Dashboard refresh does not
 recalculate an existing trip.
 

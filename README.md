@@ -26,7 +26,7 @@ Use `npm run check:all` before presenting to run the web checks, Java tests, and
 
 ### Developing (Next.js + Java API)
 
-Install Node.js and Java 21. On Windows, start both services from the project root:
+Install Node.js 24 (22.18 or newer also works, because the scripts run TypeScript directly) and JDK 21. On Windows, start both services from the project root:
 
 ```bash
 npm install
@@ -66,7 +66,7 @@ Requires Java 21. From `server/demo/`:
 
 The server starts on port 8080. All `/api/*` requests are forwarded to it by Next.js. It loads the location catalog or PostgreSQL/PostGIS records, applies live weather and configured feeds, and calculates route risks.
 
-Refer to `server/API.md` for the API documentation.
+Refer to [docs/API.md](docs/API.md) for the API documentation.
 
 
 ### PostgreSQL/PostGIS data mode
@@ -80,7 +80,7 @@ npm run dev
 
 Set `SAFEGO_DATA_MODE=database` to require the database. Use `local` for geographic anchors only, or `auto` to use the database when `DATABASE_URL` is present.
 
-The database commands are repeatable: migrations are recorded in `schema_migrations`, and seeding replaces each preset location's observations, advisories, reports, and current assessment without duplicating them. Database mode also persists accounts, sessions, and the canonical coordinates resolved for each saved Home and School.
+Migrations are recorded in `schema_migrations`, so `npm run db:setup` is safe to rerun. There is no seed step: SafeGo loads no stored example conditions. Database mode persists accounts, sessions, bookmarks, community reports and the canonical coordinates resolved for each saved Home and School.
 
 For a repeatable local PostGIS service, database verification, backups, and the
 staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
@@ -88,7 +88,7 @@ staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
 ## Flow
 
 1. Search a supported area, then optionally add a destination.
-2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the four pilot risk points within the provisional 850-meter limit.
+2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the 18 pilot points (`lib/trips/pilot.ts`) within the provisional 850-meter limit.
 3. Review the route score, compact map, road conditions, announcements, and major roads.
 4. Select **Plan another trip** to start again.
 
@@ -121,9 +121,9 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 - `lib/safego/types.ts` defines the shared domain contracts for future APIs.
 - `server/demo/` contains the active Java API, repositories, providers, and risk calculation.
 - `db/migrations/` contains the PostgreSQL/PostGIS schema.
-- `scripts/db-migrate.ts` and `scripts/db-seed.ts` set up local or hosted databases.
+- `scripts/` holds the launcher (`presentation.mjs`, `dev.mjs`, `doctor.mjs`, `stop.mjs`), database migration, verification and backup, the backtest, replay-pack builder and SUS scoring.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, and pre-push checklist.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow, trust boundaries, and pre-push checklist, and [docs/roadmap/](docs/roadmap/README.md) for the phased work plan.
 
 For the private three-service staging stack, container health checks and rollout
 steps, see [docs/STAGING.md](docs/STAGING.md). The existing `compose.yaml` remains
@@ -133,12 +133,15 @@ the local database-only setup.
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/locations` | Lists map/search locations with coordinates and current risk |
-| `GET /api/locations/:id/risk` | Returns the assessment, factors, advisories, and reports for one location |
-| `GET /api/sources/status` | Shows whether feeds are active, degraded, or disabled |
-| `GET /api/dashboard` | Combines stored SafeGo signals with current modeled weather for the UI |
+| `GET /api/health` | Readiness check; calls no external provider |
+| `GET /api/dashboard` | Locations, source statuses and current modeled weather for the UI |
+| `POST /api/areas/weather` | Live weather and score for map area points; `/timeline` (last 4 days, hourly) and `/history` (last 4 days, daily) |
+| `GET /api/alerts/active` | Active PAGASA alerts touching Metro Manila; `/timeline` lists alerts in force per hour |
+| `GET /api/alerts/universities` | University class-suspension scan results |
 | `POST /api/trips/analyze` | Resolves A and B, identifies connecting roads, and calculates route risk |
 | `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
+| `/api/auth/*`, `/api/account/*` | Accounts, sessions, saved places and bookmarks |
+| `/api/admin/reports` | Report moderation for admin accounts |
 
 Responses include `meta.backend` (`local` or `database`) and `meta.generatedAt`. The dashboard service keeps an assembled snapshot in memory for one minute, while successful OSRM routes are cached for ten minutes. The UI starts with geographic anchors only and replaces them with `/api/dashboard` live results when available.
 
@@ -156,7 +159,7 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 
 ## Route-risk model
 
-OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by pilot points in España, Lerma, Quiapo, Mapúa Makati and Ortigas (Pasig). Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are drawn as a plain blue line. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
+OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by the 18 pilot points across Metro Manila listed in `lib/trips/pilot.ts`. Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are drawn as a plain blue line. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
 
 Successful OSRM routes are cached in memory for ten minutes. If live routing is unavailable, the trip shows an error; SafeGo never draws a saved or invented route.
 
@@ -188,7 +191,7 @@ below Critical. Severe weather (85+) supported by an elevated official advisory
 
 Reports navigation is hidden by default. It appears only when both `SAFEGO_COMMUNITY_REPORTS_ENABLED=true` and `SAFEGO_MODERATION_ENABLED=true`; `POST /api/reports` rejects submissions otherwise. This prevents the unfinished intake code from collecting public reports before verification and abuse handling exist.
 
-PostgreSQL mode stores reports permanently. Mock mode stores submissions only for the lifetime of the current Java server process. Database seeds now replace fixture reports without deleting community submissions.
+PostgreSQL mode stores reports permanently. Local mode (no database) stores submissions only for the lifetime of the current Java server process.
 
 Before production use, replace the in-memory rate limit with a shared durable limiter, add moderation and abuse handling, and publish retention/privacy rules.
 

@@ -6,7 +6,7 @@
 Browser
   -> Next.js UI
   -> Next.js /api rewrite -> Java Spring Boot API
-      -> SafeGo repository -> mock fixtures or PostgreSQL/PostGIS
+      -> SafeGo repository -> built-in location anchors or PostgreSQL/PostGIS
       -> Open-Meteo -> modeled current weather
       -> approved normalized feeds -> official advisories and flood/road observations
       -> Nominatim -> submitted place lookup
@@ -25,7 +25,7 @@ The browser never receives database credentials or provider configuration. The J
 | `lib/trips/` | Trip contracts and route-risk calculation |
 | `server/demo/` | Active Java API, data loading, weather/feed ingestion, routing, and risk model |
 | `db/migrations/` | Ordered PostgreSQL/PostGIS schema migrations |
-| `scripts/` | Database migration and seed commands |
+| `scripts/` | Launcher, doctor, database migration/verify/backup, backtest, replay builder, SUS scoring |
 | `tests/` | Pure model and repository tests |
 
 ## Data trust boundaries
@@ -42,7 +42,7 @@ The browser never receives database credentials or provider configuration. The J
 
 ## Java backend
 
-The Spring Boot server at `server/demo/` owns all six API endpoints. It uses the built-in list of places (`LocationAnchors`, no stored conditions) by default, or PostgreSQL/PostGIS when configured. Its dashboard composes stored data, current modeled Open-Meteo weather, and optional normalized official-advisory and flood/road feeds before recalculating risk. Location and trip endpoints read that same cached snapshot. Provider failures preserve stored conditions and expose degraded source status.
+The Spring Boot server at `server/demo/` owns every `/api/*` endpoint (see `docs/API.md`). It uses the built-in list of places (`LocationAnchors`, no stored conditions) by default, or PostgreSQL/PostGIS when configured. Its dashboard composes stored data, current modeled Open-Meteo weather, and optional normalized official-advisory and flood/road feeds before recalculating risk. Location and trip endpoints read that same cached snapshot. Provider failures preserve stored conditions and expose degraded source status.
 
 Next.js forwards API requests to Java through `next.config.ts`. Java and Next.js must both run locally.
 

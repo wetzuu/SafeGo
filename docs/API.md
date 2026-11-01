@@ -8,7 +8,7 @@ All responses follow the same envelope:
 {
   "data": <payload>,
   "meta": {
-    "backend": "mock",
+    "backend": "local",
     "generatedAt": "2026-09-20T12:36:06Z"
   }
 }
@@ -32,7 +32,7 @@ SafeGo accounts use a 30-day opaque session in an HTTP-only, SameSite=Lax cookie
 - `POST /api/auth/logout` invalidates the session and clears its cookie.
 - `PUT /api/account/places` with `{ "home", "school" }` resolves and updates the signed-in user's saved places. Empty values remove a saved place. The returned profile includes `homePlace` and `schoolPlace`, each containing the entered label, canonical label, `[latitude, longitude]`, source, preset match, and approximation flag.
 
-In mock mode, account data is held by the Java process and resets when that process restarts. In database mode, migration `0004_accounts.sql` persists users, saved places, and hashed sessions in PostgreSQL.
+In local mode (no database), account data is held by the Java process and resets when that process restarts. In database mode, migration `0004_accounts.sql` persists users, saved places, and hashed sessions in PostgreSQL.
 
 ---
 
@@ -43,137 +43,10 @@ It does not call Open-Meteo, routing, geocoding, or operational feeds.
 
 ```json
 {
-  "meta": { "backend": "mock", "generatedAt": "..." },
+  "meta": { "backend": "local", "generatedAt": "..." },
   "data": { "status": "ready", "service": "safego-api" }
 }
 ```
-
----
-
-## GET /api/locations
-
-Lists every SafeGo location with its current risk summary.
-
-**Response `data`:** array of location objects.
-
-```json
-[
-  {
-    "id": "espana",
-    "name": "España Blvd., Sampaloc",
-    "city": "Manila",
-    "aliases": ["espana", "españa", "sampaloc", "morayta"],
-    "coordinates": [14.612, 120.9902],
-    "updated": "6:42 AM",
-    "risk": {
-      "key": "mod",
-      "name": "MODERATE RISK",
-      "rank": "Level 2 of 4",
-      "percentage": 54,
-      "modelVersion": "1.0.0"
-    }
-  }
-]
-```
-
-**Risk keys:** `low` · `mod` · `high` · `crit`
-
-**Known IDs:** `espana`, `mapua-makati`, `quiapo`, `lerma`, `ortigas-pasig`
-
----
-
-## GET /api/locations/:id/risk
-
-Full risk detail for one location.
-
-**Response `data`:**
-
-```json
-{
-  "location": { /* same shape as one item from /api/locations */ },
-  "assessment": {
-    "key": "mod",
-    "name": "MODERATE RISK",
-    "rank": "Level 2 of 4",
-    "percentage": 54,
-    "rawScore": 54,
-    "safetyRule": "",
-    "contributions": [
-      { "name": "Weather",             "score": 58, "weight": 0.25, "points": 14.5 },
-      { "name": "Flood / roads",       "score": 52, "weight": 0.40, "points": 20.8 },
-      { "name": "Official advisories", "score": 70, "weight": 0.20, "points": 14.0 },
-      { "name": "School status",       "score": 20, "weight": 0.05, "points": 1.0  },
-      { "name": "Community reports",   "score": 40, "weight": 0.10, "points": 4.0  }
-    ],
-    "summary": "Moderate rainfall and localized street flooding...",
-    "status": "Passable, delays likely",
-    "modelVersion": "1.0.0"
-  },
-  "factors": [
-    {
-      "name": "Weather",
-      "score": 58,
-      "pill": "mod",
-      "pillText": "Moderate",
-      "description": "Heavy rain since 4:30 AM...",
-      "icon": "weather",
-      "tone": "icon-weather"
-    }
-  ],
-  "advisories": [
-    {
-      "source": "weather",
-      "label": "PAGASA",
-      "title": "Orange Rainfall Warning for Metro Manila",
-      "description": "...",
-      "time": "6:15 AM",
-      "date": "Sep 14, 2026",
-      "isMock": true
-    }
-  ],
-  "communityReports": [
-    {
-      "type": "Flooding",
-      "title": "Ankle-deep flooding",
-      "meta": "España Blvd. corner Morayta · 6:20 AM",
-      "status": "pending",
-      "statusLabel": "Pending"
-    }
-  ]
-}
-```
-
-**`safetyRule`** is a non-empty string when a safety floor overrode the raw score.
-
-**Errors:**
-
-| Status | Code | When |
-| --- | --- | --- |
-| 404 | `LOCATION_NOT_FOUND` | `:id` doesn't match any known location |
-
----
-
-## GET /api/sources/status
-
-Shows health of configured data feeds.
-
-**Response `data`:** array of source objects.
-
-```json
-[
-  {
-    "key": "open-meteo",
-    "name": "Open-Meteo forecast models",
-    "kind": "weather",
-    "status": "active",
-    "lastSuccessAt": null,
-    "lastFailureAt": null,
-    "errorMessage": null
-  }
-]
-```
-
-**Status values:** `mock` · `active` · `degraded` · `disabled`
 
 ---
 
@@ -185,8 +58,8 @@ Combined snapshot for the UI: all locations plus source statuses.
 
 ```json
 {
-  "locations": [ /* full SafeGoLocation objects — same shape as what locations/:id/risk returns inside "location", but with all fields */ ],
-  "sources":   [ /* same shape as /api/sources/status data array */ ],
+  "locations": [ /* full SafeGoLocation objects: id, name, coordinates, assessment, factors, advisories */ ],
+  "sources":   [ { "key": "open-meteo", "name": "Open-Meteo forecast models", "kind": "weather", "status": "active", "lastSuccessAt": null, "lastFailureAt": null, "errorMessage": null } ],
   "weatherUpdatedAt": null
 }
 ```
@@ -199,7 +72,7 @@ Location weather factors use the same rainfall-aware scoring as `/api/areas/weat
 
 ## Map time slider (last 4 days)
 
-The map can be rewound hour by hour for up to four days. A rewound view uses only recorded data (Open-Meteo weather and the PAGASA alerts in force then), scored with the same rules as now; demo factors are never counted.
+The map can be rewound hour by hour for up to four days. A rewound view uses only recorded data (Open-Meteo weather and the PAGASA alerts in force then), scored with the same rules as now.
 
 ### POST /api/areas/weather/timeline
 
@@ -313,11 +186,11 @@ Anything else hits Nominatim (Philippines only).
   "overallRiskScore": 51,
   "rawRiskScore": 51,
   "safetyRule": "",
-  "coverageNote": "100.0% of this route is within the Manila–Makati–Pasig pilot coverage estimate...",
+  "coverageNote": "100.0% of this route is within the Metro Manila pilot coverage estimate...",
   "generatedAt": "2026-09-20T12:39:31Z",
-  "routingSource": "saved-demo",
+  "routingSource": "osrm",
   "coverage": {
-    "pilotId": "manila-makati-v1",
+    "pilotId": "ncr-pilot-v1",
     "status": "sufficient",
     "coveredPercent": 100.0,
     "minimumPercent": 90,
@@ -343,11 +216,11 @@ Anything else hits Nominatim (Philippines only).
   "advisories":  [ /* deduplicated Advisory objects from corridor locations */ ],
   "reports":     [ /* deduplicated CommunityReport objects */ ],
   "hazards":     [ /* deduplicated Hazard objects */ ],
-  "sources":     [ /* same shape as /api/sources/status data array */ ]
+  "sources":     [ /* same shape as the "sources" array in /api/dashboard */ ]
 }
 ```
 
-**`routingSource`:** `"saved-demo"` · `"osrm"` · `"simulation"`
+**`routingSource`:** always `"osrm"`. If routing is unavailable the request fails; SafeGo never draws a saved or invented route.
 
 **`coverage.status`:** `"sufficient"` (≥ 90% covered) · `"insufficient"` — when insufficient, `overallRiskScore` and `rawRiskScore` are `null` and `riskKey` is `"unknown"`.
 
@@ -397,7 +270,7 @@ Community report submission. **Disabled by default** — returns 503 unless both
     "status": "unverified",
     "statusLabel": "UNVERIFIED"
   },
-  "meta": { "backend": "mock", "generatedAt": "..." }
+  "meta": { "backend": "local", "generatedAt": "..." }
 }
 ```
 

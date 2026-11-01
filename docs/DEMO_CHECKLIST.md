@@ -26,7 +26,7 @@ overlay). It rebuilds automatically when the code changed since the last build.
 
 ## The day before
 
-1. Install Node.js 24 and JDK 21, then run `npm install` in the project folder.
+1. Install Node.js 24 (22.18 or newer also works) and JDK 21, then run `npm install` in the project folder.
 2. Run `npm run check:all` while online: lint, types, tests, production build,
    Java tests and risk validation must all pass.
 3. Run `npm run presentation:build` so the first start on the day is quick.
