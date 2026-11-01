@@ -19,6 +19,7 @@ The browser never receives database credentials or provider configuration. The J
 
 | Path | Responsibility |
 | --- | --- |
+| `config/` | `risk-policy.json`: weights, bands, floors and pilot limits, read by both Java and the web app |
 | `app/` | Next.js pages and global styles |
 | `components/safego/` | Interactive trip planner, dashboard, and Leaflet map |
 | `lib/safego/` | Core location types, fixtures, and area-risk model |

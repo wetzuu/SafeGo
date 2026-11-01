@@ -17,6 +17,15 @@ repositories {
 	mavenCentral()
 }
 
+// config/risk-policy.json is shared with the web app; it is served as /risk-policy.json.
+sourceSets {
+	main {
+		resources {
+			srcDir '../../config'
+		}
+	}
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'

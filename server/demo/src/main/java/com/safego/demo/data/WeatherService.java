@@ -297,7 +297,7 @@ public class WeatherService {
 
             SafeGoLocation location = locations.get(index);
             RiskFactor factor = new RiskFactor(
-                "Weather", score, bandKey(score), bandLabel(score), description, "weather", "icon-weather"
+                "Weather", score, RiskModel.bandKey(score), RiskModel.bandLabel(score), description, "weather", "icon-weather"
             );
 
             List<Stat> stats = location.stats().stream().map(s -> s.label().equals("Weather")
@@ -407,13 +407,7 @@ public class WeatherService {
         return 0;
     }
 
-    private static String bandKey(int score) {
-        return score <= 29 ? "low" : score <= 59 ? "mod" : score <= 79 ? "high" : "crit";
-    }
 
-    private static String bandLabel(int score) {
-        return score <= 29 ? "Low" : score <= 59 ? "Moderate" : score <= 79 ? "High" : "Critical";
-    }
 
     private static List<RiskFactor> replace(List<RiskFactor> factors, RiskFactor replacement) {
         return factors.stream().map(f -> f.name().equals(replacement.name()) ? replacement : f).toList();

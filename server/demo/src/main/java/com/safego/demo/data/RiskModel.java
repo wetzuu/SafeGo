@@ -5,49 +5,35 @@ import com.safego.demo.model.RiskContribution;
 import com.safego.demo.model.RiskFactor;
 
 import java.util.List;
-import java.util.Map;
 
+/** The weighted five-factor model. Weights, bands and floors come from {@link RiskPolicy}. */
 public final class RiskModel {
 
-    public static final String MODEL_VERSION = "1.0.0";
+    private static final RiskPolicy POLICY = RiskPolicy.get();
 
-    private static final Map<String, Double> WEIGHTS = Map.of(
-        "Weather", 0.25,
-        "Flood / roads", 0.40,
-        "Official advisories", 0.20,
-        "School status", 0.05,
-        "Community reports", 0.10
-    );
-
-    private record Band(int maximum, String key, String name, String rank) {}
-
-    private static final List<Band> BANDS = List.of(
-        new Band(29,  "low",  "LOW RISK",      "Level 1 of 4"),
-        new Band(59,  "mod",  "MODERATE RISK", "Level 2 of 4"),
-        new Band(79,  "high", "HIGH RISK",      "Level 3 of 4"),
-        new Band(100, "crit", "CRITICAL RISK",  "Level 4 of 4")
-    );
+    public static final String MODEL_VERSION = POLICY.modelVersion();
 
     private RiskModel() {}
 
     /** Band key ("low", "mod", "high", "crit") for a 0–100 score. */
     public static String bandKey(int score) {
-        return band(score).key();
+        return POLICY.band(score).key();
     }
 
     /** Band name ("LOW RISK" … "CRITICAL RISK") for a 0–100 score. */
     public static String bandName(int score) {
-        return band(score).name();
+        return POLICY.band(score).name();
     }
 
-    private static Band band(int score) {
-        return BANDS.stream().filter(b -> score <= b.maximum()).findFirst().orElse(BANDS.get(BANDS.size() - 1));
+    /** Band label ("Low" … "Critical") for a 0–100 score. */
+    public static String bandLabel(int score) {
+        return POLICY.band(score).label();
     }
 
     public static RiskAssessment analyzeRisk(List<RiskFactor> factors, String summary, String status) {
         List<RiskContribution> contributions = factors.stream()
             .map(f -> {
-                double weight = WEIGHTS.getOrDefault(f.name(), 0.0);
+                double weight = POLICY.weights().getOrDefault(f.name(), 0.0);
                 double points = f.score() * weight;
                 return new RiskContribution(f.name(), f.score(), weight, points);
             })
@@ -60,30 +46,28 @@ public final class RiskModel {
         int floodScore  = scoreFor(factors, "Flood / roads");
         int weatherScore = scoreFor(factors, "Weather");
         int advisoryScore = scoreFor(factors, "Official advisories");
+        RiskPolicy.Floors floors = POLICY.floors();
+        int highMinimum = POLICY.bandMinimum("high");
+        int criticalMinimum = POLICY.bandMinimum("crit");
 
         int percentage = rawScore;
         String safetyRule = "";
 
-        if (floodScore >= 85 && percentage < 80) {
-            percentage = 80;
-            safetyRule = "Critical floor applied because the flood / road score is 85 or higher.";
-        } else if (floodScore >= 70 && percentage < 60) {
-            percentage = 60;
-            safetyRule = "High-risk floor applied because the flood / road score is 70 or higher.";
+        if (floodScore >= floors.floodRoadCritical() && percentage < criticalMinimum) {
+            percentage = criticalMinimum;
+            safetyRule = "Critical floor applied because the flood / road score is " + floors.floodRoadCritical() + " or higher.";
+        } else if (floodScore >= floors.floodRoadHigh() && percentage < highMinimum) {
+            percentage = highMinimum;
+            safetyRule = "High-risk floor applied because the flood / road score is " + floors.floodRoadHigh() + " or higher.";
         }
 
-        if (weatherScore >= 85 && advisoryScore >= 70 && percentage < 60) {
-            percentage = 60;
+        if (weatherScore >= floors.severeWeather() && advisoryScore >= floors.elevatedAdvisory() && percentage < highMinimum) {
+            percentage = highMinimum;
             safetyRule = "High-risk floor applied because severe weather is supported by an elevated official advisory.";
         }
 
         percentage = Math.max(0, Math.min(100, percentage));
-
-        final int finalPercentage = percentage;
-        Band band = BANDS.stream()
-            .filter(b -> finalPercentage <= b.maximum())
-            .findFirst()
-            .orElse(BANDS.get(BANDS.size() - 1));
+        RiskPolicy.Band band = POLICY.band(percentage);
 
         return new RiskAssessment(
             band.key(), band.name(), band.rank(),

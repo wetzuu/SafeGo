@@ -54,8 +54,8 @@ behaviour, and how it is validated. Then implement through `OperationalFeedServi
 
 ## Follow-ups
 
-- **Phase 2:** `LiveRating.java` and `lib/safego/honest-risk.ts` now apply the same rule twice
-  (Java, then the browser again). Make Java the only one and have the frontend display `risk.basis`.
+- ~~**Phase 2:** `LiveRating.java` and `lib/safego/honest-risk.ts` apply the same rule twice.~~
+  Done in Phase 2: the browser keeps server ratings; `honestLocation` only rates data the server never saw.
 - The user manual PDF is built from `docs/user-manual/manual.html` (Low row reworded); regenerate it
   with `docs/user-manual/capture.mjs`.
 - `UniversityAnnouncementService` checks `risk().percentage() >= RISK_TRIGGER_SCORE` before

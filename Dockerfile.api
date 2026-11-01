@@ -1,8 +1,10 @@
 FROM eclipse-temurin:21-jdk-jammy AS build
-WORKDIR /app
+# Keep the repository layout so build.gradle finds the shared ../../config folder.
+WORKDIR /app/server/demo
 COPY server/demo/gradle ./gradle
 COPY server/demo/gradlew server/demo/gradlew.bat server/demo/build.gradle server/demo/settings.gradle ./
 RUN chmod +x gradlew
+COPY config /app/config
 COPY server/demo/src ./src
 RUN ./gradlew --no-daemon bootJar
 
@@ -13,7 +15,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system --gid 1001 safego \
   && useradd --system --uid 1001 --gid safego safego
-COPY --from=build --chown=safego:safego /app/build/libs/demo-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build --chown=safego:safego /app/server/demo/build/libs/demo-0.0.1-SNAPSHOT.jar app.jar
 USER safego
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=4 \

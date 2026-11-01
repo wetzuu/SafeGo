@@ -92,16 +92,21 @@ export function honestSnapshot(snapshot: DashboardSnapshot, backend: DataBackend
   const live = liveFactorNames(snapshot.sources, backend);
   return {
     ...snapshot,
-    locations: snapshot.locations.map((location) => honestLocation({
-      ...location,
-      advisories: location.advisories.filter((item) => !item.isMock),
-      universities: location.universities.filter((item) => !item.isMock),
-      // The local API sends only reports people actually submitted, never seeded demo ones.
-      reports: location.reports,
-      floods: backend === "local" ? [] : location.floods,
-      hazards: backend === "local" ? [] : location.hazards,
-      points: backend === "local" ? [] : location.points,
-    }, live)),
+    locations: snapshot.locations.map((location) => {
+      const cleaned: SafeGoLocation = {
+        ...location,
+        advisories: location.advisories.filter((item) => !item.isMock),
+        universities: location.universities.filter((item) => !item.isMock),
+        // The local API sends only reports people actually submitted, never seeded demo ones.
+        reports: location.reports,
+        floods: backend === "local" ? [] : location.floods,
+        hazards: backend === "local" ? [] : location.hazards,
+        points: backend === "local" ? [] : location.points,
+      };
+      // The API already rates each place from live sources (LiveRating.java) and says so in
+      // risk.basis. Only rescore a location the server did not rate.
+      return location.risk.basis ? cleaned : honestLocation(cleaned, live);
+    }),
   };
 }
 

@@ -9,6 +9,7 @@ ENV JAVA_BACKEND_URL=${JAVA_BACKEND_URL}
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
+COPY config ./config
 COPY public ./public
 COPY next.config.ts tsconfig.json postcss.config.mjs eslint.config.mjs ./
 RUN npm run build

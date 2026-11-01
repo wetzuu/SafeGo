@@ -1,6 +1,8 @@
 import type { RiskKey, SafeGoLocation } from "../safego/types.ts";
 import type { RouteCoverage, RouteRiskSegment } from "./types.ts";
 import { isPilotLocation, PILOT } from "./pilot.ts";
+import { riskBand } from "../safego/risk-model.ts";
+import { bandMinimum, RISK_POLICY } from "../safego/risk-policy.ts";
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -25,10 +27,7 @@ export function routeRiskBand(score: number): {
   key: RiskKey;
   name: string;
 } {
-  if (score <= 29) return { key: "low", name: "LOW RISK" };
-  if (score <= 59) return { key: "mod", name: "MODERATE RISK" };
-  if (score <= 79) return { key: "high", name: "HIGH RISK" };
-  return { key: "crit", name: "CRITICAL RISK" };
+  return riskBand(score);
 }
 
 function midpoint(
@@ -38,9 +37,9 @@ function midpoint(
   return [(first[0] + second[0]) / 2, (first[1] + second[1]) / 2];
 }
 
-const CALM_FACTORS = ["Weather", "Flood / roads", "Official advisories"];
-const CALM_FACTOR_MAX_SCORE = 29;
-const CALM_AREA_MAX_KM = 15;
+const CALM_FACTORS: string[] = RISK_POLICY.calmArea.factors;
+const CALM_FACTOR_MAX_SCORE = RISK_POLICY.calmArea.maxFactorScore;
+const CALM_AREA_MAX_KM = RISK_POLICY.calmArea.maxDistanceKm;
 
 /**
  * For routes without enough location-specific coverage: when every pilot location shows
@@ -183,11 +182,13 @@ export function analyzeRouteSegments(
   const rawRiskScore = sufficient ? Math.round(weightedRisk / (coveredDistance + estimatedDistance)) : calmScore;
   let overallRiskScore = rawRiskScore;
   let safetyRule = "";
-  if (overallRiskScore !== null && maximumRisk >= 80 && overallRiskScore < 80) {
-    overallRiskScore = 80;
+  const criticalMinimum = bandMinimum("crit");
+  const highMinimum = bandMinimum("high");
+  if (overallRiskScore !== null && maximumRisk >= criticalMinimum && overallRiskScore < criticalMinimum) {
+    overallRiskScore = criticalMinimum;
     safetyRule = "Critical route floor applied because part of the route is covered by a Critical risk point.";
-  } else if (overallRiskScore !== null && maximumRisk >= 60 && overallRiskScore < 60) {
-    overallRiskScore = 60;
+  } else if (overallRiskScore !== null && maximumRisk >= highMinimum && overallRiskScore < highMinimum) {
+    overallRiskScore = highMinimum;
     safetyRule = "High route floor applied because part of the route is covered by a High risk point.";
   }
 

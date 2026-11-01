@@ -1,4 +1,6 @@
 import { basisLine } from "./replay.ts";
+import { bandLabel } from "./risk-model.ts";
+import { bandMinimum } from "./risk-policy.ts";
 import type { RiskKey, SafeGoLocation } from "./types.ts";
 
 export type RiskLevel = RiskKey | "unknown";
@@ -42,15 +44,15 @@ export function levelAction(level: RiskLevel) {
 
 /** The word for a 0–100 score, so a bare number never stands alone. */
 export function scoreWord(score: number) {
-  return score <= 29 ? "Low" : score <= 59 ? "Moderate" : score <= 79 ? "High" : "Critical";
+  return bandLabel(score);
 }
 
 /** "calm weather", "light rain", "heavy rain or strong wind"… from a weather score and condition. */
 export function weatherPhrase(score: number, condition?: string | null) {
   const sky = condition?.trim().toLocaleLowerCase();
-  if (score >= 80) return sky ? `severe weather (${sky})` : "severe weather";
-  if (score >= 60) return sky ? `heavy rain or strong wind (${sky})` : "heavy rain or strong wind";
-  if (score >= 30) return sky ? `unsettled weather (${sky})` : "rain or gusty wind";
+  if (score >= bandMinimum("crit")) return sky ? `severe weather (${sky})` : "severe weather";
+  if (score >= bandMinimum("high")) return sky ? `heavy rain or strong wind (${sky})` : "heavy rain or strong wind";
+  if (score >= bandMinimum("mod")) return sky ? `unsettled weather (${sky})` : "rain or gusty wind";
   return sky ? `calm weather (${sky})` : "calm weather";
 }
 

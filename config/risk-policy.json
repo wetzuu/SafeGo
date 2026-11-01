@@ -1,0 +1,55 @@
+{
+  "$comment": "SafeGo's risk policy: the single source for weights, bands, floors and pilot limits. Read by the Java API (RiskPolicy) and the web app (lib/safego/risk-model.ts, lib/trips/pilot.ts). Values are provisional product choices; see docs/PRODUCT.md and docs/PILOT_VALIDATION.md before changing them, and bump modelVersion when you do.",
+  "modelVersion": "1.0.0",
+  "weights": {
+    "Weather": 0.25,
+    "Flood / roads": 0.4,
+    "Official advisories": 0.2,
+    "School status": 0.05,
+    "Community reports": 0.1
+  },
+  "bands": [
+    { "maximum": 29, "key": "low", "name": "LOW RISK", "label": "Low", "rank": "Level 1 of 4" },
+    { "maximum": 59, "key": "mod", "name": "MODERATE RISK", "label": "Moderate", "rank": "Level 2 of 4" },
+    { "maximum": 79, "key": "high", "name": "HIGH RISK", "label": "High", "rank": "Level 3 of 4" },
+    { "maximum": 100, "key": "crit", "name": "CRITICAL RISK", "label": "Critical", "rank": "Level 4 of 4" }
+  ],
+  "floors": {
+    "floodRoadHigh": 70,
+    "floodRoadCritical": 85,
+    "severeWeather": 85,
+    "elevatedAdvisory": 70
+  },
+  "pilot": {
+    "id": "ncr-pilot-v1",
+    "name": "Metro Manila pilot",
+    "locationIds": [
+      "espana",
+      "lerma",
+      "quiapo",
+      "mapua-makati",
+      "ortigas-pasig",
+      "marikina-riverbanks",
+      "malabon-dampalit",
+      "navotas-nbbs",
+      "valenzuela-malinta",
+      "qc-araneta",
+      "mandaluyong-maysilo",
+      "san-juan-river",
+      "paranaque-sucat",
+      "pasay-rotonda",
+      "taguig-c6",
+      "laspinas-zapote",
+      "muntinlupa-bayanan",
+      "caloocan-monumento"
+    ],
+    "radiusMeters": 850,
+    "minimumCoveragePercent": 90,
+    "sampleLengthMeters": 100
+  },
+  "calmArea": {
+    "factors": ["Weather", "Flood / roads", "Official advisories"],
+    "maxFactorScore": 29,
+    "maxDistanceKm": 15
+  }
+}

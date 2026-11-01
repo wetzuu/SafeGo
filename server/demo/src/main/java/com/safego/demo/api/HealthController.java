@@ -1,6 +1,7 @@
 package com.safego.demo.api;
 
 import com.safego.demo.data.DashboardService;
+import com.safego.demo.data.RiskPolicy;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +25,9 @@ public class HealthController {
             .cacheControl(CacheControl.noStore())
             .body(ApiResponse.ok(Map.of(
                 "status", "ready",
-                "service", "safego-api"
+                "service", "safego-api",
+                "modelVersion", RiskPolicy.get().modelVersion(),
+                "pilotId", RiskPolicy.get().pilot().id()
             ), dashboard.backend()));
     }
 }

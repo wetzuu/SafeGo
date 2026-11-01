@@ -88,7 +88,7 @@ staging/production checklist, see [docs/DATABASE.md](docs/DATABASE.md).
 ## Flow
 
 1. Search a supported area, then optionally add a destination.
-2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the 18 pilot points (`lib/trips/pilot.ts`) within the provisional 850-meter limit.
+2. SafeGo resolves both places, identifies the connecting road route, and checks its sections against the 18 pilot points (`config/risk-policy.json`) within the provisional 850-meter limit.
 3. Review the route score, compact map, road conditions, announcements, and major roads.
 4. Select **Plan another trip** to start again.
 
@@ -117,7 +117,8 @@ Sidebar on desktop. Top bar and bottom tabs on smaller screens.
 
 - `components/safego/` contains the React interface and interactive map.
 - `lib/safego/locations.ts` lists the places SafeGo rates (name, aliases, coordinates only); every condition comes from live sources at run time. Synthetic values for tests live in `tests/fixtures/`.
-- `lib/safego/risk-model.ts` contains the versioned risk calculation.
+- `config/risk-policy.json` is the single source for weights, bands, safety floors and pilot limits. The Java API (`RiskPolicy`) and the web app (`lib/safego/risk-policy.ts`) both read it; change values there and bump `modelVersion`.
+- `lib/safego/risk-model.ts` contains the web app's copy of the weighted calculation, driven by that policy.
 - `lib/safego/types.ts` defines the shared domain contracts for future APIs.
 - `server/demo/` contains the active Java API, repositories, providers, and risk calculation.
 - `db/migrations/` contains the PostgreSQL/PostGIS schema.
@@ -159,7 +160,7 @@ See [docs/SOURCE_FEEDS.md](docs/SOURCE_FEEDS.md) for the required contracts and 
 
 ## Route-risk model
 
-OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by the 18 pilot points across Metro Manila listed in `lib/trips/pilot.ts`. Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are drawn as a plain blue line. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
+OSRM supplies road geometry and road names. SafeGo preserves road bends, splits long edges, and scores only sections covered by the 18 pilot points across Metro Manila listed in `config/risk-policy.json`. Coverage is weighted by length. Below 90% coverage, the route remains visible but its overall score is null and unknown sections are drawn as a plain blue line. When a rating is available, High and Critical covered sections preserve their safety floors. These pilot limits are provisional and require external validation.
 
 Successful OSRM routes are cached in memory for ten minutes. If live routing is unavailable, the trip shows an error; SafeGo never draws a saved or invented route.
 

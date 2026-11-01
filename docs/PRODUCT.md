@@ -42,7 +42,7 @@ wherever a Low rating appears.
 
 ## The five-factor model (when feeds are connected)
 
-`RiskModel` combines five factors with fixed weights: flood and road conditions 40%, weather 25%,
+`RiskModel` combines five factors with weights set in `config/risk-policy.json`: flood and road conditions 40%, weather 25%,
 official advisories 20%, community reports 10%, nearby university status 5%, plus safety floors
 (flood/road 70+ cannot rate below High, 85+ cannot rate below Critical, severe weather 85+ with an
 official advisory 70+ cannot rate below High).

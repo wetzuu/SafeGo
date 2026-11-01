@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY db ./db
 COPY lib ./lib
+COPY config ./config
 COPY scripts ./scripts
 COPY tsconfig.json next.config.ts ./
 CMD ["npm", "run", "db:verify"]

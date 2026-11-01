@@ -5,7 +5,7 @@
 The pilot is the union of provisional 850-meter circles around 18 points across
 Metro Manila (España, Lerma, Quiapo, Mapúa Makati, Ortigas and 13 flood-prone
 places from Marikina to Muntinlupa). It does not cover whole cities or the roads
-between points automatically. The canonical IDs are in `lib/trips/pilot.ts`
+between points automatically. The canonical IDs are in `config/risk-policy.json`
 (policy `ncr-pilot-v1`). Binondo and Katipunan were removed because their inputs
 were copied from España rather than measured.
 

@@ -109,7 +109,7 @@ public class OperationalFeedService {
                 : items.size() + (official ? " active official advisories; highest normalized severity "
                                            : " active verified-source observations; highest normalized severity ")
                   + highest + "/100.";
-            RiskFactor factor = new RiskFactor(name, highest, bandKey(highest), bandLabel(highest), description,
+            RiskFactor factor = new RiskFactor(name, highest, RiskModel.bandKey(highest), RiskModel.bandLabel(highest), description,
                 official ? "alert" : "flood", highest >= 60 ? "icon-alert" : highest >= 30 ? "icon-mod" : "icon-ok");
             List<Advisory> advisories = location.advisories();
             List<Hazard> hazards = location.hazards();
@@ -192,13 +192,7 @@ public class OperationalFeedService {
             floods, hazards, RiskModel.analyzeRisk(factors, summary, source.riskStatus()));
     }
 
-    private static String bandKey(int score) {
-        return score <= 29 ? "low" : score <= 59 ? "mod" : score <= 79 ? "high" : "crit";
-    }
 
-    private static String bandLabel(int score) {
-        return score <= 29 ? "Low" : score <= 59 ? "Moderate" : score <= 79 ? "High" : "Critical";
-    }
 
     public record FeedResult(List<JsonNode> items, SourceStatus status) {}
 }

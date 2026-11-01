@@ -1,4 +1,5 @@
 import { riskBand } from "./risk-model.ts";
+import { bandMinimum } from "./risk-policy.ts";
 import type { AreaWeather } from "./area-weather.ts";
 import type { RiskKey } from "./types.ts";
 
@@ -63,11 +64,11 @@ export function estimateFloodRoadRisk(
     confidence: advisory && advisory.score > 0 ? "weather-and-advisory" : "weather-only",
     driver,
     why: reasons[driver],
-    action: score >= 80
+    action: score >= bandMinimum("crit")
       ? "Avoid low-lying roads and verify passability with local authorities before travelling."
-      : score >= 60
+      : score >= bandMinimum("high")
         ? "Use major roads, allow extra time, and check for closures before leaving."
-        : score >= 30
+        : score >= bandMinimum("mod")
           ? "Watch for ponding at underpasses and low intersections, especially if rain continues."
           : "Normal travel may be reasonable, but still check the road ahead because local flooding can be missed.",
     limitation: "Weather-based estimate only. SafeGo has not confirmed street flooding, traffic flow, passability, or road closures.",

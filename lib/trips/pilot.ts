@@ -1,31 +1,7 @@
-/** Provisional product limits, not empirically validated hazard boundaries. */
-export const PILOT = {
-  id: "ncr-pilot-v1",
-  name: "Metro Manila pilot",
-  locationIds: [
-    "espana",
-    "lerma",
-    "quiapo",
-    "mapua-makati",
-    "ortigas-pasig",
-    "marikina-riverbanks",
-    "malabon-dampalit",
-    "navotas-nbbs",
-    "valenzuela-malinta",
-    "qc-araneta",
-    "mandaluyong-maysilo",
-    "san-juan-river",
-    "paranaque-sucat",
-    "pasay-rotonda",
-    "taguig-c6",
-    "laspinas-zapote",
-    "muntinlupa-bayanan",
-    "caloocan-monumento",
-  ] as readonly string[],
-  radiusMeters: 850,
-  minimumCoveragePercent: 90,
-  sampleLengthMeters: 100,
-};
+import { RISK_POLICY } from "../safego/risk-policy.ts";
+
+/** Provisional product limits from config/risk-policy.json, not empirically validated hazard boundaries. */
+export const PILOT = RISK_POLICY.pilot;
 
 export const AREA_DASHBOARD_LOCATION_IDS = [
   "espana",

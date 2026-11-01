@@ -4,33 +4,22 @@ import type {
   RiskFactor,
   RiskKey,
 } from "./types";
+import { bandMinimum, policyBand, RISK_POLICY } from "./risk-policy.ts";
 
-export const RISK_MODEL_VERSION = "1.0.0";
+// Weights, bands and floors come from config/risk-policy.json, shared with the Java API.
+export const RISK_MODEL_VERSION = RISK_POLICY.modelVersion;
 
-export const RISK_WEIGHTS: Record<FactorName, number> = {
-  Weather: 0.25,
-  "Flood / roads": 0.4,
-  "Official advisories": 0.2,
-  "School status": 0.05,
-  "Community reports": 0.1,
-};
-
-const RISK_BANDS: Array<{
-  maximum: number;
-  key: RiskKey;
-  name: string;
-  rank: string;
-}> = [
-  { maximum: 29, key: "low", name: "LOW RISK", rank: "Level 1 of 4" },
-  { maximum: 59, key: "mod", name: "MODERATE RISK", rank: "Level 2 of 4" },
-  { maximum: 79, key: "high", name: "HIGH RISK", rank: "Level 3 of 4" },
-  { maximum: 100, key: "crit", name: "CRITICAL RISK", rank: "Level 4 of 4" },
-];
+export const RISK_WEIGHTS: Record<FactorName, number> = RISK_POLICY.weights;
 
 /** The risk band a 0–100 score falls in, e.g. { key: "mod", name: "MODERATE RISK" }. */
-export function riskBand(score: number) {
-  const band = RISK_BANDS.find((candidate) => score <= candidate.maximum) ?? RISK_BANDS[RISK_BANDS.length - 1];
+export function riskBand(score: number): { key: RiskKey; name: string } {
+  const band = policyBand(score);
   return { key: band.key, name: band.name };
+}
+
+/** "Low", "Moderate", "High" or "Critical" for a 0–100 score. */
+export function bandLabel(score: number) {
+  return policyBand(score).label;
 }
 
 function factorScore(factors: RiskFactor[], name: FactorName) {
@@ -55,29 +44,30 @@ export function analyzeRisk(
   const floodScore = factorScore(factors, "Flood / roads");
   const weatherScore = factorScore(factors, "Weather");
   const advisoryScore = factorScore(factors, "Official advisories");
+  const floors = RISK_POLICY.floors;
+  const highMinimum = bandMinimum("high");
+  const criticalMinimum = bandMinimum("crit");
   let percentage = rawScore;
   let safetyRule = "";
 
-  if (floodScore >= 85 && percentage < 80) {
-    percentage = 80;
+  if (floodScore >= floors.floodRoadCritical && percentage < criticalMinimum) {
+    percentage = criticalMinimum;
     safetyRule =
-      "Critical floor applied because the flood / road score is 85 or higher.";
-  } else if (floodScore >= 70 && percentage < 60) {
-    percentage = 60;
+      `Critical floor applied because the flood / road score is ${floors.floodRoadCritical} or higher.`;
+  } else if (floodScore >= floors.floodRoadHigh && percentage < highMinimum) {
+    percentage = highMinimum;
     safetyRule =
-      "High-risk floor applied because the flood / road score is 70 or higher.";
+      `High-risk floor applied because the flood / road score is ${floors.floodRoadHigh} or higher.`;
   }
 
-  if (weatherScore >= 85 && advisoryScore >= 70 && percentage < 60) {
-    percentage = 60;
+  if (weatherScore >= floors.severeWeather && advisoryScore >= floors.elevatedAdvisory && percentage < highMinimum) {
+    percentage = highMinimum;
     safetyRule =
       "High-risk floor applied because severe weather is supported by an elevated official advisory.";
   }
 
   percentage = Math.max(0, Math.min(100, percentage));
-  const band =
-    RISK_BANDS.find((candidate) => percentage <= candidate.maximum) ??
-    RISK_BANDS[RISK_BANDS.length - 1];
+  const band = policyBand(percentage);
 
   return {
     key: band.key,

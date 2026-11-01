@@ -2,6 +2,8 @@ package com.safego.demo.service;
 
 import com.safego.demo.api.TripAnalyzeController.RouteResult;
 import com.safego.demo.api.TripAnalyzeController.TripError;
+import com.safego.demo.data.RiskModel;
+import com.safego.demo.data.RiskPolicy;
 import com.safego.demo.model.*;
 import com.safego.demo.util.GeoUtils;
 import org.springframework.stereotype.Service;
@@ -13,31 +15,14 @@ import java.util.stream.Collectors;
 @Service
 public class TripAnalysisService {
 
-    public static final String PILOT_ID = "ncr-pilot-v1";
-    public static final String PILOT_NAME = "Metro Manila pilot";
-    public static final double PILOT_RADIUS_METERS = 850.0;
-    public static final int PILOT_MIN_COVERAGE_PCT = 90;
-    public static final double SAMPLE_LENGTH_METERS = 100.0;
-    public static final List<String> PILOT_LOCATION_IDS = List.of(
-        "espana",
-        "lerma",
-        "quiapo",
-        "mapua-makati",
-        "ortigas-pasig",
-        "marikina-riverbanks",
-        "malabon-dampalit",
-        "navotas-nbbs",
-        "valenzuela-malinta",
-        "qc-araneta",
-        "mandaluyong-maysilo",
-        "san-juan-river",
-        "paranaque-sucat",
-        "pasay-rotonda",
-        "taguig-c6",
-        "laspinas-zapote",
-        "muntinlupa-bayanan",
-        "caloocan-monumento"
-    );
+    private static final RiskPolicy.Pilot PILOT = RiskPolicy.get().pilot();
+
+    public static final String PILOT_ID = PILOT.id();
+    public static final String PILOT_NAME = PILOT.name();
+    public static final double PILOT_RADIUS_METERS = PILOT.radiusMeters();
+    public static final int PILOT_MIN_COVERAGE_PCT = PILOT.minimumCoveragePercent();
+    public static final double SAMPLE_LENGTH_METERS = PILOT.sampleLengthMeters();
+    public static final List<String> PILOT_LOCATION_IDS = List.copyOf(PILOT.locationIds());
 
     public TripAnalysis assessTrip(
             ResolvedPlace origin, ResolvedPlace dest, RouteResult route,
@@ -154,11 +139,13 @@ public class TripAnalysisService {
             rawScore = calmScore;
             overallScore = calmScore;
         }
-        if (overallScore != null && maxRisk >= 80 && overallScore < 80) {
-            overallScore = 80;
+        int criticalMinimum = RiskPolicy.get().bandMinimum("crit");
+        int highMinimum = RiskPolicy.get().bandMinimum("high");
+        if (overallScore != null && maxRisk >= criticalMinimum && overallScore < criticalMinimum) {
+            overallScore = criticalMinimum;
             safetyRule = "Critical route floor applied because part of the route is covered by a Critical risk point.";
-        } else if (overallScore != null && maxRisk >= 60 && overallScore < 60) {
-            overallScore = 60;
+        } else if (overallScore != null && maxRisk >= highMinimum && overallScore < highMinimum) {
+            overallScore = highMinimum;
             safetyRule = "High route floor applied because part of the route is covered by a High risk point.";
         }
 
@@ -168,19 +155,8 @@ public class TripAnalysisService {
             riskKey = "unknown";
             riskName = "INSUFFICIENT COVERAGE";
         } else {
-            if (overallScore <= 29) {
-                riskKey = "low";
-                riskName = "LOW RISK";
-            } else if (overallScore <= 59) {
-                riskKey = "mod";
-                riskName = "MODERATE RISK";
-            } else if (overallScore <= 79) {
-                riskKey = "high";
-                riskName = "HIGH RISK";
-            } else {
-                riskKey = "crit";
-                riskName = "CRITICAL RISK";
-            }
+            riskKey = RiskModel.bandKey(overallScore);
+            riskName = RiskModel.bandName(overallScore);
         }
 
         Set<String> basisIds = rawSegments.stream()
@@ -204,14 +180,8 @@ public class TripAnalysisService {
             String sk;
             if (seg.score == null) {
                 sk = "unknown";
-            } else if (seg.score <= 29) {
-                sk = "low";
-            } else if (seg.score <= 59) {
-                sk = "mod";
-            } else if (seg.score <= 79) {
-                sk = "high";
             } else {
-                sk = "crit";
+                sk = RiskModel.bandKey((int) Math.ceil(seg.score));
             }
             return new RouteRiskSegment(
                 seg.coords, seg.score == null ? null : seg.score.intValue(), sk,
@@ -242,9 +212,9 @@ public class TripAnalysisService {
         );
     }
 
-    static final int CALM_FACTOR_MAX_SCORE = 29;
-    static final double CALM_AREA_MAX_KM = 15.0;
-    private static final Set<String> CALM_FACTORS = Set.of("Weather", "Flood / roads", "Official advisories");
+    static final int CALM_FACTOR_MAX_SCORE = RiskPolicy.get().calmArea().maxFactorScore();
+    static final double CALM_AREA_MAX_KM = RiskPolicy.get().calmArea().maxDistanceKm();
+    private static final Set<String> CALM_FACTORS = Set.copyOf(RiskPolicy.get().calmArea().factors());
 
     /**
      * For routes without enough location-specific coverage: if every pilot location shows
