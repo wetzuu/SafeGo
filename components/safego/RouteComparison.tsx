@@ -25,8 +25,8 @@ export function travelTime(route: ClassifiedRoute) {
   return route.durationSeconds === null ? null : `~${minutes(route.durationSeconds)} min`;
 }
 
-function timeDelta(route: ClassifiedRoute) {
-  if (route.deltaSeconds === null) return null;
+function timeDelta(route: ClassifiedRoute, count: number) {
+  if (route.deltaSeconds === null || count < 2) return null;
   return route.deltaSeconds < 60 ? "Quickest" : `+${minutes(route.deltaSeconds)} min vs quickest`;
 }
 
@@ -50,14 +50,14 @@ export function RouteComparison({
   return (
     <section className="mb-3" aria-label="Compare routes">
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-bold text-ink">Compare {routes.length} routes</h3>
+        <h3 className="text-xs font-bold text-ink">{routes.length > 1 ? `Compare ${routes.length} routes` : "1 route found"}</h3>
         <span className="text-[11px] text-ink-soft">Times without traffic or flooding</span>
       </div>
       <ul className="space-y-2">
         {routes.map((route) => {
           const selected = route.routeId === selectedId;
           const time = travelTime(route);
-          const delta = timeDelta(route);
+          const delta = timeDelta(route, routes.length);
           const km = distance(route);
           return (
             <li key={route.routeId}>

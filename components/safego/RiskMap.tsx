@@ -247,9 +247,10 @@ export function RiskMap({
     return assessTrip(liveTrip, { locations, sources: liveTrip.sources, weatherUpdatedAt: null }, makeRouteEstimate(samples, pastAlerts));
   }, [at, liveTrip, locations, pastAlerts, weatherPoints, weatherTimeline]);
 
-  // Alternatives are rated on live data only, so the comparison is hidden while the map is rewound.
+  // Every trip gets a route card ("ONLY ROUTE FOUND" when OSRM found no other road). Alternatives are
+  // rated on live data only, so the cards are hidden while the map is rewound.
   const comparison = useMemo(
-    () => at === null && routeOptions && routeOptions.length > 1 ? classifyRoutes(routeOptions.map(scoredRoute)) : [],
+    () => at === null && routeOptions && routeOptions.length > 0 ? classifyRoutes(routeOptions.map(scoredRoute)) : [],
     [at, routeOptions],
   );
   const selectedRouteId = liveTrip?.routeId ?? "route-1";
@@ -917,7 +918,7 @@ export function RiskMap({
 
   const summary = (
     <>
-      {trip && comparison.length > 1 && (
+      {trip && comparison.length > 0 && (
         <RouteComparison routes={comparison} selectedId={selectedRouteId} onSelect={onSelectRoute} />
       )}
       <p className="text-sm text-ink leading-snug">{summaryMessage.why}</p>
