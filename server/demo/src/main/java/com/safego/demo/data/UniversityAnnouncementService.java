@@ -52,9 +52,6 @@ public class UniversityAnnouncementService {
     public static final String SOURCE_KEY = "university-announcements";
     public static final String SOURCE_NAME = "University suspension scan";
 
-    /** A scan runs once the weather factor or overall risk reaches these scores at any location. */
-    static final int WEATHER_TRIGGER_SCORE = 30;
-    static final int RISK_TRIGGER_SCORE = 60;
     /** Campuses are linked to SafeGo locations within this distance. */
     static final double NEARBY_KM = 2.5;
 
@@ -68,15 +65,39 @@ public class UniversityAnnouncementService {
 
     enum Kind { UNIVERSITY, GOVERNMENT, NEWS }
 
-    record Campus(String id, String name, String campus, String city, double lat, double lon,
-                  String logoPath, List<String> names, List<String> acronyms) {}
+    /**
+     * A monitored campus. {@code lguCode} links it to its city's suspension announcements (e.g. "NCR-MANILA");
+     * {@code impactRadiusMeters} is its commuter zone: weather there decides whether to scan.
+     */
+    record Campus(String id, String name, String campus, String city, String lguCode, double impactRadiusMeters,
+                  double lat, double lon, String logoPath, List<String> names, List<String> acronyms) {}
+
+    /** Default commuter zone around a campus. */
+    static final double IMPACT_RADIUS_METERS = 5_000;
+    /** At most this many sources are fetched at the same time. */
+    static final int MAX_PARALLEL_FETCHES = 5;
 
     record Feed(String id, String name, String url, Kind kind, List<String> campusIds) {}
 
     record Item(String title, String text, String link, Instant published) {}
 
     public record Match(String campusId, String status, String title, String link, String sourceName,
-                        boolean official, boolean areaWide, String publishedAt) {}
+                        boolean official, boolean areaWide, String publishedAt, boolean allLevels) {
+        public Match(String campusId, String status, String title, String link, String sourceName,
+                     boolean official, boolean areaWide, String publishedAt) {
+            this(campusId, status, title, link, sourceName, official, areaWide, publishedAt, false);
+        }
+    }
+
+    /**
+     * A change in a campus's suspension status found by a scan, as pushed to the app (UNIVERSITY_ADVISORY).
+     * status: SUSPENDED or ASYNCHRONOUS. The scanner never reports NORMAL: a notice ageing out is not a
+     * resumption. scope: ALL_LEVELS when the notice says so, otherwise UNSPECIFIED. verified is false for
+     * news reports, which are not the school's or government's own post.
+     */
+    public record UniversityAdvisory(String type, String universityId, String universityName, String lguCode,
+            String status, String scope, String issuedAt, String message, String sourceName, String sourceUrl,
+            boolean verified, boolean areaWide, String origin) {}
 
     public record FeedReport(String id, String name, String url, String kind, boolean ok, int items, String error) {}
 
@@ -84,27 +105,27 @@ public class UniversityAnnouncementService {
     public record ScanResult(String state, String reason, String scannedAt, List<FeedReport> feeds, List<Match> matches) {}
 
     static final List<Campus> CAMPUSES = List.of(
-        new Campus("mapua-manila", "Mapúa University", "Intramuros, Manila", "manila", 14.5907, 120.9781,
+        new Campus("mapua-manila", "Mapúa University", "Intramuros, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.5907, 120.9781,
             "/university-logos/mapua.webp", List.of("mapua"), List.of()),
-        new Campus("mapua-makati-campus", "Mapúa University", "Makati Campus", "makati", 14.5665, 121.0150,
+        new Campus("mapua-makati-campus", "Mapúa University", "Makati Campus", "makati", "NCR-MAKATI", IMPACT_RADIUS_METERS, 14.5665, 121.0150,
             "/university-logos/mapua.webp", List.of("mapua"), List.of()),
-        new Campus("ust-manila", "University of Santo Tomas", "España, Manila", "manila", 14.6096, 120.9894,
+        new Campus("ust-manila", "University of Santo Tomas", "España, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.6096, 120.9894,
             "/university-logos/ust.png", List.of("university of santo tomas"), List.of("UST")),
-        new Campus("feu-manila", "Far Eastern University", "Nicanor Reyes Street, Manila", "manila", 14.6038, 120.9865,
+        new Campus("feu-manila", "Far Eastern University", "Nicanor Reyes Street, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.6038, 120.9865,
             "/university-logos/feu.webp", List.of("far eastern university"), List.of("FEU")),
-        new Campus("ue-manila", "University of the East", "C. M. Recto Avenue, Manila", "manila", 14.6018, 120.9895,
+        new Campus("ue-manila", "University of the East", "C. M. Recto Avenue, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.6018, 120.9895,
             "/university-logos/ue.png", List.of("university of the east"), List.of("UE")),
-        new Campus("ue-caloocan", "University of the East", "Caloocan Campus", "caloocan", 14.6577, 120.9838,
+        new Campus("ue-caloocan", "University of the East", "Caloocan Campus", "caloocan", "NCR-CALOOCAN", IMPACT_RADIUS_METERS, 14.6577, 120.9838,
             "/university-logos/ue.png", List.of("university of the east"), List.of("UE")),
-        new Campus("san-sebastian-manila", "San Sebastian College-Recoletos", "C. M. Recto Avenue, Manila", "manila", 14.5995, 120.9900,
+        new Campus("san-sebastian-manila", "San Sebastian College-Recoletos", "C. M. Recto Avenue, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.5995, 120.9900,
             "/university-logos/sscr.png", List.of("san sebastian college"), List.of("SSC-R")),
-        new Campus("uap-pasig", "University of Asia and the Pacific", "Ortigas Center, Pasig", "pasig", 14.5796, 121.0606,
+        new Campus("uap-pasig", "University of Asia and the Pacific", "Ortigas Center, Pasig", "pasig", "NCR-PASIG", IMPACT_RADIUS_METERS, 14.5796, 121.0606,
             "/university-logos/uap.png", List.of("university of asia and the pacific"), List.of("UA&P")),
-        new Campus("plp-pasig", "Pamantasan ng Lungsod ng Pasig", "Kapasigan, Pasig", "pasig", 14.5622, 121.0746,
+        new Campus("plp-pasig", "Pamantasan ng Lungsod ng Pasig", "Kapasigan, Pasig", "pasig", "NCR-PASIG", IMPACT_RADIUS_METERS, 14.5622, 121.0746,
             "/university-logos/plp.png", List.of("pamantasan ng lungsod ng pasig"), List.of("PLP")),
-        new Campus("jru-mandaluyong", "José Rizal University", "Shaw Boulevard, Mandaluyong", "mandaluyong", 14.5935, 121.0300,
+        new Campus("jru-mandaluyong", "José Rizal University", "Shaw Boulevard, Mandaluyong", "mandaluyong", "NCR-MANDALUYONG", IMPACT_RADIUS_METERS, 14.5935, 121.0300,
             "", List.of("jose rizal university"), List.of("JRU")),
-        new Campus("pup-sta-mesa", "Polytechnic University of the Philippines", "Sta. Mesa, Manila", "manila", 14.5979, 121.0108,
+        new Campus("pup-sta-mesa", "Polytechnic University of the Philippines", "Sta. Mesa, Manila", "manila", "NCR-MANILA", IMPACT_RADIUS_METERS, 14.5979, 121.0108,
             "", List.of("polytechnic university of the philippines"), List.of("PUP"))
     );
 
@@ -147,6 +168,7 @@ public class UniversityAnnouncementService {
     private long lastAt;
     private boolean scanning;
     private Runnable onScanFinished = () -> {};
+    private java.util.function.Consumer<List<UniversityAdvisory>> onAdvisories = advisories -> {};
 
     @Autowired
     public UniversityAnnouncementService() {
@@ -172,20 +194,27 @@ public class UniversityAnnouncementService {
         this.onScanFinished = callback;
     }
 
-    /** Why a scan should run now, or null when conditions are calm. */
-    static String trigger(List<SafeGoLocation> locations, boolean officialWeatherAlert) {
-        if (officialWeatherAlert) return "A PAGASA alert is in force over a SafeGo location.";
-        for (SafeGoLocation location : locations) {
-            for (RiskFactor factor : location.factors()) {
-                if ("Weather".equals(factor.name()) && !"Unavailable".equals(factor.pillText()) && factor.score() >= WEATHER_TRIGGER_SCORE) {
-                    return "Rain or rough weather near " + location.name() + ".";
-                }
-            }
-            if (location.risk() != null && location.risk().percentage() >= RISK_TRIGGER_SCORE) {
-                return "High risk near " + location.name() + ".";
-            }
+    /** Called with every campus whose suspension status changed in a scan (for the event stream). */
+    public synchronized void onAdvisories(java.util.function.Consumer<List<UniversityAdvisory>> callback) {
+        this.onAdvisories = callback;
+    }
+
+    /** True when a point lies in any monitored campus's commuter zone. */
+    static boolean inCampusZone(double[] coordinates) {
+        for (Campus campus : CAMPUSES) {
+            if (GeoUtils.distanceKm(coordinates, new double[] {campus.lat(), campus.lon()}) * 1000 <= campus.impactRadiusMeters()) return true;
         }
-        return null;
+        return false;
+    }
+
+    /** Why a scan should run now, or null when the weather in the campus zones is clear. */
+    static String trigger(List<SafeGoLocation> locations, boolean officialWeatherAlert) {
+        return reading(locations, officialWeatherAlert).reason();
+    }
+
+    /** The weather state across the campus commuter zones. */
+    static RegionalWeatherMonitor.Reading reading(List<SafeGoLocation> locations, boolean officialWeatherAlert) {
+        return RegionalWeatherMonitor.classify(locations, officialWeatherAlert, UniversityAnnouncementService::inCampusZone);
     }
 
     /**
@@ -198,23 +227,58 @@ public class UniversityAnnouncementService {
         if (last != null && System.currentTimeMillis() - lastAt < CACHE_MS) return last;
         String reason = "always".equals(mode) ? "Scanning is always on." : trigger(locations, officialWeatherAlert);
         if (reason == null) {
-            return new ScanResult("standby", "No rain or high risk right now, so no scan was needed.", null, feedList(), List.of());
+            return new ScanResult("standby", "No rain or PAGASA alert in the campus zones right now, so no scan was needed.", null, feedList(), List.of());
         }
-        if (!scanning) {
-            scanning = true;
-            Thread.ofVirtual().name("university-scan").start(() -> {
-                ScanResult result = fetchAll(reason);
-                Runnable finished;
-                synchronized (this) {
-                    last = result;
-                    lastAt = System.currentTimeMillis();
-                    scanning = false;
-                    finished = onScanFinished;
-                }
-                finished.run();
-            });
-        }
+        startScan(reason);
         return last != null ? last : new ScanResult("scanning", reason, null, feedList(), List.of());
+    }
+
+    /**
+     * Weather just escalated in the campus zones (see RegionalWeatherMonitor): scan now in the background,
+     * whatever the cache says. The monitor already debounces how often this can happen.
+     */
+    public synchronized void scanForEscalation(String reason) {
+        if ("disabled".equals(mode)) return;
+        startScan(reason);
+    }
+
+    private synchronized void startScan(String reason) {
+        if (scanning) return;
+        scanning = true;
+        Thread.ofVirtual().name("university-scan").start(() -> {
+            ScanResult result = fetchAll(reason);
+            Runnable finished;
+            java.util.function.Consumer<List<UniversityAdvisory>> advisories;
+            List<UniversityAdvisory> changed;
+            synchronized (this) {
+                changed = changes(last == null ? List.of() : last.matches(), result.matches());
+                last = result;
+                lastAt = System.currentTimeMillis();
+                scanning = false;
+                finished = onScanFinished;
+                advisories = onAdvisories;
+            }
+            finished.run();
+            if (!changed.isEmpty()) advisories.accept(changed);
+        });
+    }
+
+    /** Campuses whose notice is new or different from the previous scan's, as advisories. */
+    static List<UniversityAdvisory> changes(List<Match> before, List<Match> after) {
+        Map<String, Match> previous = new LinkedHashMap<>();
+        for (Match match : before) previous.put(match.campusId(), match);
+        List<UniversityAdvisory> changed = new ArrayList<>();
+        for (Match match : after) {
+            Match old = previous.get(match.campusId());
+            if (old != null && old.status().equals(match.status()) && old.link().equals(match.link())) continue;
+            Campus campus = CAMPUSES.stream().filter(c -> c.id().equals(match.campusId())).findFirst().orElse(null);
+            if (campus == null) continue;
+            changed.add(new UniversityAdvisory("UNIVERSITY_ADVISORY", campus.id(), campus.name() + " (" + campus.campus() + ")",
+                campus.lguCode(), "online".equals(match.status()) ? "ASYNCHRONOUS" : "SUSPENDED",
+                match.allLevels() ? "ALL_LEVELS" : "UNSPECIFIED", match.publishedAt(), match.title(), match.sourceName(),
+                match.link(), match.official(), match.areaWide(), "scanner"));
+        }
+        return List.copyOf(changed);
     }
 
     /** Scan now, whatever the weather. Repeated requests within two minutes reuse the last scan. */
@@ -225,10 +289,15 @@ public class UniversityAnnouncementService {
         }
         // Fetched outside the lock, so a slow source never holds up a dashboard refresh.
         ScanResult result = fetchAll("Requested from the app.");
+        List<UniversityAdvisory> changed;
+        java.util.function.Consumer<List<UniversityAdvisory>> advisories;
         synchronized (this) {
+            changed = changes(last == null ? List.of() : last.matches(), result.matches());
             last = result;
             lastAt = System.currentTimeMillis();
+            advisories = onAdvisories;
         }
+        if (!changed.isEmpty()) advisories.accept(changed);
         return result;
     }
 
@@ -237,17 +306,18 @@ public class UniversityAnnouncementService {
         if ("disabled".equals(mode)) return new ScanResult("disabled", null, null, List.of(), List.of());
         if (last != null && System.currentTimeMillis() - lastAt < CACHE_MS) return last;
         if (scanning) return new ScanResult("scanning", null, null, feedList(), List.of());
-        return new ScanResult("standby", "No rain or high risk right now, so no scan was needed.", null, feedList(), List.of());
+        return new ScanResult("standby", "No rain or PAGASA alert in the campus zones right now, so no scan was needed.", null, feedList(), List.of());
     }
 
     private ScanResult fetchAll(String reason) {
         Instant now = Instant.now();
         List<FeedReport> reports = new ArrayList<>();
         List<Match> matches = new ArrayList<>();
-        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+        // At most five sources at once, so a scan never floods school websites or the network.
+        try (ExecutorService pool = Executors.newFixedThreadPool(MAX_PARALLEL_FETCHES, Thread.ofVirtual().name("university-fetch-", 0).factory())) {
             List<Callable<List<Item>>> jobs = new ArrayList<>();
             for (Feed feed : FEEDS) jobs.add(() -> fetch(feed));
-            List<Future<List<Item>>> results = pool.invokeAll(jobs, 25, TimeUnit.SECONDS);
+            List<Future<List<Item>>> results = pool.invokeAll(jobs, 60, TimeUnit.SECONDS);
             for (int i = 0; i < FEEDS.size(); i++) {
                 Feed feed = FEEDS.get(i);
                 List<Item> items = null;
@@ -364,7 +434,7 @@ public class UniversityAnnouncementService {
             boolean areaWide = feed.kind() != Kind.UNIVERSITY && !named && (metroWide || (allLevels && cityNamed(campus.city(), title)));
             if (own || named || areaWide) {
                 matches.add(new Match(campus.id(), status, item.title().trim(), item.link(), feed.name(), official, areaWide,
-                    item.published().toString()));
+                    item.published().toString(), allLevels));
             }
         }
         return matches;
@@ -447,7 +517,7 @@ public class UniversityAnnouncementService {
                 + " and found no suspension notice for this campus. Schools often post on Facebook first, so check the official page."
             : "scanning".equals(scan.state())
                 ? "SafeGo is scanning for suspension notices now. Refresh in a minute."
-                : "SafeGo looks for suspension notices when there is rain or a high risk. Conditions are calm, so nothing was scanned.";
+                : "SafeGo looks for suspension notices when rain or a PAGASA alert reaches the campus zones. Conditions are clear, so nothing was scanned.";
         return new UniversityStatus(campus.id(), campus.name(), campus.campus(), campus.logoPath(), campus.name() + " logo",
             "no-update", "scanned".equals(scan.state()) ? "No suspension notice found" : "Not scanned yet", text, DATE.format(checked), TIME.format(checked), false, null, null, null);
     }

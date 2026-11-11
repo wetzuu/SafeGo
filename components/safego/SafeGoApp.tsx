@@ -18,6 +18,7 @@ import type {
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { assessTrip, assessTripRoutes } from "@/lib/trips/trip-assessment";
+import { describeLiveEvent, subscribeToLiveEvents } from "@/lib/safego/live-events";
 import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { buildRouteEstimate } from "@/lib/trips/route-estimate";
 import type { RouteEstimate } from "@/lib/trips/route-risk";
@@ -292,6 +293,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [dataBackend, setDataBackend] = useState(initialBackend);
   const [sources, setSources] = useState(initialSources);
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
+  // A short-lived line about a live event (rain reaching campuses, a suspension found).
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [apiUnavailable, setApiUnavailable] = useState(false);
   // Every scored route for the current trip (main route first) and the one shown on the map.
@@ -416,6 +419,22 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       window.clearInterval(refreshTimer);
+    };
+  }, [refreshDashboard]);
+
+  // Live events from the server: refresh so university alerts update without a reload, and say what happened.
+  useEffect(() => {
+    if (getReplay()) return;
+    let hideTimer: number | undefined;
+    const stop = subscribeToLiveEvents((event) => {
+      void refreshDashboard();
+      setLiveNotice(describeLiveEvent(event));
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => setLiveNotice(null), 12_000);
+    });
+    return () => {
+      stop();
+      window.clearTimeout(hideTimer);
     };
   }, [refreshDashboard]);
 
@@ -637,6 +656,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onDismissUniversity={dismissUniversity}
               footer={<div className="[&_.data-status]:mb-0">{dataStatus}</div>}
               notice={apiUnavailable ? "Can’t reach SafeGo’s server. Retrying; ratings may be out of date." : null}
+              liveNotice={liveNotice}
               bottomInset={isDesktop ? 0 : MOBILE_NAV_HEIGHT}
               legendSlot={isDesktop ? legendSlot : null}
             />

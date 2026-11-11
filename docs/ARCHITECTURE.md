@@ -11,6 +11,8 @@ Browser
       -> approved normalized feeds -> official advisories and flood/road observations
       -> Nominatim -> submitted place lookup
       -> OSRM -> road geometry and road names
+      -> university, government and news feeds -> class-suspension notices (weather-triggered)
+  <- GET /api/events (Server-Sent Events) <- SafeGoEventBus <- weather monitor and suspension scanner
 ```
 
 The browser never receives database credentials or provider configuration. The Java server makes external provider requests; Next.js serves the UI and forwards `/api/*`.

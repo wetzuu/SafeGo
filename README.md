@@ -143,6 +143,7 @@ the local database-only setup.
 | `POST /api/reports` | Disabled unless both community intake and moderation are explicitly enabled |
 | `/api/auth/*`, `/api/account/*` | Accounts, sessions, saved places and bookmarks |
 | `/api/admin/reports` | Report moderation for admin accounts |
+| `GET /api/events` | Server-Sent Events: `WEATHER_ESCALATED` and `UNIVERSITY_ADVISORY` as they happen; `?universityId=` filters advisories |
 
 Responses include `meta.backend` (`local` or `database`) and `meta.generatedAt`. The dashboard service keeps an assembled snapshot in memory for one minute, while successful OSRM routes are cached for ten minutes. The UI starts with geographic anchors only and replaces them with `/api/dashboard` live results when available.
 
@@ -165,6 +166,23 @@ OSRM supplies road geometry and road names. SafeGo preserves road bends, splits 
 Successful OSRM routes are cached in memory for ten minutes. If live routing is unavailable, the trip shows an error; SafeGo never draws a saved or invented route.
 
 Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. `npm run backtest` scores documented Metro Manila flood days and dry days with the live weather rules; see [BACKTEST.md](docs/BACKTEST.md) for the results and their limits. Usability sessions follow [docs/USABILITY_SESSIONS.md](docs/USABILITY_SESSIONS.md); `npm run sus` scores them. No sessions have been run yet.
+
+## Weather-triggered suspension scan and live events
+
+`RegionalWeatherMonitor` classifies the weather across the campus commuter zones (5 km around each
+monitored campus) as CLEAR, LIGHT_RAIN (live weather score 25+, or any PAGASA alert) or SEVERE (60+).
+When it gets worse, for example clear to light rain, SafeGo publishes `WEATHER_ESCALATED` and starts a
+suspension scan at once. Escalations are debounced for 30 minutes. While it stays rainy, the scan
+repeats every ten minutes to catch new notices.
+
+The scan reads the registry in `UniversityAnnouncementService` (campuses with an LGU code such as
+`NCR-MANILA` and a commuter radius; university, Official Gazette and news feeds), at most five sources
+at a time. Each campus whose notice is new or changed goes out as `UNIVERSITY_ADVISORY`
+(`SUSPENDED` or `ASYNCHRONOUS`; news reports are marked unverified). The web app listens on
+`GET /api/events`, refreshes, and shows a short notice. While someone is listening, the server
+re-checks the weather every five minutes (`WeatherWatch`); with no listeners it stays idle.
+
+`SAFEGO_UNIVERSITY_SCAN` is `auto` (default), `always` or `disabled`; replay mode disables scanning.
 
 ## Route comparison
 

@@ -91,6 +91,32 @@ Returns `data.hours: [{ time, alertIds }]` (hour starts in UTC for the last 4 da
 
 ---
 
+## GET /api/events
+
+Server-Sent Events (`text/event-stream`). Optional `?universityId=ust-manila` limits advisories to one
+campus; weather events always come through. A client reconnecting with `Last-Event-ID` receives the
+recent events (last 50) it missed. A `:ping` comment is sent every 25 seconds; the stream closes after
+30 minutes and the browser's `EventSource` reconnects.
+
+```text
+id: 12
+event: WEATHER_ESCALATED
+data: {"type":"WEATHER_ESCALATED","from":"CLEAR","to":"LIGHT_RAIN","reason":"Rain or gusty wind near España Blvd., Sampaloc.","at":"2026-11-11T00:00:00Z"}
+
+id: 13
+event: UNIVERSITY_ADVISORY
+data: {"type":"UNIVERSITY_ADVISORY","universityId":"ust-manila","universityName":"University of Santo Tomas (España, Manila)","lguCode":"NCR-MANILA","status":"SUSPENDED","scope":"ALL_LEVELS","issuedAt":"2026-11-11T00:05:00Z","message":"…","sourceName":"GMA News (Metro)","sourceUrl":"https://…","verified":false,"areaWide":false,"origin":"scanner"}
+```
+
+- `status`: `SUSPENDED` or `ASYNCHRONOUS` from the scanner. `NORMAL` is reserved for school admins; a
+  notice ageing out is not treated as classes resuming.
+- `scope`: `ALL_LEVELS` when the notice says so, otherwise `UNSPECIFIED` (`TERTIARY_ONLY` is reserved
+  for school admins).
+- `verified`: false for news reports, which are not the school's or government's own notice.
+- Events are kept in memory only; nothing is stored across restarts.
+
+---
+
 ## GET /api/alerts/active
 
 Active PAGASA public alerts (CAP) that touch Metro Manila, with only their Metro Manila-relevant polygons. See `docs/SOURCE_FEEDS.md` for filtering and the severity mapping.

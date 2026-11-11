@@ -34,6 +34,7 @@ what it measures and proving the ratings against reality.
 | 6 | [Resilience and offline mode](phase-6-resilience.md) | 0 | Claude | Not started |
 | 7 | [Validation with people](phase-7-human-validation.md) | none (can start now) | **Team runs sessions**, Claude prepares and scores | Not started |
 | 8 | [Accounts and production hardening](phase-8-production.md) | 1 | **Team decision**, then Claude | Not started |
+| 9 | [University Hub](phase-9-university-hub.md) | 8 for school accounts | Decided; Claude | Pillar 1 + SSE done; dashboard not started |
 
 Suggested order: 0 → 1 → 2 → (3, 4, 5 in any order) → 6 → 8. Phase 7 runs in parallel from now,
 and must be repeated after any change to rating wording (Phases 1, 4, 5).

@@ -3,10 +3,12 @@ package com.safego.demo.data;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.safego.demo.events.SafeGoEventBus;
 import com.safego.demo.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -20,6 +22,8 @@ public class DashboardService {
     private final OperationalFeedService feedService;
     private final PagasaCapService pagasaService;
     private final UniversityAnnouncementService universityService;
+    private final SafeGoEventBus events;
+    private final RegionalWeatherMonitor weatherMonitor = new RegionalWeatherMonitor();
     private final ObjectMapper mapper = new ObjectMapper();
 
     private DashboardSnapshot cached;
@@ -27,17 +31,22 @@ public class DashboardService {
 
     /** For tests and tools: never calls PAGASA, so results stay repeatable. */
     public DashboardService() {
-        this(new WeatherService(), new OperationalFeedService(), PagasaCapService.disabled(), UniversityAnnouncementService.disabled());
+        this(new WeatherService(), new OperationalFeedService(), PagasaCapService.disabled(), UniversityAnnouncementService.disabled(),
+            new SafeGoEventBus());
     }
 
     @Autowired
     public DashboardService(WeatherService weatherService, OperationalFeedService feedService, PagasaCapService pagasaService,
-            UniversityAnnouncementService universityService) {
+            UniversityAnnouncementService universityService, SafeGoEventBus events) {
         this.weatherService = weatherService;
         this.feedService = feedService;
         this.pagasaService = pagasaService;
         this.universityService = universityService;
+        this.events = events;
         universityService.onScanFinished(this::invalidate);
+        // Each campus whose suspension status changed goes out on the event stream.
+        universityService.onAdvisories(advisories -> advisories.forEach(advisory ->
+            events.publish(SafeGoEventBus.UNIVERSITY_ADVISORY, advisory.universityId(), advisory)));
 
         String mode = System.getenv().getOrDefault("SAFEGO_DATA_MODE", "auto").trim().toLowerCase(Locale.ROOT);
         String url = System.getenv("DATABASE_URL");
@@ -150,7 +159,19 @@ public class DashboardService {
             }
         }
 
-        // Rain, a PAGASA alert or a high rating sets off a scan for university suspension notices.
+        // Weather escalating in the campus zones (e.g. clear to rain, or a PAGASA alert) starts a
+        // suspension scan right away and goes out on the event stream; the monitor debounces it.
+        RegionalWeatherMonitor.Reading reading = UniversityAnnouncementService.reading(locations, pagasaOverLocations);
+        weatherMonitor.observe(reading, Instant.now()).ifPresent(transition -> {
+            events.publish(SafeGoEventBus.WEATHER_ESCALATED, null, Map.of(
+                "type", SafeGoEventBus.WEATHER_ESCALATED,
+                "from", transition.from().name(),
+                "to", transition.to().name(),
+                "reason", transition.reason(),
+                "at", transition.at().toString()));
+            universityService.scanForEscalation(transition.reason());
+        });
+        // While the weather stays rainy, the scan repeats every ten minutes to catch new notices.
         UniversityAnnouncementService.ScanResult universityScan = universityService.check(locations, pagasaOverLocations);
         locations = universityService.attach(locations, universityScan);
         sources.removeIf(source -> UniversityAnnouncementService.SOURCE_KEY.equals(source.key()));

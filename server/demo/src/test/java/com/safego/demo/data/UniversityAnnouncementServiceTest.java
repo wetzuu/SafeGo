@@ -150,4 +150,34 @@ class UniversityAnnouncementServiceTest {
             "", "", "", List.of(), factors, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
             RiskModel.analyzeRisk(factors, "", ""));
     }
+
+    @Test
+    void reportsOnlyCampusesWhoseNoticeChanged() {
+        Match old = new Match("ust-manila", "suspended", "UST suspends classes", "https://news.example/ust", "Example News", false, false, "2026-10-04T01:30:00Z");
+        Match online = new Match("feu-manila", "online", "FEU shifts to online classes", "https://www.feu.edu.ph/x", "FEU website", true, false, "2026-10-04T02:00:00Z", true);
+        var advisories = UniversityAnnouncementService.changes(List.of(old), List.of(old, online));
+        assertEquals(1, advisories.size());
+        var feu = advisories.get(0);
+        assertEquals("feu-manila", feu.universityId());
+        assertEquals("ASYNCHRONOUS", feu.status());
+        assertEquals("ALL_LEVELS", feu.scope());
+        assertEquals("NCR-MANILA", feu.lguCode());
+        assertTrue(feu.verified());
+        assertEquals("UNIVERSITY_ADVISORY", feu.type());
+        var news = UniversityAnnouncementService.changes(List.of(), List.of(old)).get(0);
+        assertEquals("SUSPENDED", news.status());
+        assertEquals("UNSPECIFIED", news.scope());
+        assertFalse(news.verified(), "a news report is not the school's own notice");
+        assertTrue(UniversityAnnouncementService.changes(List.of(old), List.of(old)).isEmpty());
+    }
+
+    @Test
+    void everyCampusHasAnLguCodeAndACommuterZone() {
+        for (var campus : UniversityAnnouncementService.CAMPUSES) {
+            assertTrue(campus.lguCode().startsWith("NCR-"), campus.id());
+            assertEquals(UniversityAnnouncementService.IMPACT_RADIUS_METERS, campus.impactRadiusMeters());
+        }
+        assertTrue(UniversityAnnouncementService.inCampusZone(new double[] {14.612, 120.9902}), "España is in UST's zone");
+        assertFalse(UniversityAnnouncementService.inCampusZone(new double[] {14.38, 121.04}), "Muntinlupa is outside every zone");
+    }
 }

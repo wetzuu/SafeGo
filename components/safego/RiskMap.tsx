@@ -166,6 +166,8 @@ export interface RiskMapProps {
   footer?: React.ReactNode;
   /** A problem to surface on the map, e.g. the server being unreachable. */
   notice?: string | null;
+  /** A short-lived, non-error update from the server's live events (e.g. a suspension found). */
+  liveNotice?: string | null;
   /** Space taken by a bottom tab bar on phones, so the sheet sits above it. */
   bottomInset?: number;
   /** When set, the legend is rendered into this element (the desktop sidebar) instead of over the map. */
@@ -192,6 +194,7 @@ export function RiskMap({
   onDismissUniversity,
   footer,
   notice = null,
+  liveNotice = null,
   bottomInset = 0,
   legendSlot = null,
 }: RiskMapProps) {
@@ -1111,6 +1114,12 @@ export function RiskMap({
             ? { tone: "bg-panel text-ink-soft", text: "Loading the map…" }
             : null;
 
+  const liveChip = liveNotice && (
+    <div role="status" className="pointer-events-auto rounded-box bg-inverse px-3 py-2 text-xs font-semibold leading-snug text-white shadow-[var(--shadow-card)]">
+      {liveNotice}
+    </div>
+  );
+
   const chips = (
     <div
       role="toolbar"
@@ -1172,6 +1181,7 @@ export function RiskMap({
 
           {/* Bottom-left, so the map controls and legend never sit under the details card. */}
           <div className={`absolute left-4 flex w-[340px] max-w-[calc(100%-25rem)] [&>*]:max-w-full flex-col items-start gap-2 ${showTimeline ? "bottom-28" : "bottom-6"}`}>
+            {liveChip}
             {hint}
             {fabs}
           </div>
@@ -1183,6 +1193,7 @@ export function RiskMap({
             {leftFloatingPanel}
             {chips}
             {statusChip && <div role="status" className={`pointer-events-auto self-center rounded-full px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-card)] ${statusChip.tone}`}>{statusChip.text}</div>}
+            {liveChip}
             {hint}
           </div>
           <BottomSheet
