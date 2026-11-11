@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyRoutes, scoredRoute, type ScoredRoute } from "../lib/trips/route-comparison.ts";
+import { classifyRoutes, routeHazards, scoredRoute, type ScoredRoute } from "../lib/trips/route-comparison.ts";
 import { assessTripRoutes } from "../lib/trips/trip-assessment.ts";
 import { LOCATIONS } from "./fixtures/seeded-locations.ts";
 import type { ResolvedPlace, TripAnalysis } from "../lib/trips/types.ts";
@@ -110,4 +110,10 @@ test("every alternative from the API is scored like the main route", () => {
   const scored = routes.map(scoredRoute);
   assert.equal(scored[1].summary, "via Lerma Street");
   assert.equal(classifyRoutes(scored).length, 2);
+});
+
+test("a sliver outside SafeGo's data is not reported as 0%", () => {
+  const trip = { advisories: [], corridorLocations: [], coverage: { totalMeters: 10_000, unknownMeters: 20 } } as unknown as Parameters<typeof routeHazards>[0];
+  assert.deepEqual(routeHazards(trip), []);
+  assert.deepEqual(routeHazards({ ...trip, coverage: { totalMeters: 10_000, unknownMeters: 1_500 } } as typeof trip), ["15% outside SafeGo's data"]);
 });

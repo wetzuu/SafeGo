@@ -247,9 +247,9 @@ export function routeHazards(trip: TripAnalysis): string[] {
     hazards.push(`${phrase[0].toLocaleUpperCase()}${phrase.slice(1)}`);
   }
   const total = trip.coverage.totalMeters;
-  if (total > 0 && trip.coverage.unknownMeters > 0) {
-    hazards.push(`${Math.round((trip.coverage.unknownMeters / total) * 100)}% outside SafeGo's data`);
-  }
+  // Only when it rounds to at least 1%, so a sliver never reads "0% outside".
+  const outside = total > 0 ? Math.round((trip.coverage.unknownMeters / total) * 100) : 0;
+  if (outside >= 1) hazards.push(`${outside}% outside SafeGo's data`);
   return hazards;
 }
 
