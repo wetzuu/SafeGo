@@ -115,7 +115,7 @@ function newestChange(paths) {
 function buildIsCurrent() {
   if (!existsSync(server) || !existsSync(buildId)) return false;
   const built = statSync(buildId).mtimeMs;
-  return newestChange(["app", "components", "lib", "public", "next.config.ts", "package.json", "tsconfig.json", "postcss.config.mjs"]) <= built;
+  return newestChange(["app", "components", "lib", "config", "public", "next.config.ts", "package.json", "tsconfig.json", "postcss.config.mjs"]) <= built;
 }
 
 function run(command, commandArgs, label) {
