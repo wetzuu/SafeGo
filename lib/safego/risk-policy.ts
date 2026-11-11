@@ -19,6 +19,18 @@ export interface RiskPolicy {
     sampleLengthMeters: number;
   };
   calmArea: { factors: FactorName[]; maxFactorScore: number; maxDistanceKm: number };
+  routeComparison: {
+    /** A route this close to the lowest risk (in points) counts as "as low". */
+    nearLowestRiskPoints: number;
+    /** A route this much slower than the quickest (in %) still counts as "about as quick". */
+    nearQuickestPercent: number;
+    /** More than this much slower (in %) is "slower". */
+    slowerPercent: number;
+    /** This many points above the lowest risk is "higher risk". */
+    higherRiskPoints: number;
+    /** Routes rated in this band or above are labelled "avoid", however quick. */
+    avoidFromBand: RiskKey;
+  };
 }
 
 export const RISK_POLICY = policyJson as unknown as RiskPolicy;

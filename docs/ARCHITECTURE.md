@@ -33,7 +33,7 @@ The browser never receives database credentials or provider configuration. The J
 
 - Open-Meteo changes only the Weather factor. It does not create official advisories.
 - Nominatim is called only after a trip is submitted; local preset suggestions do not make network requests.
-- OSRM provides road geometry and road names. SafeGo does not expose trip distance or arrival-time estimates.
+- OSRM provides road geometry, road names, and the distance and free-flow driving time of up to four routes. Times are shown only to compare routes, labelled "without traffic or flooding", never as an arrival time.
 - Successful OSRM responses are cached in memory for ten minutes. If the router is unavailable, the trip fails with a visible error; SafeGo never draws a saved or invented route.
 - Route colors are derived only from nearby approved pilot points within the provisional 850-meter radius. Below 90% geographic coverage, the overall rating is null; unknown sections are drawn as a plain blue line. Pilot eligibility is distinct from verified operational evidence. See `docs/PILOT_VALIDATION.md`.
 - Weather and operational-feed failures retain stored data and surface a degraded source status. Routing failures remain visible errors.

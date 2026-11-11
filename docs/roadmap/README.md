@@ -38,6 +38,11 @@ what it measures and proving the ratings against reality.
 Suggested order: 0 → 1 → 2 → (3, 4, 5 in any order) → 6 → 8. Phase 7 runs in parallel from now,
 and must be repeated after any change to rating wording (Phases 1, 4, 5).
 
+**Added outside the phases:** route comparison (2026-11-11, owner request). Up to four routes per
+trip, labelled by `classifyRoutes()` with honest wording and relative, caveated drive times. See
+README "Route comparison". Repeat Phase 7 task 5 for the badges: nobody should read "LOWEST RISK" as
+"safe".
+
 Not now: new features (more university feeds, more account features, new layers). The risk is in
 whether the ratings are right, not in missing features.
 

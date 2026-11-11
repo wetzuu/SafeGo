@@ -208,7 +208,8 @@ public class TripAnalysisService {
             overallScore, rawScore, riskKey, riskName, safetyRule,
             corridorLocations, advisories, reports, hazards,
             coverageNote, Instant.now().toString(), route.source(),
-            coverage, sources
+            coverage, sources,
+            "route-1", route.durationSeconds(), route.distanceMeters(), List.of()
         );
     }
 

@@ -17,7 +17,7 @@ import type {
 } from "@/lib/safego/types";
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
 import type { TripAnalysis } from "@/lib/trips/types";
-import { assessTrip } from "@/lib/trips/trip-assessment";
+import { assessTrip, assessTripRoutes } from "@/lib/trips/trip-assessment";
 import { UNKNOWN_ROUTE_COLOR } from "@/lib/trips/pilot";
 import { buildRouteEstimate } from "@/lib/trips/route-estimate";
 import type { RouteEstimate } from "@/lib/trips/route-risk";
@@ -294,7 +294,13 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [apiUnavailable, setApiUnavailable] = useState(false);
-  const [trip, setTrip] = useState<TripAnalysis | null>(null);
+  // Every scored route for the current trip (main route first) and the one shown on the map.
+  const [tripOptions, setTripOptions] = useState<TripAnalysis[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const trip = useMemo(
+    () => tripOptions.find((option) => (option.routeId ?? "route-1") === selectedRouteId) ?? tripOptions[0] ?? null,
+    [selectedRouteId, tripOptions],
+  );
   const [previewRoute, setPreviewRoute] = useState<PreviewTripRoute | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<SafeGoLocation | null>(null);
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("overview");
@@ -319,33 +325,37 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   const refreshInFlight = useRef(false);
   const detailScrollRef = useRef<HTMLDivElement>(null);
   // Route sections away from SafeGo locations are scored from live weather and PAGASA alerts there.
-  const routeEstimateRef = useRef<RouteEstimate | null>(null);
+  const routeEstimatesRef = useRef<Map<string, RouteEstimate | null>>(new Map());
   const routeEstimateToken = useRef(0);
   const locationsRef = useRef(locations);
   useEffect(() => {
     locationsRef.current = locations;
   }, [locations]);
-  const tripRef = useRef<TripAnalysis | null>(null);
+  const tripOptionsRef = useRef<TripAnalysis[]>([]);
   useEffect(() => {
-    tripRef.current = trip;
-  }, [trip]);
+    tripOptionsRef.current = tripOptions;
+  }, [tripOptions]);
 
-  /** Builds the live estimate for this route, then re-scores the trip if it is still the one shown. */
-  const rescoreWithEstimate = useCallback((route: TripAnalysis, snapshot: DashboardSnapshot) => {
+  /** Builds the live estimate for each route, then re-scores each route if it is still on screen. */
+  const rescoreWithEstimates = useCallback((routes: TripAnalysis[], snapshot: DashboardSnapshot) => {
     const token = ++routeEstimateToken.current;
     const weatherLive = snapshot.sources.some((source) => source.key === "open-meteo" && source.status === "active");
     const alertsLive = snapshot.sources.some((source) => source.key === "pagasa-cap" && source.status === "active");
     if (!weatherLive && !alertsLive) {
-      routeEstimateRef.current = null;
+      routeEstimatesRef.current = new Map();
       return;
     }
-    void buildRouteEstimate(route.routeCoordinates, alertsLive).then((estimate) => {
-      if (token !== routeEstimateToken.current) return;
-      routeEstimateRef.current = estimate;
-      setTrip((current) => current && current.routeCoordinates === route.routeCoordinates
-        ? assessTrip(current, snapshot, estimate)
-        : current);
-    });
+    for (const route of routes) {
+      const id = route.routeId ?? "route-1";
+      void buildRouteEstimate(route.routeCoordinates, alertsLive).then((estimate) => {
+        if (token !== routeEstimateToken.current) return;
+        routeEstimatesRef.current.set(id, estimate);
+        setTripOptions((current) => current.map((option) =>
+          (option.routeId ?? "route-1") === id && option.routeCoordinates === route.routeCoordinates
+            ? assessTrip(option, snapshot, estimate)
+            : option));
+      });
+    }
   }, []);
 
   const refreshDashboard = useCallback(async (): Promise<boolean> => {
@@ -366,8 +376,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       ];
       const snapshot: DashboardSnapshot = { ...honest, locations: merged };
       setLocations(merged);
-      setTrip((current) => current ? assessTrip(current, snapshot, routeEstimateRef.current) : null);
-      if (tripRef.current) rescoreWithEstimate(tripRef.current, snapshot);
+      setTripOptions((current) => current.map((option) =>
+        assessTrip(option, snapshot, routeEstimatesRef.current.get(option.routeId ?? "route-1"))));
+      if (tripOptionsRef.current.length) rescoreWithEstimates(tripOptionsRef.current, snapshot);
       setDataBackend(envelope.meta.backend);
       setSources(envelope.data.sources);
       setWeatherUpdatedAt(envelope.data.weatherUpdatedAt);
@@ -382,7 +393,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       refreshInFlight.current = false;
       setRefreshing(false);
     }
-  }, [rescoreWithEstimate]);
+  }, [rescoreWithEstimates]);
 
   useEffect(() => {
     const accountTimer = window.setTimeout(() => void loadAccountSession().then(setAccount), 0);
@@ -409,9 +420,10 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, [refreshDashboard]);
 
   const selectTrip = useCallback((result: TripAnalysis) => {
-    // The trip API scores with every factor; re-assess the same route with honest scores.
+    // Score the main route and every alternative the same way, from live data in the browser.
     const snapshot = { locations, sources, weatherUpdatedAt };
-    const analysis = assessTrip(result, snapshot);
+    const routes = assessTripRoutes(result, snapshot);
+    const analysis = routes[0];
     const destinationRiskId =
       analysis.destination.matchedLocationId ??
       analysis.segments.at(-1)?.basisLocationId;
@@ -419,16 +431,17 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       locations.find((location) => location.id === destinationRiskId) ??
       analysis.corridorLocations[0] ??
       locations[0];
-    routeEstimateRef.current = null;
-    setTrip(analysis);
+    routeEstimatesRef.current = new Map();
+    setTripOptions(routes);
+    setSelectedRouteId(analysis.routeId ?? "route-1");
     setSelectedLocation(supportingLocation);
     setActiveScreen("overview");
     setPlannerOpen(false);
-    rescoreWithEstimate(analysis, snapshot);
-  }, [locations, rescoreWithEstimate, sources, weatherUpdatedAt]);
+    rescoreWithEstimates(routes, snapshot);
+  }, [locations, rescoreWithEstimates, sources, weatherUpdatedAt]);
   const selectLocation = useCallback((location: SafeGoLocation) => {
     routeEstimateToken.current += 1;
-    setTrip(null);
+    setTripOptions([]);
     setSelectedLocation(location);
     setActiveScreen("overview");
     setPlannerOpen(false);
@@ -445,9 +458,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
     setSelectedLocation((current) => current?.id === locationId
       ? { ...current, reports: [report, ...current.reports] }
       : current);
-    setTrip((current) => current
-      ? { ...current, reports: [report, ...current.reports] }
-      : current);
+    setTripOptions((current) => current.map((option) => ({ ...option, reports: [report, ...option.reports] })));
   }, []);
   const navigate = useCallback((screen: ScreenKey) => {
     setActiveScreen(screen);
@@ -455,7 +466,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
   }, []);
   const startNewTrip = useCallback(() => {
     routeEstimateToken.current += 1;
-    setTrip(null);
+    setTripOptions([]);
     setPreviewRoute(null);
     setSelectedLocation(null);
     setPlannerSeed(null);
@@ -610,6 +621,8 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               locations={trip ? trip.corridorLocations : locations}
               selectedLocation={trip ? trip.corridorLocations.find((loc) => loc.id === selectedLocation?.id) ?? trip.corridorLocations[0] ?? selectedLocation : selectedLocation}
               trip={trip}
+              routeOptions={tripOptions}
+              onSelectRoute={setSelectedRouteId}
               previewRoute={previewRoute}
               leftFloatingPanel={mobileSearch}
               onSelectLocation={trip ? selectMapLocation : selectLocation}

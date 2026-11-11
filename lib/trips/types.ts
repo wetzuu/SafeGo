@@ -61,4 +61,20 @@ export interface TripAnalysis {
   routingSource: "osrm" | "simulation";
   coverage: RouteCoverage;
   sources: SourceStatus[];
+  /** "route-1" for the main route, "route-2"… for alternatives. Missing from older APIs. */
+  routeId?: string;
+  /** OSRM free-flow driving time: no traffic, flooding or closures. Compare routes with it; never show it as an arrival time. */
+  durationSeconds?: number | null;
+  distanceMeters?: number | null;
+  /** Other road routes between the same places, as geometry for the browser to score. */
+  alternatives?: RouteOption[];
+}
+
+/** An alternative road route returned with a trip, before SafeGo scores it. */
+export interface RouteOption {
+  routeId: string;
+  routeCoordinates: Array<[number, number]>;
+  roadNames: string[];
+  durationSeconds: number | null;
+  distanceMeters: number | null;
 }

@@ -9,7 +9,8 @@ function uniqueBy<T>(items: T[], key: (item: T) => string) {
 
 // Reuse the resolved route so refreshing conditions never geocodes its labels again.
 export function assessTrip(
-  route: Pick<TripAnalysis, "origin" | "destination" | "routeCoordinates" | "roadNames" | "routingSource">,
+  route: Pick<TripAnalysis, "origin" | "destination" | "routeCoordinates" | "roadNames" | "routingSource">
+    & Partial<Pick<TripAnalysis, "routeId" | "durationSeconds" | "distanceMeters" | "alternatives">>,
   snapshot: DashboardSnapshot,
   /** Scores route sections away from SafeGo locations from live weather and PAGASA alerts there. */
   estimate?: RouteEstimate | null,
@@ -60,5 +61,32 @@ export function assessTrip(
     routingSource: route.routingSource,
     coverage: routeRisk.coverage,
     sources: snapshot.sources,
+    routeId: route.routeId ?? "route-1",
+    durationSeconds: route.durationSeconds ?? null,
+    distanceMeters: route.distanceMeters ?? null,
+    alternatives: route.alternatives ?? [],
   };
+}
+
+/**
+ * Every route of a trip result, scored the same way: the main route first, then each alternative
+ * the API returned as geometry. Each carries the shared origin and destination.
+ */
+export function assessTripRoutes(
+  result: TripAnalysis,
+  snapshot: DashboardSnapshot,
+  estimates: ReadonlyMap<string, RouteEstimate | null> = new Map(),
+): TripAnalysis[] {
+  const main = assessTrip(result, snapshot, estimates.get(result.routeId ?? "route-1"));
+  const others = (result.alternatives ?? []).map((option) => assessTrip({
+    origin: result.origin,
+    destination: result.destination,
+    routingSource: result.routingSource,
+    routeId: option.routeId,
+    routeCoordinates: option.routeCoordinates,
+    roadNames: option.roadNames,
+    durationSeconds: option.durationSeconds,
+    distanceMeters: option.distanceMeters,
+  }, snapshot, estimates.get(option.routeId)));
+  return [main, ...others];
 }

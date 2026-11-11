@@ -42,6 +42,8 @@ import type { MapLayer, MapLayerKey, SafeGoLocation } from "@/lib/safego/types";
 import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT } from "@/lib/trips/pilot";
 import { TripDataNotice } from "./TripCoverage";
+import { classifyRoutes, scoredRoute } from "@/lib/trips/route-comparison";
+import { RouteComparison, travelTime, VARIANT_LINE } from "./RouteComparison";
 import { AreaDetails, type AreaInfo } from "./AreaDetails";
 import { displayFactorName, shortPlaceName } from "./labels";
 
@@ -139,6 +141,10 @@ export interface RiskMapProps {
   locations: SafeGoLocation[];
   selectedLocation?: SafeGoLocation | null;
   trip?: TripAnalysis | null;
+  /** Every scored route for the trip (the selected one included); two or more show a comparison. */
+  routeOptions?: TripAnalysis[];
+  /** Switches the selected route by its routeId. */
+  onSelectRoute?: (routeId: string) => void;
   previewRoute?: PreviewTripRoute | null;
   leftFloatingPanel?: React.ReactNode;
   onSelectLocation?: (location: SafeGoLocation) => void;
@@ -170,6 +176,8 @@ export function RiskMap({
   locations: liveLocations,
   selectedLocation: liveSelected,
   trip: liveTrip,
+  routeOptions,
+  onSelectRoute,
   previewRoute,
   leftFloatingPanel,
   onSelectLocation,
@@ -235,6 +243,17 @@ export function RiskMap({
     });
     return assessTrip(liveTrip, { locations, sources: liveTrip.sources, weatherUpdatedAt: null }, makeRouteEstimate(samples, pastAlerts));
   }, [at, liveTrip, locations, pastAlerts, weatherPoints, weatherTimeline]);
+
+  // Alternatives are rated on live data only, so the comparison is hidden while the map is rewound.
+  const comparison = useMemo(
+    () => at === null && routeOptions && routeOptions.length > 1 ? classifyRoutes(routeOptions.map(scoredRoute)) : [],
+    [at, routeOptions],
+  );
+  const selectedRouteId = liveTrip?.routeId ?? "route-1";
+  const onSelectRouteRef = useRef(onSelectRoute);
+  useEffect(() => {
+    onSelectRouteRef.current = onSelectRoute;
+  }, [onSelectRoute]);
 
   const activeLayerLabel =
     MAP_LAYERS.find((layer) => layer.key === activeLayer)?.label ?? "Overall risk";
@@ -357,7 +376,10 @@ export function RiskMap({
 
   const bounds: Array<[number, number]> = useMemo(
     () => liveTrip?.routeCoordinates.length
-      ? liveTrip.routeCoordinates
+      // With alternatives, fit all of them so switching routes never jumps the map.
+      ? routeOptions && routeOptions.length > 1
+        ? routeOptions.flatMap((option) => option.routeCoordinates)
+        : liveTrip.routeCoordinates
       : previewRoute?.routeCoordinates.length
         ? previewRoute.routeCoordinates
         : liveSelected
@@ -365,7 +387,7 @@ export function RiskMap({
           : liveLocations.length > 0
             ? liveLocations.map((location) => location.coordinates)
             : [[14.5995, 120.9842], [14.6120, 121.0614]],
-    [liveLocations, liveTrip, previewRoute, liveSelected],
+    [liveLocations, liveTrip, previewRoute, liveSelected, routeOptions],
   );
 
   useEffect(() => {
@@ -702,6 +724,20 @@ export function RiskMap({
       routeLayer.clearLayers();
 
       if (trip) {
+        // Alternatives first, so the selected route draws on top: dashed, faded, and tappable.
+        const labelled = new Map(comparison.map((route) => [route.routeId, route]));
+        const optionsById = new Map((routeOptions ?? []).map((option) => [option.routeId ?? "route-1", option]));
+        for (const [id, label] of labelled) {
+          const option = optionsById.get(id);
+          if (!option || id === selectedRouteId) continue;
+          const color = VARIANT_LINE[label.tradeoffLabel.variant];
+          L.polyline(option.routeCoordinates, { color, weight: 4, opacity: 0.45, dashArray: "6 8", lineCap: "round", interactive: false }).addTo(routeLayer);
+          // A wide invisible line makes the thin dashed route easy to tap.
+          L.polyline(option.routeCoordinates, { color, weight: 18, opacity: 0 })
+            .on("click", () => onSelectRouteRef.current?.(id))
+            .addTo(routeLayer);
+        }
+
         // A white casing keeps the risk-coloured route readable on top of the heat shading.
         L.polyline(trip.routeCoordinates, { color: "#ffffff", weight: 13, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(routeLayer);
         trip.segments.forEach((segment) => {
@@ -735,6 +771,26 @@ export function RiskMap({
             fillOpacity: 1,
           }).bindTooltip(makeTooltip(`${label}: ${place.label}`, "Route endpoint"), { direction: "top" }).addTo(routeLayer);
         });
+
+        // A badge with the trade-off and drive time sits halfway along each compared route.
+        for (const [id, label] of labelled) {
+          const option = optionsById.get(id);
+          if (!option?.routeCoordinates.length) continue;
+          const middle = option.routeCoordinates[Math.floor(option.routeCoordinates.length / 2)];
+          const pill = document.createElement("span");
+          pill.className = `route-pill${id === selectedRouteId ? " selected" : ""}`;
+          pill.style.setProperty("--pill", VARIANT_LINE[label.tradeoffLabel.variant]);
+          const time = travelTime(label);
+          pill.textContent = time ? `${label.tradeoffLabel.tag} · ${time}` : label.tradeoffLabel.tag;
+          L.marker(middle, {
+            icon: L.divIcon({ className: "route-pill-anchor", html: pill, iconSize: [0, 0] }),
+            keyboard: false,
+            zIndexOffset: id === selectedRouteId ? 1000 : 0,
+            title: `${label.tradeoffLabel.tag}: ${label.summary}`,
+          })
+            .on("click", () => onSelectRouteRef.current?.(id))
+            .addTo(routeLayer);
+        }
       } else if (previewRoute) {
         L.polyline(previewRoute.routeCoordinates, { color: "#ffffff", weight: 10, opacity: 0.9, lineCap: "round", interactive: false }).addTo(routeLayer);
         L.polyline(previewRoute.routeCoordinates, {
@@ -768,7 +824,7 @@ export function RiskMap({
     return () => {
       cancelled = true;
     };
-  }, [mapReady, trip, previewRoute]);
+  }, [mapReady, trip, previewRoute, comparison, routeOptions, selectedRouteId]);
 
   const showTimeline = liveWeather;
   const overallScore = trip ? trip.overallRiskScore : effectiveSelected ? layerScore(effectiveSelected, "overall") : null;
@@ -858,6 +914,9 @@ export function RiskMap({
 
   const summary = (
     <>
+      {trip && comparison.length > 1 && (
+        <RouteComparison routes={comparison} selectedId={selectedRouteId} onSelect={onSelectRoute} />
+      )}
       <p className="text-sm text-ink leading-snug">{summaryMessage.why}</p>
       <p className="mt-1.5 text-sm text-ink leading-snug"><strong>What to do:</strong> {summaryMessage.action}</p>
       {summaryMessage.caveat && <p className="mt-1.5 text-xs text-ink-soft leading-snug">{summaryMessage.caveat}</p>}

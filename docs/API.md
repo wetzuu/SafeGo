@@ -229,6 +229,12 @@ Anything else hits Nominatim (Philippines only).
 
 **`routingSource`:** always `"osrm"`. If routing is unavailable the request fails; SafeGo never draws a saved or invented route.
 
+**Route comparison fields:**
+
+- `routeId`: `"route-1"` for the main route.
+- `durationSeconds`, `distanceMeters`: from OSRM; `null` when the router did not return them. The duration is free-flow driving time with no traffic, flooding or closures: compare routes with it, never show it as an arrival time.
+- `alternatives`: up to three other routes OSRM found, each `{ routeId, routeCoordinates, roadNames, durationSeconds, distanceMeters }` (`"route-2"`…). They are returned as geometry only; the web app scores them with the same live data as the main route. Empty when OSRM found none.
+
 **`coverage.status`:** `"sufficient"` (≥ 90% covered) · `"insufficient"` — when insufficient, `overallRiskScore` and `rawRiskScore` are `null` and `riskKey` is `"unknown"`.
 
 **`segments[].coverage`:** `"covered"` · `"unknown"` — unknown segments have `riskScore: null` and `riskKey: "unknown"`.

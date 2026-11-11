@@ -1352,3 +1352,30 @@
 .replay-on #app-shell {
   min-height: 0;
 }
+
+/* Route comparison badges on the map (RiskMap). --pill is the route's variant colour. */
+.route-pill-anchor {
+  background: none;
+  border: 0;
+}
+
+.route-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  border: 2px solid var(--pill);
+  border-radius: 9999px;
+  padding: 2px 8px;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+
+.route-pill.selected {
+  background: var(--pill);
+  color: #ffffff;
+}

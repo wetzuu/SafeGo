@@ -166,6 +166,18 @@ Successful OSRM routes are cached in memory for ten minutes. If live routing is 
 
 Route colors are an approximate coverage model, not live traffic measurements or proof that a road is safe. The UI shows coverage percentage, unknown sections and source information. See [PILOT_VALIDATION.md](docs/PILOT_VALIDATION.md) for the policy, API changes, historical review checklist and usability protocol. Run `npm run validate:risk` for curated synthetic scenarios, or open `/validation` during `npm run dev` to review them interactively. `npm run backtest` scores documented Metro Manila flood days and dry days with the live weather rules; see [BACKTEST.md](docs/BACKTEST.md) for the results and their limits. Usability sessions follow [docs/USABILITY_SESSIONS.md](docs/USABILITY_SESSIONS.md); `npm run sus` scores them. No sessions have been run yet.
 
+## Route comparison
+
+When OSRM finds them, a trip returns up to three alternative roads besides the main route. The browser
+scores every route the same way and `classifyRoutes()` (`lib/trips/route-comparison.ts`) labels each
+against the others: **BEST BALANCE**, **LOWEST RISK · SLOWER**, **BALANCED**, **QUICKEST · HIGHER RISK**,
+**HIGH RISK · AVOID** (High band or above) or **NOT ENOUGH DATA**. Badges never say "safe", because the
+rating covers weather and PAGASA alerts, not street flooding. The thresholds are in
+`config/risk-policy.json` under `routeComparison`.
+
+Times are OSRM free-flow driving times. They are shown as "~25 min" and "+8 min vs quickest", always
+labelled "without traffic or flooding", and are used only to compare routes, never as an arrival time.
+
 ## Public geocoding and routing services
 
 The development defaults use the public Nominatim and OSRM services. Nominatim is queried only after form submission, never for autocomplete; requests are serialized to at most one per second and successful results are cached for 24 hours. The app sends an identifying User-Agent and displays OpenStreetMap attribution.
@@ -203,6 +215,6 @@ Before production use, replace the in-memory rate limit with a shared durable li
 
 - Approved direct PAGASA, LGU, school, traffic, or flood-provider contracts
 - GPS/device-location access
-- Turn-by-turn navigation, arrival-time estimates, or road-level risk sensors
+- Turn-by-turn navigation, arrival-time estimates (route comparison shows free-flow driving times only), or road-level risk sensors
 - Precise hazard boundaries
 - Email verification, password recovery, multi-factor authentication, and account deletion

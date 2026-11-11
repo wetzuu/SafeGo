@@ -51,5 +51,13 @@
     "factors": ["Weather", "Flood / roads", "Official advisories"],
     "maxFactorScore": 29,
     "maxDistanceKm": 15
+  },
+  "routeComparison": {
+    "$comment": "How alternative routes are labelled against each other (lib/trips/route-comparison.ts). Times are OSRM free-flow driving times, so percentages compare routes; they are not arrival times.",
+    "nearLowestRiskPoints": 5,
+    "nearQuickestPercent": 10,
+    "slowerPercent": 15,
+    "higherRiskPoints": 15,
+    "avoidFromBand": "high"
   }
 }

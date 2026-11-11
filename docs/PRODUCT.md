@@ -55,6 +55,26 @@ alert would average to about 32, Moderate, instead of Critical).
 
 Feed contracts and the approval checklist are in `docs/SOURCE_FEEDS.md`.
 
+## Comparing routes
+
+A trip can return up to four road routes. Each is rated by the same rule as above, then labelled
+against the others (`lib/trips/route-comparison.ts`, thresholds in `config/risk-policy.json`):
+
+| Badge | When |
+| --- | --- |
+| BEST BALANCE | Within 5 points of the lowest risk and within 10% of the quickest time |
+| LOWEST RISK · SLOWER | The lowest-risk route, more than 15% slower than the quickest |
+| BALANCED | Less than 15% slower than the quickest, for lower risk |
+| QUICKEST · HIGHER RISK | The quickest route, 15+ points or a whole band riskier than the lowest |
+| QUICKEST / LOWEST RISK / ALTERNATIVE | The quickest or lowest-risk route without a sharper trade-off, or a route with no advantage |
+| ONLY ROUTE FOUND | No alternative road exists to compare |
+| HIGH RISK · AVOID | Rated High or Critical, however quick |
+| NOT ENOUGH DATA | Too little of the route is near SafeGo's data to rate it |
+
+No badge says "safe" or "safest": the lowest-risk route still may have flooded streets SafeGo cannot
+see. Badge colours follow the route's own risk band, so a Moderate route is never drawn green. Driving
+times come from OSRM with no traffic or flooding and are labelled that way.
+
 ## Rating basis values
 
 | `risk.basis` | Meaning | Score |

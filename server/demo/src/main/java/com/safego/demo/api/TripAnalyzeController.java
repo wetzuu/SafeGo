@@ -68,9 +68,16 @@ public class TripAnalyzeController {
 
             ResolvedPlace originPlace = resolveSubmittedPlace(origin, originCoordinates, locations);
             ResolvedPlace destPlace = resolveSubmittedPlace(destination, destinationCoordinates, locations);
-            RouteResult route = routingService.fetchRoute(originPlace.coordinates(), destPlace.coordinates());
+            List<RouteResult> routes = routingService.fetchRoutes(originPlace.coordinates(), destPlace.coordinates());
 
-            TripAnalysis analysis = assessTrip(originPlace, destPlace, route, locations);
+            // The first route is the main result; the others are returned as geometry for comparison.
+            List<RouteOption> alternatives = new ArrayList<>();
+            for (int i = 1; i < routes.size(); i++) {
+                RouteResult option = routes.get(i);
+                alternatives.add(new RouteOption("route-" + (i + 1), option.coordinates(), option.roadNames(),
+                    option.durationSeconds(), option.distanceMeters()));
+            }
+            TripAnalysis analysis = assessTrip(originPlace, destPlace, routes.get(0), locations).withAlternatives(alternatives);
 
             return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
@@ -135,7 +142,13 @@ public class TripAnalyzeController {
             .body(ApiResponse.error(code, msg));
     }
 
-    public record RouteResult(double[][] coordinates, List<String> roadNames, String source) {}
+    /** One road route. Duration and distance come from OSRM (free-flow driving, no traffic); null when unknown. */
+    public record RouteResult(double[][] coordinates, List<String> roadNames, String source,
+            Double durationSeconds, Double distanceMeters) {
+        public RouteResult(double[][] coordinates, List<String> roadNames, String source) {
+            this(coordinates, roadNames, source, null, null);
+        }
+    }
 
     public static class TripError extends RuntimeException {
         public final String code;
