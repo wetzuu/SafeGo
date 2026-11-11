@@ -1,23 +1,16 @@
 "use client";
 
-import { bandLabel, riskGradient } from "@/lib/safego/risk-model";
+import { riskGradient } from "@/lib/safego/risk-model";
+import { minutesText, routeBadge, routeStory, weatherLevel } from "@/lib/safego/humanize-risk";
 import { minutes, type ClassifiedRoute, type TradeoffVariant } from "@/lib/trips/route-comparison";
+import { FactPill, StoryBadge, TactileCard } from "./tactile";
 
-/** Badge colours by variant, from the app's Low / Moderate / Critical tokens (light and dark themes). */
-export const VARIANT_BADGE: Record<TradeoffVariant, string> = {
-  optimal: "bg-low text-white",
-  safe: "bg-low-soft text-low",
-  caution: "bg-mod-soft text-mod",
-  danger: "bg-crit-soft text-crit",
-  unknown: "bg-neutral-soft text-ink-soft",
-};
-
-/** Line colours for the map, matching the badges. */
+/** Line colours for the map by variant (green, amber, coral, grey), matching the badges. */
 export const VARIANT_LINE: Record<TradeoffVariant, string> = {
-  optimal: "#166534",
-  safe: "#166534",
-  caution: "#a16207",
-  danger: "#b91c1c",
+  optimal: "#10b981",
+  safe: "#10b981",
+  caution: "#f59e0b",
+  danger: "#f43f5e",
   unknown: "#64748b",
 };
 
@@ -25,18 +18,16 @@ export function travelTime(route: ClassifiedRoute) {
   return route.durationSeconds === null ? null : `~${minutes(route.durationSeconds)} min`;
 }
 
-function timeDelta(route: ClassifiedRoute, count: number) {
-  if (route.deltaSeconds === null || count < 2) return null;
-  return route.deltaSeconds < 60 ? "Quickest" : `+${minutes(route.deltaSeconds)} min vs quickest`;
-}
-
-function distance(route: ClassifiedRoute) {
-  return route.distanceMeters === null ? null : `${(route.distanceMeters / 1000).toFixed(1)} km`;
+/** The map badge text for a route: friendly label plus drive time. */
+export function routePillText(route: ClassifiedRoute) {
+  const badge = routeBadge(route.tradeoffLabel.tag, route.riskScore);
+  const time = travelTime(route);
+  return `${badge.icon} ${badge.label}${time ? ` · ${time}` : ""}`;
 }
 
 /**
- * Side-by-side route choices for one trip. Times are OSRM free-flow driving times, so they compare
- * routes and are labelled "without traffic"; ratings come from live weather and PAGASA alerts.
+ * The route choices for a trip, as chunky tappable cards. Times are OSRM driving times without
+ * traffic or flooding; ratings come from live weather and PAGASA alerts, not street checks.
  */
 export function RouteComparison({
   routes,
@@ -48,67 +39,69 @@ export function RouteComparison({
   onSelect?: (routeId: string) => void;
 }) {
   return (
-    <section className="mb-3" aria-label="Compare routes">
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-bold text-ink">{routes.length > 1 ? `Compare ${routes.length} routes` : "1 route found"}</h3>
+    <section className="mb-4" aria-label="Compare routes">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-base font-semibold text-ink">
+          {routes.length > 1 ? `${routes.length} ways to get there` : "1 way to get there"}
+        </h3>
         <span className="text-[11px] text-ink-soft">Times without traffic or flooding</span>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {routes.map((route) => {
           const selected = route.routeId === selectedId;
-          const time = travelTime(route);
-          const delta = timeDelta(route, routes.length);
-          const km = distance(route);
+          const badge = routeBadge(route.tradeoffLabel.tag, route.riskScore);
+          const weather = weatherLevel(route.weatherScore ?? null);
+          const via = route.summary.replace(/^via\s+/, "").split(",")[0];
+          const longer = routes.length > 1 && route.deltaSeconds !== null && route.deltaSeconds >= 60 ? `+${minutesText(route.deltaSeconds)}` : null;
           return (
             <li key={route.routeId}>
-              <button
-                type="button"
+              <TactileCard
+                as="button"
+                selected={selected}
                 aria-pressed={selected}
                 onClick={() => onSelect?.(route.routeId)}
-                className={`w-full rounded-box border p-3 text-left transition-colors ${
-                  selected ? "border-ink bg-panel ring-1 ring-ink" : "border-hairline bg-panel hover:bg-surface"
-                }`}
+                className={`w-full p-3.5 ${selected ? "" : "opacity-95"}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide ${VARIANT_BADGE[route.tradeoffLabel.variant]}`}>
-                    {route.tradeoffLabel.tag}
+                <span className="flex items-start justify-between gap-2">
+                  <StoryBadge tone={badge.tone} icon={badge.icon}>{badge.label}</StoryBadge>
+                  <span className="text-right">
+                    {travelTime(route) && <span className="block font-display text-xl font-semibold leading-none text-ink">{travelTime(route)}</span>}
+                    {longer && <span className="mt-0.5 block text-[11px] font-semibold text-ink-soft">{longer} vs quickest</span>}
                   </span>
-                  {selected && <span className="text-[11px] font-semibold text-ink-soft">Shown on map</span>}
-                </div>
+                </span>
 
-                <div className="mt-1.5 flex items-baseline justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-semibold text-ink">{route.summary}</span>
-                  {time && <span className="mono shrink-0 text-sm font-bold text-ink">{time}</span>}
-                </div>
-                <div className="text-xs text-ink-soft">
-                  {[km, delta].filter(Boolean).join(" · ") || "Time and distance unknown"}
-                </div>
+                <span className="mt-2.5 flex flex-wrap gap-1.5">
+                  {route.distanceMeters !== null && <FactPill icon="📏">{(route.distanceMeters / 1000).toFixed(1)} km</FactPill>}
+                  <FactPill icon={weather.icon}>{weather.label}</FactPill>
+                  {via && via !== "Main route" && <FactPill icon="🛣️">via {via}</FactPill>}
+                </span>
 
-                <div className="mt-2 flex items-center gap-2">
+                <span className="mt-2.5 flex items-center gap-2" aria-label={route.riskScore === null ? "Not rated" : `Risk ${route.riskScore} out of 100`}>
                   {route.riskScore === null ? (
                     <span className="text-[11px] font-semibold text-ink-soft">Not rated</span>
                   ) : (
                     <>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-soft" aria-hidden="true">
-                        <div className="h-full rounded-full" style={{ width: `${Math.max(4, route.riskScore)}%`, background: riskGradient(route.riskScore) }} />
-                      </div>
-                      <span className="shrink-0 text-[11px] font-semibold text-ink">
-                        {bandLabel(route.riskScore)} risk · {route.riskScore}/100
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface" aria-hidden="true">
+                        <span className="block h-full rounded-full" style={{ width: `${Math.max(4, route.riskScore)}%`, background: riskGradient(route.riskScore) }} />
                       </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-ink">Risk {route.riskScore}/100</span>
                     </>
                   )}
-                </div>
+                </span>
 
                 {route.hazardFactors.length > 0 && (
-                  <ul className="mt-2 flex flex-wrap gap-1" aria-label="Along this route">
+                  <span className="mt-2 flex flex-wrap gap-1" aria-label="Along this way">
                     {route.hazardFactors.map((hazard) => (
-                      <li key={hazard} className="rounded-full border border-hairline px-2 py-0.5 text-[11px] text-ink">{hazard}</li>
+                      <span key={hazard} className="rounded-full border border-hairline px-2 py-0.5 text-[11px] text-ink">{hazard}</span>
                     ))}
-                  </ul>
+                  </span>
                 )}
 
-                <p className="mt-1.5 text-xs leading-snug text-ink-soft">{route.tradeoffLabel.explanation}</p>
-              </button>
+                <span className="mt-2 block text-[13px] leading-snug text-ink-soft">
+                  {routeStory({ tag: route.tradeoffLabel.tag, deltaSeconds: route.deltaSeconds, routeCount: routes.length, score: route.riskScore })}
+                  {selected && routes.length > 1 && <span className="ml-1 font-semibold text-ink">Shown on the map.</span>}
+                </span>
+              </TactileCard>
             </li>
           );
         })}

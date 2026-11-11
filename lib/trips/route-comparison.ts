@@ -1,7 +1,6 @@
 import { bandLabel, riskBand } from "../safego/risk-model.ts";
 import { bandMinimum, RISK_POLICY } from "../safego/risk-policy.ts";
 import type { RiskKey } from "../safego/types.ts";
-import { weatherPhrase } from "../safego/plain-language.ts";
 import type { TripAnalysis } from "./types.ts";
 
 /**
@@ -41,6 +40,8 @@ export interface ScoredRoute {
   /** 0–100 overall rating; null when too little of the route is near SafeGo's data to rate it. */
   riskScore: number | null;
   hazardFactors: string[];
+  /** Worst live weather score along the rated parts of the route; null when unknown. */
+  weatherScore?: number | null;
 }
 
 export interface ClassifiedRoute extends ScoredRoute {
@@ -231,20 +232,21 @@ export function classifyRoutes(routes: ScoredRoute[]): ClassifiedRoute[] {
       || stable(first, second));
 }
 
-/** Hazards SafeGo actually knows along a scored trip: PAGASA alerts, notable weather and data gaps. */
+/** The worst live weather score near the route's rated sections; null when none is known. */
+export function routeWeatherScore(trip: TripAnalysis): number | null {
+  const scores = trip.corridorLocations
+    .filter((location) => !location.risk.countedFactors || location.risk.countedFactors.includes("Weather"))
+    .flatMap((location) => location.factors.filter((factor) => factor.name === "Weather" && factor.pillText !== "Unavailable"))
+    .map((factor) => factor.score);
+  return scores.length ? Math.max(...scores) : null;
+}
+
+/** Things SafeGo actually knows along a scored trip: PAGASA alerts and gaps in its data. Weather is shown separately. */
 export function routeHazards(trip: TripAnalysis): string[] {
   const hazards: string[] = [];
   for (const advisory of trip.advisories) {
     if (hazards.length >= 2) break;
     if (!hazards.includes(advisory.title)) hazards.push(advisory.title);
-  }
-  const weather = trip.corridorLocations
-    .filter((location) => !location.risk.countedFactors || location.risk.countedFactors.includes("Weather"))
-    .flatMap((location) => location.factors.filter((factor) => factor.name === "Weather"))
-    .sort((first, second) => second.score - first.score)[0];
-  if (weather && weather.score >= bandMinimum("mod")) {
-    const phrase = weatherPhrase(weather.score);
-    hazards.push(`${phrase[0].toLocaleUpperCase()}${phrase.slice(1)}`);
   }
   const total = trip.coverage.totalMeters;
   // Only when it rounds to at least 1%, so a sliver never reads "0% outside".
@@ -262,5 +264,6 @@ export function scoredRoute(trip: TripAnalysis): ScoredRoute {
     distanceMeters: trip.distanceMeters ?? null,
     riskScore: trip.overallRiskScore,
     hazardFactors: routeHazards(trip),
+    weatherScore: routeWeatherScore(trip),
   };
 }

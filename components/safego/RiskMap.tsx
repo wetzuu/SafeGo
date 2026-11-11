@@ -43,7 +43,7 @@ import type { TripAnalysis } from "@/lib/trips/types";
 import { PILOT } from "@/lib/trips/pilot";
 import { TripDataNotice } from "./TripCoverage";
 import { classifyRoutes, scoredRoute } from "@/lib/trips/route-comparison";
-import { RouteComparison, travelTime, VARIANT_LINE } from "./RouteComparison";
+import { RouteComparison, routePillText, VARIANT_LINE } from "./RouteComparison";
 import { AreaDetails, type AreaInfo } from "./AreaDetails";
 import { displayFactorName, shortPlaceName } from "./labels";
 
@@ -168,6 +168,8 @@ export interface RiskMapProps {
   notice?: string | null;
   /** A short-lived, non-error update from the server's live events (e.g. a suspension found). */
   liveNotice?: string | null;
+  /** Shown under the phone search bar (the Sky report strip); desktop shows it in the sidebar. */
+  statusHero?: React.ReactNode;
   /** Space taken by a bottom tab bar on phones, so the sheet sits above it. */
   bottomInset?: number;
   /** When set, the legend is rendered into this element (the desktop sidebar) instead of over the map. */
@@ -195,6 +197,7 @@ export function RiskMap({
   footer,
   notice = null,
   liveNotice = null,
+  statusHero = null,
   bottomInset = 0,
   legendSlot = null,
 }: RiskMapProps) {
@@ -784,13 +787,12 @@ export function RiskMap({
           const pill = document.createElement("span");
           pill.className = `route-pill${id === selectedRouteId ? " selected" : ""}`;
           pill.style.setProperty("--pill", VARIANT_LINE[label.tradeoffLabel.variant]);
-          const time = travelTime(label);
-          pill.textContent = time ? `${label.tradeoffLabel.tag} · ${time}` : label.tradeoffLabel.tag;
+          pill.textContent = routePillText(label);
           L.marker(middle, {
             icon: L.divIcon({ className: "route-pill-anchor", html: pill, iconSize: [0, 0] }),
             keyboard: false,
             zIndexOffset: id === selectedRouteId ? 1000 : 0,
-            title: `${label.tradeoffLabel.tag}: ${label.summary}`,
+            title: `${routePillText(label)}, ${label.summary}`,
           })
             .on("click", () => onSelectRouteRef.current?.(id))
             .addTo(routeLayer);
@@ -1192,6 +1194,7 @@ export function RiskMap({
         <>
           <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex flex-col gap-2 p-3">
             {leftFloatingPanel}
+            {statusHero}
             {chips}
             {statusChip && <div role="status" className={`pointer-events-auto self-center rounded-full px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-card)] ${statusChip.tone}`}>{statusChip.text}</div>}
             {liveChip}

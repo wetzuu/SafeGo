@@ -16,6 +16,14 @@ import type {
   UniversityStatus,
 } from "@/lib/safego/types";
 import { COMMUNITY_REPORT_TYPES } from "@/lib/reports/report-input";
+
+/** The one-tap reporter's choices, mapped to the report types the server accepts. */
+const SPOT_OPTIONS: Array<{ type: (typeof COMMUNITY_REPORT_TYPES)[number]; icon: string; label: string }> = [
+  { type: "Flooding", icon: "🌊", label: "Flooded street" },
+  { type: "Road Hazard", icon: "🚧", label: "Road blocked" },
+  { type: "Transport Disruption", icon: "🚗", label: "Stuck traffic" },
+  { type: "Other", icon: "✏️", label: "Something else" },
+];
 import type { TripAnalysis } from "@/lib/trips/types";
 import { assessTrip, assessTripRoutes } from "@/lib/trips/trip-assessment";
 import { describeLiveEvent, subscribeToLiveEvents } from "@/lib/safego/live-events";
@@ -35,6 +43,9 @@ import { AccountPanel, loadAccountSession } from "./AccountPanel";
 import { displayFactorName, shortPlaceName } from "./labels";
 import { activeUniversityAlerts } from "@/lib/safego/university-alerts";
 import { UniversityAlertCards } from "./UniversityAlertCards";
+import { skyReport } from "@/lib/safego/humanize-risk";
+import { SkyReport } from "./SkyReport";
+import { TactileCard } from "./tactile";
 import { UniversityScanPanel } from "./UniversityScanPanel";
 import { UniversitySourceDirectory } from "./UniversitySourceDirectory";
 import { RiskBadge, ThemeToggle, useIsDesktop, useSavedTheme } from "./ui";
@@ -274,7 +285,7 @@ function ReportPage({ location, items, tripMode, reportingEnabled, onSubmitted }
     }
   }
 
-  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle={reportingEnabled ? "Share a current observation. New reports are marked unconfirmed until reviewed." : "Public submissions will open after SafeGo can review them safely."} /><div className="grid grid-2"><div className="card card-pad">{reportingEnabled ? <form className="form-grid" onSubmit={submitReport}><fieldset className="form-field report-type-field"><legend>Report type</legend><div className="type-chip-row">{COMMUNITY_REPORT_TYPES.map((type) => <button type="button" className={`type-chip${type === selectedType ? " selected" : ""}`} aria-pressed={type === selectedType} key={type} onClick={() => setSelectedType(type)}>{type}</button>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Water depth, road blockage, direction of travel, and what you can see" minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Send report for review"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form> : <div className="reporting-disabled"><Icon name="reports" /><h3>Submissions are not open yet</h3><p>SafeGo will open public reports after it can review submissions and prevent misuse. Existing observations remain visible and show whether they have been confirmed.</p></div>}</div><div><div className="card-head tight"><h3>{tripMode ? "Recent reports near the route" : "Recent reports in this area"}</h3><span className="tag mono">What SafeGo knows</span></div><Reports items={items} /></div></div></section>;
+  return <section className="page"><PageHeader eyebrow="Reports" title={tripMode ? "Community reports near this trip" : "Community reports in this area"} subtitle={reportingEnabled ? "Share a current observation. New reports are marked unconfirmed until reviewed." : "Public submissions will open after SafeGo can review them safely."} /><div className="grid grid-2"><div className="card card-pad">{reportingEnabled ? <form className="form-grid" onSubmit={submitReport}><fieldset className="form-field"><legend className="mb-2 font-display text-base font-semibold">What did you spot?</legend><div className="grid grid-cols-2 gap-3">{SPOT_OPTIONS.map((option) => <TactileCard as="button" key={option.type} tone={option.type === selectedType ? "wet" : undefined} selected={option.type === selectedType} aria-pressed={option.type === selectedType} onClick={() => setSelectedType(option.type)} className="flex min-h-24 flex-col items-center justify-center gap-1 p-3 text-center"><span className="text-3xl" aria-hidden="true">{option.icon}</span><span className="font-display text-sm font-semibold">{option.label}</span></TactileCard>)}</div></fieldset><div className="form-field"><label htmlFor="report-location">Location or landmark</label><input id="report-location" type="text" value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Street or landmark" minLength={3} maxLength={160} required /></div><div className="form-field"><div className="report-label-row"><label htmlFor="report-description">What did you observe?</label><span className="mono">{description.length}/500</span></div><textarea id="report-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Water depth, road blockage, direction of travel, and what you can see" minLength={10} maxLength={500} required /></div><button className="submit-btn" type="submit" disabled={submitting}>{submitting ? "Sending report…" : "Send report for review"}</button>{message && <div className={`report-submit-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</div>}<div className="mock-note">No account is required. Do not include names, phone numbers, or other personal information.</div></form> : <div className="reporting-disabled"><Icon name="reports" /><h3>Submissions are not open yet</h3><p>SafeGo will open public reports after it can review submissions and prevent misuse. Existing observations remain visible and show whether they have been confirmed.</p></div>}</div><div><div className="card-head tight"><h3>{tripMode ? "Recent reports near the route" : "Recent reports in this area"}</h3><span className="tag mono">What SafeGo knows</span></div><Reports items={items} /></div></div></section>;
 }
 
 /** Stays on screen for the whole replay so nobody mistakes it for live data. */
@@ -522,6 +533,41 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
       dismissedUniversities,
     );
   }, [clock, detailLocation, dismissedUniversities, trip]);
+  // The Sky report: Metro Manila's worst live weather, PAGASA alerts, the school scan and any notices.
+  const sky = useMemo(() => {
+    let weatherScore: number | null = null;
+    let worstPlace: string | null = null;
+    let pagasaAlert = false;
+    for (const location of locations) {
+      const counted = location.risk.countedFactors;
+      for (const factor of location.factors) {
+        if (counted && !counted.includes(factor.name)) continue;
+        if (factor.name === "Weather" && factor.pillText !== "Unavailable" && (weatherScore === null || factor.score > weatherScore)) {
+          weatherScore = factor.score;
+          worstPlace = location.name;
+        }
+        if (factor.name === "Official advisories" && factor.score > 0) pagasaAlert = true;
+      }
+    }
+    const scanSource = sources.find((source) => source.key === "university-announcements");
+    // The server reports a running or idle scan as "disabled" with its reason; idle says "No rain…".
+    const scan = !scanSource || getReplay()
+      ? { state: "off" as const, at: null }
+      : scanSource.status === "active"
+        ? { state: "scanned" as const, at: scanSource.lastSuccessAt }
+        : scanSource.errorMessage && !scanSource.errorMessage.startsWith("No rain")
+          ? { state: "scanning" as const, at: null }
+          : { state: "standby" as const, at: null };
+    const suspensions = activeUniversityAlerts(
+      locations.flatMap((place) => place.universities.map((university) => ({ university, area: shortPlaceName(place.name), proximity: 0 }))),
+      clock,
+    ).map(({ university }) => ({
+      name: university.name,
+      status: university.status === "suspended" ? "suspended" as const : "online" as const,
+      verified: Boolean(university.announcementVerified),
+    }));
+    return skyReport({ weatherScore: apiUnavailable ? null : weatherScore, worstPlace, pagasaAlert, scan, suspensions, replay: Boolean(getReplay()) }, clock);
+  }, [apiUnavailable, clock, locations, sources]);
   const nearbyUniversities = useMemo(() => {
     const places = trip ? trip.corridorLocations : detailLocation ? [detailLocation] : [];
     return Array.from(new Map(
@@ -618,7 +664,9 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               </div>
             </div>
 
-            <h1 className="mb-3 text-base font-semibold text-ink">Check a place or a trip</h1>
+            <div className="mb-5"><SkyReport report={sky} /></div>
+
+            <h1 className="mb-3 font-display text-lg font-semibold text-ink">Check a place or a trip</h1>
 
             {isDesktop && planner}
 
@@ -644,6 +692,7 @@ export function SafeGoApp({ initialLocations, initialBackend, initialSources, co
               onSelectRoute={setSelectedRouteId}
               previewRoute={previewRoute}
               leftFloatingPanel={mobileSearch}
+              statusHero={isDesktop ? null : <SkyReport report={sky} strip />}
               onSelectLocation={trip ? selectMapLocation : selectLocation}
               onViewDashboard={() => navigate("conditions")}
               onViewRiskDetails={() => navigate("risk")}
