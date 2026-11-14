@@ -25,9 +25,9 @@ what it measures and proving the ratings against reality.
 
 | # | Phase | Depends on | Who | Status |
 | --- | --- | --- | --- | --- |
-| 0 | [Baseline and doc sync](phase-0-baseline.md) | none | Claude | Partly done (Java tests to run on Windows) |
-| 1 | [Product definition](phase-1-product-definition.md) | 0 | Decided: option A | Partly done (Spring tests to run on Windows) |
-| 2 | [One source of truth for the model](phase-2-single-source.md) | 1 | Claude | Partly done (Spring context tests via CI) |
+| 0 | [Baseline and doc sync](phase-0-baseline.md) | none | Claude | Done; confirm Java tests in CI |
+| 1 | [Product definition](phase-1-product-definition.md) | 0 | Decided: option A | Done; confirm Java tests in CI |
+| 2 | [One source of truth for the model](phase-2-single-source.md) | 1 | Claude | Done; confirm Java tests in CI |
 | 3 | [Frontend structure](phase-3-frontend-structure.md) | 0 | Claude | Not started |
 | 4 | [Route coverage](phase-4-route-coverage.md) | 2 | **Team decision**, then Claude | Not started |
 | 5 | [Scoring calibration](phase-5-calibration.md) | 2 | Claude | Not started |
@@ -38,6 +38,15 @@ what it measures and proving the ratings against reality.
 
 Suggested order: 0 → 1 → 2 → (3, 4, 5 in any order) → 6 → 8. Phase 7 runs in parallel from now,
 and must be repeated after any change to rating wording (Phases 1, 4, 5).
+
+**Java tests in CI:** Phases 0–2, route comparison and the University Hub pillar were Java-tested
+here by compiling against Gradle's Jackson with stand-ins for Spring; only the Spring-context tests
+(`DemoApplicationTests`, `*ControllersTest`) were left to CI. Check the "SafeGo quality checks"
+workflow on GitHub; when it is green, those rows are fully done.
+
+**Cleanup (2026-11-15):** removed dead code left by the phases and the redesign (25 unused CSS rules,
+the five-point dashboard helpers, the unused weather-history client, old repository types,
+unused exports), the unused `@tailwindcss/cli` dev dependency, and the merged phase branches.
 
 **Design overhaul (2026-11-11, owner request):** tactile design system, plain-language copy layer, Sky report, school tickets, route cards and a one-tap reporter (hidden until moderation). See `docs/DESIGN.md`. Re-run Phase 7 sessions on the new design.
 

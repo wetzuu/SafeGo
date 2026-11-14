@@ -102,37 +102,6 @@ export interface DayWeather {
   pagasaLevel: "yellow" | "orange" | "red" | null;
 }
 
-/** How far back the map and area panel can look. */
-export const MAX_PAST_DAYS = 4;
-
-interface HistoryEnvelope {
-  data?: { history: Array<{ key: string; days: DayWeather[] }>; source: { status: string; errorMessage: string | null } };
-  error?: { message?: string };
-}
-
-let cachedHistory: { expiresAt: number; value: Map<string, DayWeather[]> } | null = null;
-
-/** The last four complete days per sample point (newest first), keyed by weatherGroupKey. Cached for an hour. */
-export async function fetchAreaWeatherHistory(points: WeatherSamplePoint[]): Promise<Map<string, DayWeather[]>> {
-  if (cachedHistory && cachedHistory.expiresAt > Date.now()) return cachedHistory.value;
-  const response = await fetch("/api/areas/weather/history", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      points: points.map((point) => ({ key: point.key, latitude: point.coordinates[0], longitude: point.coordinates[1] })),
-    }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const envelope = (await response.json().catch(() => null)) as HistoryEnvelope | null;
-  if (!response.ok || !envelope?.data) throw new Error(envelope?.error?.message ?? `Weather history returned HTTP ${response.status}.`);
-  if (envelope.data.source.status !== "active") {
-    throw new Error(envelope.data.source.errorMessage ?? `Weather source is ${envelope.data.source.status}.`);
-  }
-  const value = new Map(envelope.data.history.map(({ key, days }) => [key, days.slice(0, MAX_PAST_DAYS)]));
-  cachedHistory = { expiresAt: Date.now() + 60 * 60 * 1000, value };
-  return value;
-}
-
 /** "Yesterday" for one day back, otherwise a short date such as "Sat, Sep 27". */
 export function pastDayLabel(date: string, daysAgo: number) {
   if (daysAgo === 1) return "Yesterday";

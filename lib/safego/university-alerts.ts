@@ -14,7 +14,7 @@ const VALID_FOR_MS = 2 * 24 * 60 * 60 * 1000;
 const URGENCY: Record<UniversityStatus["status"], number> = { suspended: 0, online: 1, open: 2, "no-update": 3 };
 
 /** When a dated announcement stops being shown; null when the date cannot be read. */
-export function expiresAt(university: UniversityStatus): number | null {
+function expiresAt(university: UniversityStatus): number | null {
   const posted = Date.parse(`${university.date} 00:00:00 GMT+0800`);
   return Number.isFinite(posted) ? posted + VALID_FOR_MS : null;
 }

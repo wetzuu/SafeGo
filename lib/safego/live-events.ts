@@ -32,7 +32,7 @@ export interface UniversityAdvisoryEvent {
 
 export type LiveEvent = WeatherEscalatedEvent | UniversityAdvisoryEvent;
 
-export const LIVE_EVENT_TYPES = ["WEATHER_ESCALATED", "UNIVERSITY_ADVISORY"] as const;
+const LIVE_EVENT_TYPES = ["WEATHER_ESCALATED", "UNIVERSITY_ADVISORY"] as const;
 
 /** Reads one event; null for anything malformed or unknown, which is ignored. */
 export function parseLiveEvent(type: string, data: string): LiveEvent | null {

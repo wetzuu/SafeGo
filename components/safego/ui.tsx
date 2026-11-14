@@ -28,7 +28,7 @@ const LEVEL_STYLES: Record<RiskLevel, string> = {
   unknown: "bg-neutral-soft text-ink-soft",
 };
 
-export function RiskIcon({ level, className = "size-4" }: { level: RiskLevel; className?: string }) {
+function RiskIcon({ level, className = "size-4" }: { level: RiskLevel; className?: string }) {
   const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className, "aria-hidden": true };
   if (level === "low") return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.7 2.7L16 9.5" /></svg>;
   if (level === "mod") return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>;

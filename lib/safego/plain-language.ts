@@ -38,10 +38,6 @@ export function levelName(level: RiskLevel) {
   return LEVEL_NAMES[level];
 }
 
-export function levelAction(level: RiskLevel) {
-  return ACTIONS[level];
-}
-
 /** The word for a 0–100 score, so a bare number never stands alone. */
 export function scoreWord(score: number) {
   return bandLabel(score);
@@ -56,7 +52,7 @@ export function weatherPhrase(score: number, condition?: string | null) {
   return sky ? `calm weather (${sky})` : "calm weather";
 }
 
-export function advisoryPhrase(score: number, count = 0) {
+function advisoryPhrase(score: number, count = 0) {
   if (score <= 0) return "no official alerts";
   const amount = count > 1 ? `${count} official alerts` : "an official alert";
   return score >= 60 ? `${amount} of serious concern` : `${amount} in effect`;

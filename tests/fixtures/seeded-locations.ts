@@ -552,15 +552,3 @@ export const LOCATIONS: SafeGoLocation[] = [
     ],
   }),
 ];
-
-export function searchLocations(query: string) {
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  if (!normalizedQuery) return LOCATIONS;
-
-  return LOCATIONS.filter((location) =>
-    [location.name, location.city, ...location.aliases]
-      .join(" ")
-      .toLocaleLowerCase()
-      .includes(normalizedQuery),
-  );
-}

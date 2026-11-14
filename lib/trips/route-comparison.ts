@@ -233,7 +233,7 @@ export function classifyRoutes(routes: ScoredRoute[]): ClassifiedRoute[] {
 }
 
 /** The worst live weather score near the route's rated sections; null when none is known. */
-export function routeWeatherScore(trip: TripAnalysis): number | null {
+function routeWeatherScore(trip: TripAnalysis): number | null {
   const scores = trip.corridorLocations
     .filter((location) => !location.risk.countedFactors || location.risk.countedFactors.includes("Weather"))
     .flatMap((location) => location.factors.filter((factor) => factor.name === "Weather" && factor.pillText !== "Unavailable"))

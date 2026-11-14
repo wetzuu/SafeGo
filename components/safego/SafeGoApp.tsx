@@ -43,9 +43,9 @@ import { AccountPanel, loadAccountSession } from "./AccountPanel";
 import { displayFactorName, shortPlaceName } from "./labels";
 import { activeUniversityAlerts } from "@/lib/safego/university-alerts";
 import { UniversityAlertCards } from "./UniversityAlertCards";
-import { skyReport } from "@/lib/safego/humanize-risk";
+import { skyReport, weatherLevel } from "@/lib/safego/humanize-risk";
 import { SkyReport } from "./SkyReport";
-import { TactileCard } from "./tactile";
+import { TactileCard, VisualMeter } from "./tactile";
 import { UniversityScanPanel } from "./UniversityScanPanel";
 import { UniversitySourceDirectory } from "./UniversitySourceDirectory";
 import { RiskBadge, ThemeToggle, useIsDesktop, useSavedTheme } from "./ui";
@@ -152,6 +152,7 @@ function LiveWeatherCard({ location }: { location: SafeGoLocation }) {
   if (!weather || !location.risk.countedFactors?.includes("Weather")) return null;
   return <div className="card card-pad">
     <div className="card-head"><h3>Weather now</h3><span className={`pill ${weather.pill}`}><span className="dot" />{weather.pillText} · {weather.score}/100</span></div>
+    <div className="mb-2.5"><VisualMeter level={weatherLevel(weather.score)} /></div>
     <p className="factor-desc">{weather.description}</p>
   </div>;
 }

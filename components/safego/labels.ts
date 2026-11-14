@@ -8,6 +8,3 @@ export function shortPlaceName(label: string) {
   return label.split(",")[0];
 }
 
-export function riskLevelLabel(riskName: string) {
-  return riskName.replace(" RISK", "");
-}

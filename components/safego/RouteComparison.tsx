@@ -14,7 +14,7 @@ export const VARIANT_LINE: Record<TradeoffVariant, string> = {
   unknown: "#64748b",
 };
 
-export function travelTime(route: ClassifiedRoute) {
+function travelTime(route: ClassifiedRoute) {
   return route.durationSeconds === null ? null : `~${minutes(route.durationSeconds)} min`;
 }
 

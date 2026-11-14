@@ -1,7 +1,7 @@
 import { riskBand } from "./risk-model.ts";
 import type { FactorName, RiskKey, SafeGoLocation } from "./types.ts";
 
-export const AREA_FACTORS: FactorName[] = [
+const AREA_FACTORS: FactorName[] = [
   "Weather",
   "Flood / roads",
   "Official advisories",

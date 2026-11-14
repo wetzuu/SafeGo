@@ -26,7 +26,7 @@ export interface ReviewedAnnouncementPost {
  * two pages conflict. Every student-government entry is backed by a first-party school directory,
  * handbook, or article.
  */
-export const UNIVERSITY_ANNOUNCEMENT_SOURCES: UniversityAnnouncementSource[] = [
+const UNIVERSITY_ANNOUNCEMENT_SOURCES: UniversityAnnouncementSource[] = [
   {
     id: "mapua-official",
     universityIds: ["mapua-makati-campus", "mapua-manila"],

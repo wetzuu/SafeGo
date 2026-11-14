@@ -4,7 +4,7 @@
  */
 
 /** The ten standard SUS statements, answered 1 (strongly disagree) to 5 (strongly agree). */
-export const SUS_STATEMENTS = [
+const SUS_STATEMENTS = [
   "I think that I would like to use this system frequently.",
   "I found the system unnecessarily complex.",
   "I thought the system was easy to use.",

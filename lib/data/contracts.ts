@@ -1,33 +1,6 @@
-import type {
-  Advisory,
-  CommunityReport,
-  RiskAssessment,
-  RiskFactor,
-  SafeGoLocation,
-} from "../safego/types.ts";
+import type { SafeGoLocation } from "../safego/types.ts";
 
 export type DataBackend = "local" | "database";
-
-export interface LocationSummary {
-  id: string;
-  name: string;
-  city: string;
-  aliases: string[];
-  coordinates: [number, number];
-  updated: string;
-  risk: Pick<
-    RiskAssessment,
-    "key" | "name" | "rank" | "percentage" | "modelVersion"
-  >;
-}
-
-export interface LocationRiskDetails {
-  location: LocationSummary;
-  assessment: RiskAssessment;
-  factors: RiskFactor[];
-  advisories: Advisory[];
-  communityReports: CommunityReport[];
-}
 
 export interface CommunityReportInput {
   locationId: string;
@@ -48,21 +21,9 @@ export interface SourceStatus {
   errorMessage: string | null;
 }
 
-export interface SafeGoRepository {
-  listLocations(): Promise<LocationSummary[]>;
-  listDashboardLocations(): Promise<SafeGoLocation[]>;
-  getLocationRisk(id: string): Promise<LocationRiskDetails | null>;
-  listSourceStatuses(): Promise<SourceStatus[]>;
-  submitCommunityReport(input: CommunityReportInput): Promise<CommunityReport | null>;
-}
-
 export interface DashboardSnapshot {
   locations: SafeGoLocation[];
   sources: SourceStatus[];
   weatherUpdatedAt: string | null;
 }
 
-export interface RepositoryContext {
-  backend: DataBackend;
-  repository: SafeGoRepository;
-}

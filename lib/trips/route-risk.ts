@@ -46,7 +46,7 @@ const CALM_AREA_MAX_KM = RISK_POLICY.calmArea.maxDistanceKm;
  * calm weather, no flood/road issue and no advisory, and the whole route lies in the
  * pilot area, return the highest of those factor scores (a Low rating). Otherwise null.
  */
-export function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[number, number]>) {
+function calmAreaScore(pilotLocations: SafeGoLocation[], route: Array<[number, number]>) {
   if (pilotLocations.length === 0) return null;
   const inArea = route.every((point) =>
     Math.min(...pilotLocations.map((location) => distanceKm(point, location.coordinates))) <= CALM_AREA_MAX_KM);
